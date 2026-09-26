@@ -72,6 +72,14 @@ const DEFAULT_STATE: VideoProjectState = {
   textPositionX: 50,
   isUppercase: false,
 
+  // Text Background Plate (Plashka) & Box Width
+  textBgEnabled: false,
+  textBgColor: '#0070f3',
+  textBgOpacity: 0.85,
+  textBgPadding: 20,
+  textBgRadius: 18,
+  textMaxWidthPercent: 85,
+
   // Animation & Effects
   animationStyle: 'typewriter',
   effects: {

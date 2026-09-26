@@ -113,6 +113,14 @@ export interface VideoProjectState {
   textPositionX?: number; // 10 to 90 (default 50% - horizontal center)
   isUppercase: boolean;
 
+  // Text Background Plate (Plashka) & Box Width
+  textBgEnabled?: boolean;
+  textBgColor?: string;
+  textBgOpacity?: number;
+  textBgPadding?: number;
+  textBgRadius?: number;
+  textMaxWidthPercent?: number;
+
   // Animation & Effects
   animationStyle: AnimationStyle;
   effects: ExtraEffects;

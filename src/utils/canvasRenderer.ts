@@ -1528,10 +1528,11 @@ function drawTextSegment({
   isLastSegment?: boolean;
   isDraggingText?: boolean;
 }) {
-  // Strict 50px margins on all 4 borders (Expert and Lucky modes)
-  const safeMarginX = 50;
+  // Safe margins
+  const safeMarginX = 40;
   const safeMarginY = 50;
-  const maxWidth = Math.max(100, canvasWidth - safeMarginX * 2);
+  const targetWidthPercent = state.textMaxWidthPercent ?? 85;
+  const maxWidth = Math.max(120, Math.min(canvasWidth - safeMarginX * 2, (canvasWidth * targetWidthPercent) / 100));
   const maxHeight = Math.max(100, canvasHeight - safeMarginY * 2);
 
   // Calculate layout
@@ -1685,6 +1686,81 @@ function drawTextSegment({
   ctx.translate(-canvasWidth / 2, -(textCenterY + offsetY));
 
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+  // Render Background Plate / Plashka if enabled
+  if (state.textBgEnabled) {
+    const bgOpacity = state.textBgOpacity ?? 0.85;
+    const bgPadding = state.textBgPadding ?? 20;
+    const bgRadius = state.textBgRadius ?? 18;
+    const bgColor = state.textBgColor || '#0070f3';
+
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha * bgOpacity));
+    ctx.fillStyle = bgColor;
+
+    const plateX = blockLeft - bgPadding;
+    const plateY = blockTop - bgPadding;
+    const plateW = blockWidth + bgPadding * 2;
+    const plateH = totalCombinedHeight + bgPadding * 2;
+
+    ctx.beginPath();
+    if (typeof (ctx as any).roundRect === 'function') {
+      (ctx as any).roundRect(plateX, plateY, plateW, plateH, bgRadius);
+    } else {
+      const r = Math.min(bgRadius, plateW / 2, plateH / 2);
+      ctx.moveTo(plateX + r, plateY);
+      ctx.arcTo(plateX + plateW, plateY, plateX + plateW, plateY + plateH, r);
+      ctx.arcTo(plateX + plateW, plateY + plateH, plateX, plateY + plateH, r);
+      ctx.arcTo(plateX, plateY + plateH, plateX, plateY, r);
+      ctx.arcTo(plateX, plateY, plateX + plateW, plateY, r);
+      ctx.closePath();
+    }
+    ctx.fill();
+
+    // Subtle drop shadow under plashka badge
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+    ctx.shadowBlur = 16;
+    ctx.shadowOffsetY = 8;
+    ctx.restore();
+  }
+
+  // Draw Bounding Box & 4 Corner Nodes when user is actively dragging or adjusting text position
+  if (isDraggingText) {
+    ctx.save();
+    const pad = (state.textBgEnabled ? (state.textBgPadding ?? 20) : 12) + 4;
+    const bx = blockLeft - pad;
+    const by = blockTop - pad;
+    const bw = blockWidth + pad * 2;
+    const bh = totalCombinedHeight + pad * 2;
+
+    ctx.strokeStyle = '#a855f7';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([8, 6]);
+    ctx.strokeRect(bx, by, bw, bh);
+
+    // Corner nodes
+    const corners = [
+      { x: bx, y: by },
+      { x: bx + bw, y: by },
+      { x: bx, y: by + bh },
+      { x: bx + bw, y: by + bh },
+    ];
+
+    corners.forEach((c) => {
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, 9, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = '#a855f7';
+      ctx.shadowBlur = 10;
+      ctx.fill();
+      ctx.strokeStyle = '#a855f7';
+      ctx.lineWidth = 3;
+      ctx.stroke();
+    });
+
+    ctx.restore();
+  }
+
   ctx.font = `bold ${layout.fontSize}px ${state.fontFamily}`;
   ctx.textAlign = state.textAlign;
   ctx.textBaseline = 'alphabetic';

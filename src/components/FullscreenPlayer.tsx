@@ -38,6 +38,7 @@ import { audioMixer, prepareDualAudioTrack } from '../utils/audioMixer';
 import { safeFixWebm } from '../utils/safeWebmFix';
 import { trackRecordWebm } from '../utils/analytics';
 import { ColorPickerModal } from './ColorPickerModal';
+import { TextEditPopup } from './TextEditPopup';
 import { useLanguage } from '../context/LanguageContext';
 import { MUSIC_PRESETS } from '../utils/audioGenerator';
 
@@ -1312,155 +1313,12 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
       {/* Floating Font Size & Color Adjustment Popup */}
       {showFontSizePopup && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] cursor-pointer"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              setShowFontSizePopup(false);
-            }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-            }}
-            onTouchStart={(e) => {
-              e.stopPropagation();
-              setShowFontSizePopup(false);
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              setShowFontSizePopup(false);
-            }}
-          />
-          <div
-            data-dock="true"
-            onClick={(e) => e.stopPropagation()}
-            onPointerDown={(e) => e.stopPropagation()}
-            onTouchStart={(e) => e.stopPropagation()}
-            className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 w-64 sm:w-72 p-3 rounded-2xl bg-[#0d0914]/20 backdrop-blur-md border border-white/10 shadow-2xl shadow-black/80 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
-          >
-            {/* Top: TT Icon + Range Slider */}
-            <div className="flex items-center gap-2">
-              <div className="flex items-center justify-center text-purple-300 font-serif font-bold text-sm select-none shrink-0 w-5">
-                <span className="tracking-tighter text-sm">Тт</span>
-              </div>
-
-              <input
-                type="range"
-                min="18"
-                max="500"
-                step="2"
-                value={state.fontSize || 42}
-                onChange={(e) =>
-                  onChange({ fontSize: parseInt(e.target.value, 10) })
-                }
-                className="w-full accent-purple-500 bg-zinc-800/70 h-2 rounded-lg cursor-pointer"
-              />
-            </div>
-
-            {/* Bottom: Main Color Palette row + Last square for Full Color Picker / Mixer */}
-            <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/10">
-              {POPULAR_TEXT_COLORS.map((color) => {
-                const isSelected = (state.textColor || '#ffffff').toLowerCase() === color.toLowerCase();
-                return (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => onChange({ textColor: color })}
-                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg transition-transform flex items-center justify-center cursor-pointer shadow-sm ${
-                      isSelected
-                        ? 'scale-110 ring-2 ring-purple-400 ring-offset-1 ring-offset-black'
-                        : 'hover:scale-105 opacity-90 hover:opacity-100 border border-white/20'
-                    }`}
-                    style={{ backgroundColor: color }}
-                    title={color}
-                  >
-                    {isSelected && (
-                      <Check
-                        className={`w-3.5 h-3.5 ${
-                          color === '#FFFFFF' || color === '#FDE047' ? 'text-black' : 'text-white'
-                        }`}
-                      />
-                    )}
-                  </button>
-                );
-              })}
-
-              {/* Last square: rainbow gradient icon launcher for ColorPickerModal / mixer */}
-              <button
-                type="button"
-                onClick={() => setIsTextColorPickerOpen(true)}
-                className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-tr from-rose-500 via-purple-500 to-cyan-400 p-0.5 shadow-md flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-transform border border-white/30"
-                title={t('colorPaletteMixer', 'Палитра цветов и микшер')}
-              >
-                <Palette className="w-3.5 h-3.5 text-white drop-shadow" />
-              </button>
-            </div>
-
-            {/* Formatting: Checkbox "Заглавные" (Uppercase) & 3 Alignment Buttons (Left, Center, Right) */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10 select-none">
-              {/* Checkbox Заглавные */}
-              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-200 hover:text-white transition-colors">
-                <input
-                  type="checkbox"
-                  checked={Boolean(state.isUppercase)}
-                  onChange={(e) => onChange({ isUppercase: e.target.checked })}
-                  className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-purple-500 cursor-pointer accent-purple-500"
-                />
-                <span className="text-[11px] sm:text-xs font-semibold">{t('uppercase', 'Заглавные')}</span>
-              </label>
-
-              {/* 3 Alignment Buttons */}
-              <div className="flex items-center bg-black/60 p-0.5 rounded-lg border border-white/10 gap-0.5">
-                <button
-                  type="button"
-                  onClick={() => onChange({ textAlign: 'left' })}
-                  className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
-                    state.textAlign === 'left'
-                      ? 'bg-purple-600 text-white shadow-sm'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/10'
-                  }`}
-                  title={t('alignLeft', 'По левому краю')}
-                >
-                  <AlignLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChange({ textAlign: 'center' })}
-                  className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
-                    state.textAlign === 'center' || !state.textAlign
-                      ? 'bg-purple-600 text-white shadow-sm'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/10'
-                  }`}
-                  title={t('alignCenter', 'По центру')}
-                >
-                  <AlignCenter className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => onChange({ textAlign: 'right' })}
-                  className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
-                    state.textAlign === 'right'
-                      ? 'bg-purple-600 text-white shadow-sm'
-                      : 'text-zinc-400 hover:text-white hover:bg-white/10'
-                  }`}
-                  title={t('alignRight', 'По правому краю')}
-                >
-                  <AlignRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
+        <TextEditPopup
+          state={state}
+          onChange={onChange}
+          onClose={() => setShowFontSizePopup(false)}
+        />
       )}
-
-      {/* Full Color Picker & Mixer Modal */}
-      <ColorPickerModal
-        isOpen={isTextColorPickerOpen}
-        onClose={() => setIsTextColorPickerOpen(false)}
-        color={state.textColor || '#ffffff'}
-        onChange={(newColor) => onChange({ textColor: newColor })}
-        title={t('textColor', 'Цвет текста')}
-      />
 
       {/* Bottom Floating Control Bar */}
       {isLuckyMode ? (

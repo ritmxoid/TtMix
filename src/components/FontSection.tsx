@@ -280,52 +280,128 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
           )}
         </div>
 
-        {/* Uppercase & Alignment */}
-        <div className="bg-[#0F0F12]/80 border border-white/10 rounded-xl p-3 flex items-center justify-between gap-2">
-          <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-zinc-200">
-            <input
-              type="checkbox"
-              checked={state.isUppercase}
-              onChange={(e) => onChange({ isUppercase: e.target.checked })}
-              className="w-4 h-4 rounded accent-purple-500 bg-zinc-800 border-zinc-700 cursor-pointer"
-            />
-            <span>{t('uppercase', 'ЗАГЛАВНЫЕ')}</span>
-          </label>
+        {/* Uppercase, Alignment & Text Box Plashka / Width */}
+        <div className="bg-[#0F0F12]/80 border border-white/10 rounded-xl p-3 space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-2 cursor-pointer text-xs font-semibold text-zinc-200">
+              <input
+                type="checkbox"
+                checked={state.isUppercase}
+                onChange={(e) => onChange({ isUppercase: e.target.checked })}
+                className="w-4 h-4 rounded accent-purple-500 bg-zinc-800 border-zinc-700 cursor-pointer"
+              />
+              <span>{t('uppercase', 'ЗАГЛАВНЫЕ')}</span>
+            </label>
 
-          <div className="flex items-center gap-1 bg-[#16161D] border border-white/10 rounded-lg p-0.5">
-            <button
-              onClick={() => onChange({ textAlign: 'left' })}
-              className={`p-1.5 rounded ${
-                state.textAlign === 'left'
-                  ? 'bg-purple-600 text-white'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-              title={t('alignLeft', 'По левому краю')}
-            >
-              <AlignLeft className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => onChange({ textAlign: 'center' })}
-              className={`p-1.5 rounded ${
-                state.textAlign === 'center'
-                  ? 'bg-purple-600 text-white'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-              title={t('alignCenter', 'По центру')}
-            >
-              <AlignCenter className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => onChange({ textAlign: 'right' })}
-              className={`p-1.5 rounded ${
-                state.textAlign === 'right'
-                  ? 'bg-purple-600 text-white'
-                  : 'text-zinc-400 hover:text-white'
-              }`}
-              title={t('alignRight', 'По правому краю')}
-            >
-              <AlignRight className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-1 bg-[#16161D] border border-white/10 rounded-lg p-0.5">
+              <button
+                onClick={() => onChange({ textAlign: 'left' })}
+                className={`p-1.5 rounded ${
+                  state.textAlign === 'left'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title={t('alignLeft', 'По левому краю')}
+              >
+                <AlignLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onChange({ textAlign: 'center' })}
+                className={`p-1.5 rounded ${
+                  state.textAlign === 'center'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title={t('alignCenter', 'По центру')}
+              >
+                <AlignCenter className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => onChange({ textAlign: 'right' })}
+                className={`p-1.5 rounded ${
+                  state.textAlign === 'right'
+                    ? 'bg-purple-600 text-white'
+                    : 'text-zinc-400 hover:text-white'
+                }`}
+                title={t('alignRight', 'По правому краю')}
+              >
+                <AlignRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+
+          {/* Text Background Plashka & Max Width Settings */}
+          <div className="pt-2 border-t border-white/10 space-y-2.5">
+            <div className="flex items-center justify-between">
+              <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-purple-300">
+                <input
+                  type="checkbox"
+                  checked={Boolean(state.textBgEnabled)}
+                  onChange={(e) => onChange({ textBgEnabled: e.target.checked })}
+                  className="w-4 h-4 rounded accent-blue-500 bg-zinc-800 border-zinc-700 cursor-pointer"
+                />
+                <span>{t('fontBg', 'Фон под текст')}</span>
+              </label>
+
+              {/* Box Max-Width slider */}
+              <div className="flex items-center gap-2 text-xs">
+                <span className="text-zinc-400 text-[11px]">Ширина блока:</span>
+                <input
+                  type="range"
+                  min="30"
+                  max="95"
+                  step="5"
+                  value={state.textMaxWidthPercent ?? 85}
+                  onChange={(e) => onChange({ textMaxWidthPercent: parseInt(e.target.value, 10) })}
+                  className="w-16 accent-blue-500 bg-zinc-800 h-1.5 rounded-lg cursor-pointer"
+                  title="Ширина прямоугольника текста"
+                />
+                <span className="text-[10px] font-mono text-zinc-300 w-6 text-right">
+                  {state.textMaxWidthPercent ?? 85}%
+                </span>
+              </div>
+            </div>
+
+            {state.textBgEnabled && (
+              <div className="p-2.5 rounded-lg bg-black/40 border border-blue-500/30 space-y-2 animate-in fade-in duration-150">
+                {/* Plashka Colors & Custom Color */}
+                <div className="flex items-center justify-between gap-1">
+                  <span className="text-[11px] text-zinc-300 font-medium">Цвет плашки:</span>
+                  <div className="flex items-center gap-1">
+                    {['#0070f3', '#000000', '#ffffff', '#eab308', '#dc2626', '#10b981', '#a855f7'].map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => onChange({ textBgColor: c })}
+                        className={`w-5 h-5 rounded-md border transition-transform cursor-pointer ${
+                          (state.textBgColor || '#0070f3').toLowerCase() === c.toLowerCase()
+                            ? 'scale-110 ring-2 ring-blue-400 border-white'
+                            : 'border-white/20 opacity-80 hover:opacity-100'
+                        }`}
+                        style={{ backgroundColor: c }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Plashka Opacity Slider */}
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <span className="text-[11px] text-zinc-300 font-medium">Прозрачность плашки:</span>
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.05"
+                    value={state.textBgOpacity ?? 0.85}
+                    onChange={(e) => onChange({ textBgOpacity: parseFloat(e.target.value) })}
+                    className="w-28 accent-blue-500 bg-zinc-800 h-1.5 rounded-lg cursor-pointer"
+                  />
+                  <span className="text-[10px] font-mono text-zinc-300 w-8 text-right">
+                    {Math.round((state.textBgOpacity ?? 0.85) * 100)}%
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
