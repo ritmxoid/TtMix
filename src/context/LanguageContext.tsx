@@ -48,6 +48,17 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     resetAllTitle: 'Сбросить проект к исходным настройкам',
     uploadVideoPhoto: 'Загрузить видео, фото или аудио',
 
+    // Matrix Quote & Lucky Mode
+    matrixQuoteText: 'Примешь синюю таблетку — и сказке конец... Примешь красную — войдешь в страну чудес!',
+    matrixQuoteAuthor: 'Морфеус',
+    rocketConfirmTitle: 'Переход в режим Эксперт',
+    rocketConfirmDesc: 'Вы действительно хотите перенести этот вариант в экспертную зону для полного редактирования? Обратного пути может не быть!',
+    transferToExpertBtn: 'Перенести в Эксперт',
+    soundMutedToast: 'Звук отключен',
+    soundUnmutedToast: 'Звук включен',
+    remixMelodyBtn: 'Сменить мелодию',
+    uploadMediaBtn: 'Загрузить файл',
+
     // Side buttons & Modals
     templatesTab: 'Шаблоны',
     savePresetShort: 'Сохранить',
@@ -602,6 +613,17 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     resetAllTitle: 'Reset project to default settings',
     uploadVideoPhoto: 'Upload video, photo or audio',
 
+    // Matrix Quote & Lucky Mode
+    matrixQuoteText: "You take the blue pill, the story ends... You take the red pill, you stay in wonderland!",
+    matrixQuoteAuthor: 'Morpheus',
+    rocketConfirmTitle: 'Transfer to Expert Mode',
+    rocketConfirmDesc: 'Do you really want to transfer this variant into the expert zone for full editing? There may be no turning back!',
+    transferToExpertBtn: 'Transfer to Expert',
+    soundMutedToast: 'Sound muted',
+    soundUnmutedToast: 'Sound unmuted',
+    remixMelodyBtn: 'Change melody',
+    uploadMediaBtn: 'Upload file',
+
     // Side buttons & Modals
     templatesTab: 'Templates',
     savePresetShort: 'Save',
@@ -1155,6 +1177,17 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     resetAllTitle: 'Restablecer proyecto a valores iniciales',
     uploadVideoPhoto: 'Subir video / foto',
 
+    // Matrix Quote & Lucky Mode
+    matrixQuoteText: 'Si tomas la pastilla azul, la historia termina... Si tomas la roja, entras al país de las maravillas!',
+    matrixQuoteAuthor: 'Morfeo',
+    rocketConfirmTitle: 'Transferir al Modo Experto',
+    rocketConfirmDesc: '¿Realmente deseas transferir esta variante a la zona experta para su edición completa? ¡Puede que no haya vuelta atrás!',
+    transferToExpertBtn: 'Transferir a Experto',
+    soundMutedToast: 'Sonido desactivado',
+    soundUnmutedToast: 'Sonido activado',
+    remixMelodyBtn: 'Cambiar melodía',
+    uploadMediaBtn: 'Subir archivo',
+
     // Side buttons & Modals
     templatesTab: 'Plantillas',
     savePresetShort: 'Guardar',
@@ -1699,6 +1732,17 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     resetAll: 'Alles zurücksetzen',
     resetAllTitle: 'Projekt auf Standardeinstellungen zurücksetzen',
     uploadVideoPhoto: 'Video / Foto hochladen',
+
+    // Matrix Quote & Lucky Mode
+    matrixQuoteText: 'Nimmst du die blaue Pille, ist die Geschichte vorbei... Nimmst du die rote Pille, kommst du ins Wunderland!',
+    matrixQuoteAuthor: 'Morpheus',
+    rocketConfirmTitle: 'In den Expertenmodus wechseln',
+    rocketConfirmDesc: 'Möchtest du diese Variante wirklich in den Expertenbereich zur vollständigen Bearbeitung übertragen? Es gibt vielleicht kein Zurück mehr!',
+    transferToExpertBtn: 'Zu Experte übertragen',
+    soundMutedToast: 'Ton stummgeschaltet',
+    soundUnmutedToast: 'Ton eingeschaltet',
+    remixMelodyBtn: 'Melodie ändern',
+    uploadMediaBtn: 'Datei hochladen',
 
     // Side buttons & Modals
     templatesTab: 'Vorlagen',
@@ -2245,6 +2289,17 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     resetAllTitle: 'Réinitialiser le projet aux paramètres par défaut',
     uploadVideoPhoto: 'Importer vidéo / photo',
 
+    // Matrix Quote & Lucky Mode
+    matrixQuoteText: 'Choisis la pilule bleue, tout s’arrête... Choisis la pilule rouge, tu restes au pays des merveilles !',
+    matrixQuoteAuthor: 'Morpheus',
+    rocketConfirmTitle: 'Passer en Mode Expert',
+    rocketConfirmDesc: 'Voulez-vous vraiment transférer cette variante dans la zone expert pour une édition complète ? Il n’y aura peut-être pas de retour en arrière !',
+    transferToExpertBtn: 'Transférer en Expert',
+    soundMutedToast: 'Son coupé',
+    soundUnmutedToast: 'Son activé',
+    remixMelodyBtn: 'Changer de mélodie',
+    uploadMediaBtn: 'Importer un fichier',
+
     // Side buttons & Modals
     templatesTab: 'Modèles',
     savePresetShort: 'Enregistrer',
@@ -2789,6 +2844,17 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     resetAll: '重置全部',
     resetAllTitle: '重置项目为默认设置',
     uploadVideoPhoto: '上传视频/图片',
+
+    // Matrix Quote & Lucky Mode
+    matrixQuoteText: '服用蓝色药丸，故事结束……服用红色药丸，你将进入奇境！',
+    matrixQuoteAuthor: '墨菲斯',
+    rocketConfirmTitle: '转入专家模式',
+    rocketConfirmDesc: '你确定要将此版本转入专家区域进行完整编辑吗？可能无法回头！',
+    transferToExpertBtn: '转入专家模式',
+    soundMutedToast: '声音已关闭',
+    soundUnmutedToast: '声音已开启',
+    remixMelodyBtn: '切换旋律',
+    uploadMediaBtn: '上传文件',
 
     // Side buttons & Modals
     templatesTab: '模板',

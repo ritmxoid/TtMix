@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Upload, Film, RotateCcw, HelpCircle } from 'lucide-react';
+import { Upload, Film, RotateCcw, HelpCircle, Sparkles, Wand2 } from 'lucide-react';
 import { useLanguage, SUPPORTED_LANGUAGES, LanguageCode } from '../context/LanguageContext';
 
 interface HeaderProps {
@@ -10,6 +10,8 @@ interface HeaderProps {
   isSaved?: boolean;
   onOpenUploadModal?: () => void;
   onOpenTour?: () => void;
+  onSwitchToLucky?: () => void;
+  onReturnToStart?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
@@ -19,6 +21,8 @@ export const Header: React.FC<HeaderProps> = ({
   onResetProject,
   onOpenUploadModal,
   onOpenTour,
+  onSwitchToLucky,
+  onReturnToStart,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { language, setLanguage, t } = useLanguage();
@@ -54,23 +58,73 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-1.5 sm:gap-3 w-full min-w-0">
         {/* Brand Logo & Name */}
         <div className="flex items-center gap-2 min-w-0 shrink">
-          <img
-            src="./favicon.svg"
-            alt="TtMix Logo"
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl shadow-md shadow-purple-600/30 ring-1 ring-white/20 shrink-0 object-contain"
-          />
-          <div className="min-w-0">
-            <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white flex items-center gap-1.5 truncate leading-tight">
-              <span className="truncate text-white font-black tracking-tight">
-                {t('appName', 'TtMix')}
-              </span>
-              <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-purple-500/15 text-purple-300 border border-purple-500/25 hidden md:inline shrink-0">
-                {t('appTagline', 'Reels & Stories')}
-              </span>
-            </h1>
-            <div className="text-[10px] sm:text-[11px] font-medium text-purple-300/90 truncate leading-none mt-0.5">
-              {t('appSubtitle', 'Аниматор Текста')}
-            </div>
+          {onReturnToStart ? (
+            <button
+              type="button"
+              onClick={onReturnToStart}
+              className="flex items-center gap-2 min-w-0 shrink hover:opacity-85 transition-opacity cursor-pointer text-left"
+              title={t('backToStart', 'На главную страницу')}
+            >
+              <img
+                src="./favicon.svg"
+                alt="TtMix Logo"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl shadow-md shadow-purple-600/30 ring-1 ring-white/20 shrink-0 object-contain"
+              />
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white flex items-center gap-1.5 truncate leading-tight">
+                  <span className="truncate text-white font-black tracking-tight">
+                    {t('appName', 'TtMix')}
+                  </span>
+                  <span className="text-[9px] sm:text-[10px] font-semibold tracking-wider uppercase px-1.5 py-0.2 sm:px-2 sm:py-0.5 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/30 hidden md:inline shrink-0">
+                    Эксперт
+                  </span>
+                </h1>
+                <div className="text-[10px] sm:text-[11px] font-medium text-purple-300/90 truncate leading-none mt-0.5">
+                  {t('appSubtitle', 'Аниматор Текста')} v1.1
+                </div>
+              </div>
+            </button>
+          ) : (
+            <>
+              <img
+                src="./favicon.svg"
+                alt="TtMix Logo"
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl shadow-md shadow-purple-600/30 ring-1 ring-white/20 shrink-0 object-contain"
+              />
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-white flex items-center gap-1.5 truncate leading-tight">
+                  <span className="truncate text-white font-black tracking-tight">
+                    {t('appName', 'TtMix')}
+                  </span>
+                </h1>
+                <div className="text-[10px] sm:text-[11px] font-medium text-purple-300/90 truncate leading-none mt-0.5">
+                  {t('appSubtitle', 'Аниматор Текста')} v1.1
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Quick Mode Switch Pills */}
+          <div className="hidden lg:flex items-center gap-1.5 ml-2 border-l border-white/10 pl-3">
+            {onReturnToStart && (
+              <button
+                type="button"
+                onClick={onReturnToStart}
+                className="px-2.5 py-1 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-white/10 text-xs font-semibold transition-all cursor-pointer"
+              >
+                🏠 Старт
+              </button>
+            )}
+            {onSwitchToLucky && (
+              <button
+                type="button"
+                onClick={onSwitchToLucky}
+                className="px-2.5 py-1 rounded-xl bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/40 text-cyan-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1 shadow-sm"
+              >
+                <Sparkles className="w-3 h-3 text-cyan-300" />
+                <span>Мне повезёт!</span>
+              </button>
+            )}
           </div>
         </div>
 

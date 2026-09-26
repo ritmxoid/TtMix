@@ -60,15 +60,7 @@ export function splitTextIntoSegments(
   if (!clean) {
     const dur = targetDuration && targetDuration > 0 ? targetDuration : 3;
     return {
-      segments: [
-        {
-          text: 'Введи свой текст здесь...',
-          words: ['Введи', 'свой', 'текст', 'здесь...'],
-          startTime: 0,
-          endTime: dur * 0.85,
-          duration: dur * 0.85,
-        },
-      ],
+      segments: [],
       totalDuration: dur,
     };
   }

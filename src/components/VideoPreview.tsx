@@ -409,6 +409,70 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   // Gesture state: Drag text 2D (adjust textPositionX and textPositionY) & Long-press on canvas for Font Size popup
   const [isDraggingText, setIsDraggingText] = useState(false);
   const [showFontSizePopup, setShowFontSizePopup] = useState(false);
+  const [popupOffset, setPopupOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const popupOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isDraggingPopupRef = useRef(false);
+  const popupDragStartRef = useRef<{ startX: number; startY: number; startOffsetX: number; startOffsetY: number }>({
+    startX: 0,
+    startY: 0,
+    startOffsetX: 0,
+    startOffsetY: 0,
+  });
+
+  const updatePopupOffset = (newOffset: { x: number; y: number }) => {
+    popupOffsetRef.current = newOffset;
+    setPopupOffset(newOffset);
+  };
+
+  const handlePopupHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Only main mouse button or touch/pen
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('button, input, select, textarea, [role="button"]')) {
+      return;
+    }
+    e.stopPropagation();
+
+    const headerEl = e.currentTarget;
+    try {
+      headerEl.setPointerCapture(e.pointerId);
+    } catch {}
+
+    isDraggingPopupRef.current = true;
+    popupDragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startOffsetX: popupOffsetRef.current.x,
+      startOffsetY: popupOffsetRef.current.y,
+    };
+
+    const onPointerMove = (moveEvt: PointerEvent) => {
+      if (!isDraggingPopupRef.current) return;
+      const dx = moveEvt.clientX - popupDragStartRef.current.startX;
+      const dy = moveEvt.clientY - popupDragStartRef.current.startY;
+      const maxOffsetX = typeof window !== 'undefined' ? window.innerWidth * 0.44 : 320;
+      const maxOffsetY = typeof window !== 'undefined' ? window.innerHeight * 0.44 : 420;
+
+      const newX = Math.max(-maxOffsetX, Math.min(maxOffsetX, popupDragStartRef.current.startOffsetX + dx));
+      const newY = Math.max(-maxOffsetY, Math.min(maxOffsetY, popupDragStartRef.current.startOffsetY + dy));
+      updatePopupOffset({ x: newX, y: newY });
+    };
+
+    const onPointerUp = (upEvt: PointerEvent) => {
+      isDraggingPopupRef.current = false;
+      try {
+        headerEl.releasePointerCapture(upEvt.pointerId);
+      } catch {}
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+  };
+
   const dragStartXRef = useRef<number>(0);
   const dragStartYRef = useRef<number>(0);
   const initialTextPosXRef = useRef<number>(50);
@@ -459,6 +523,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
     fontSizeLongPressTimerRef.current = setTimeout(() => {
       if (!hasMovedGestureRef.current) {
+        updatePopupOffset({ x: 0, y: 0 });
         setShowFontSizePopup(true);
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           try {
@@ -487,17 +552,15 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       }
 
       if (isDraggingText || dist > 8) {
-        const containerEl = stageContainerRef.current;
-        if (containerEl) {
-          const rect = containerEl.getBoundingClientRect();
-          if (rect.width > 0 && rect.height > 0) {
-            const deltaPercentX = (dx / rect.width) * 100;
-            const deltaPercentY = (dy / rect.height) * 100;
-            const newX = Math.round(Math.min(90, Math.max(10, initialTextPosXRef.current + deltaPercentX)));
-            const newY = Math.round(Math.min(88, Math.max(12, initialTextPosYRef.current + deltaPercentY)));
-            if (newX !== state.textPositionX || newY !== state.textPositionY) {
-              onChange({ textPositionX: newX, textPositionY: newY });
-            }
+        const canvasEl = canvasRef.current;
+        const rect = canvasEl ? canvasEl.getBoundingClientRect() : (stageContainerRef.current ? stageContainerRef.current.getBoundingClientRect() : null);
+        if (rect && rect.width > 0 && rect.height > 0) {
+          const deltaPercentX = (dx / rect.width) * 100;
+          const deltaPercentY = (dy / rect.height) * 100;
+          const newX = Math.round(Math.min(90, Math.max(10, initialTextPosXRef.current + deltaPercentX)));
+          const newY = Math.round(Math.min(88, Math.max(12, initialTextPosYRef.current + deltaPercentY)));
+          if (newX !== state.textPositionX || newY !== state.textPositionY) {
+            onChange({ textPositionX: newX, textPositionY: newY });
           }
         }
       }
@@ -541,6 +604,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
           const relativeYPercent = ((e.clientY - rect.top) / rect.height) * 100;
           const textY = state.textPositionY ?? 50;
           if (Math.abs(relativeYPercent - textY) <= 24) {
+            updatePopupOffset({ x: 0, y: 0 });
             setShowFontSizePopup(true);
             isTextTap = true;
             return;
@@ -594,6 +658,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     }
     if (isEffectivelyMuted) {
       setIsMuted(false);
+      audioMixer.setMuted(false);
+      if (bgMediaElement instanceof HTMLVideoElement) {
+        bgMediaElement.muted = false;
+      }
       if ((state.audio.volume ?? 0) === 0) {
         audioMixer.setVolume(0.5);
         onChange({
@@ -606,6 +674,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       }
     } else {
       setIsMuted(true);
+      audioMixer.setMuted(true);
+      if (bgMediaElement instanceof HTMLVideoElement) {
+        bgMediaElement.muted = true;
+      }
+      audioMixer.stop();
     }
   };
 
@@ -827,9 +900,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
         bgMediaElement,
         dimensions,
         targetDuration: renderTargetDur,
+        isDraggingText,
       });
     },
-    [state, bgMediaElement, editingInfo]
+    [state, bgMediaElement, editingInfo, isDraggingText]
   );
 
   // Animation frame loop (halted while Fullscreen is open to prevent resource contention and video stutter)
@@ -864,9 +938,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
           nextTime = 0;
           if (bgMediaElement instanceof HTMLVideoElement) {
             bgMediaElement.currentTime = 0;
+            bgMediaElement.muted = isMuted;
             bgMediaElement.play().catch(() => {});
           }
           if (
+            !isMuted &&
+            (state.audio.volume ?? 0) > 0 &&
             state.audio.enabled &&
             (state.audio.sourceType === 'generator' ||
               (state.audio.sourceType === 'file' && Boolean(state.audio.audioUrl)))
@@ -935,9 +1012,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     lastTimeRef.current = performance.now();
     if (bgMediaElement instanceof HTMLVideoElement) {
       bgMediaElement.currentTime = 0;
+      bgMediaElement.muted = isMuted;
     }
     if (
       isPlaying &&
+      !isMuted &&
+      (state.audio.volume ?? 0) > 0 &&
       state.audio.enabled &&
       (state.audio.sourceType === 'generator' ||
         (state.audio.sourceType === 'file' && Boolean(state.audio.audioUrl)))
@@ -973,7 +1053,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       audio: newAudioConfig,
     });
 
-    if (isPlaying) {
+    if (isPlaying && !isMuted && (state.audio.volume ?? 0) > 0) {
       audioMixer.play(newAudioConfig, totalDuration, currentTimeRef.current, state.bgMediaUrl || undefined);
     }
   };
@@ -1132,12 +1212,18 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             {/* Floating Aspect Ratio Switcher - CENTERED at the top of preview */}
             <div
               data-tour="aspect-ratio"
-              className={`absolute top-2.5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-black/45 backdrop-blur-md border border-white/20 rounded-xl p-0.5 sm:p-1 shadow-lg transition-all duration-300 ${
+              data-dock="true"
+              onPointerDown={(e) => e.stopPropagation()}
+              className={`absolute top-2.5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1 bg-black/60 backdrop-blur-md border border-white/20 rounded-xl p-0.5 sm:p-1 shadow-lg transition-all duration-300 ${
                 hideControls ? 'opacity-0 -translate-y-full pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
               }`}
             >
                 <button
-                  onClick={() => onChange({ aspectRatio: '9:16' })}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange({ aspectRatio: '9:16' });
+                  }}
                   className={`px-2.5 py-0.5 sm:py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
                     state.aspectRatio === '9:16'
                       ? 'bg-purple-600/90 border-purple-400 text-white shadow-sm'
@@ -1148,7 +1234,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                   9:16
                 </button>
                 <button
-                  onClick={() => onChange({ aspectRatio: '16:9' })}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange({ aspectRatio: '16:9' });
+                  }}
                   className={`px-2.5 py-0.5 sm:py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
                     state.aspectRatio === '16:9'
                       ? 'bg-purple-600/90 border-purple-400 text-white shadow-sm'
@@ -1159,7 +1249,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                   16:9
                 </button>
                 <button
-                  onClick={() => onChange({ aspectRatio: '1:1' })}
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onChange({ aspectRatio: '1:1' });
+                  }}
                   className={`px-2.5 py-0.5 sm:py-1 rounded-lg text-xs font-mono font-bold transition-all cursor-pointer border ${
                     state.aspectRatio === '1:1'
                       ? 'bg-purple-600/90 border-purple-400 text-white shadow-sm'
@@ -1208,20 +1302,6 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             {pinToast && (
               <div className="absolute top-12 right-3 z-40 px-2.5 py-1 rounded-lg bg-black/90 backdrop-blur-md border border-purple-500/40 text-purple-200 text-xs font-semibold shadow-xl pointer-events-none animate-in fade-in duration-150">
                 {pinToast}
-              </div>
-            )}
-
-            {/* Live 2D Drag Guideline and Badge */}
-            {isDraggingText && (
-              <div
-                className="absolute inset-x-2 sm:inset-x-6 z-30 pointer-events-none flex flex-col items-center transition-all duration-75"
-                style={{ top: `${state.textPositionY ?? 50}%` }}
-              >
-                <div className="w-full border-t-2 border-dashed border-purple-400/80 shadow-sm" />
-                <div className="-mt-3 px-3 py-1 rounded-full bg-purple-600 text-white text-xs font-bold shadow-xl border border-purple-300 flex items-center gap-1.5 animate-in fade-in zoom-in-95">
-                  <Move className="w-3.5 h-3.5 animate-pulse" />
-                  <span>X: {state.textPositionX ?? 50}%, Y: {state.textPositionY ?? 50}%</span>
-                </div>
               </div>
             )}
 
@@ -1339,6 +1419,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                 {/* 1. When neither panel is open: Stacked translucent buttons on the RIGHT edge */}
                 {!showRightTools && !showLeftPresets && (
                   <div
+                    data-dock="true"
+                    onPointerDown={(e) => e.stopPropagation()}
                     className={`absolute right-0 top-1/2 -translate-y-1/2 z-30 flex flex-col items-center gap-2.5 transition-all duration-300 ${
                       hideControls ? 'opacity-0 translate-x-12 pointer-events-none' : 'opacity-100 translate-x-0 pointer-events-auto'
                     }`}
@@ -1349,10 +1431,9 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                     data-tour="right-tools-menu-btn"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isPinned) togglePin();
                       setShowRightTools(true);
                     }}
-                    className="p-3 rounded-l-2xl bg-black/35 hover:bg-black/65 active:scale-95 text-white/90 backdrop-blur-md border-y border-l border-white/20 shadow-xl transition-all cursor-pointer group hover:pl-4"
+                    className="p-3 rounded-l-2xl bg-black/60 hover:bg-black/85 active:scale-95 text-white/90 backdrop-blur-md border-y border-l border-white/20 shadow-xl transition-all cursor-pointer group hover:pl-4"
                     title={t('toolsPanelTitle', 'Инструменты')}
                   >
                     <Sliders className="w-5 h-5 text-purple-300 group-hover:scale-110 transition-transform" />
@@ -1364,10 +1445,9 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                     data-tour="presets-feature"
                     onClick={(e) => {
                       e.stopPropagation();
-                      if (!isPinned) togglePin();
                       setShowLeftPresets(true);
                     }}
-                    className="p-3 rounded-l-2xl bg-black/35 hover:bg-black/65 active:scale-95 text-white/90 backdrop-blur-md border-y border-l border-white/20 shadow-xl transition-all cursor-pointer group hover:pl-4"
+                    className="p-3 rounded-l-2xl bg-black/60 hover:bg-black/85 active:scale-95 text-white/90 backdrop-blur-md border-y border-l border-white/20 shadow-xl transition-all cursor-pointer group hover:pl-4"
                     title={t('templatesTab', 'Шаблоны')}
                   >
                     <FolderHeart className="w-5 h-5 text-purple-300 group-hover:scale-110 transition-transform" />
@@ -1381,7 +1461,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                       e.stopPropagation();
                       togglePin();
                     }}
-                    className="p-3 rounded-l-2xl bg-black/35 hover:bg-black/65 active:scale-95 text-white/90 backdrop-blur-md border-y border-l border-white/20 shadow-xl transition-all cursor-pointer group hover:pl-4"
+                    className="p-3 rounded-l-2xl bg-black/60 hover:bg-black/85 active:scale-95 text-white/90 backdrop-blur-md border-y border-l border-white/20 shadow-xl transition-all cursor-pointer group hover:pl-4"
                     title={isPinned ? t('unpinPreview', 'Открепить превью') : t('pinPreview', 'Закрепить превью')}
                   >
                     <Pin
@@ -1567,32 +1647,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                 />
                 <div
                   data-dock="true"
-                  onPointerDown={(e) => e.stopPropagation()}
-                  onPointerUp={(e) => e.stopPropagation()}
-                  onTouchStart={(e) => e.stopPropagation()}
-                  onTouchEnd={(e) => e.stopPropagation()}
                   onClick={(e) => e.stopPropagation()}
-                  className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 sm:w-72 p-3 rounded-2xl bg-[#161622]/95 backdrop-blur-xl border border-purple-500/40 shadow-2xl shadow-black z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-150 pointer-events-auto"
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 w-64 sm:w-72 p-3 rounded-2xl bg-[#0d0914]/20 backdrop-blur-md border border-white/10 shadow-2xl shadow-black/80 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
                 >
-                  {/* Header with Title and Explicit Close Button */}
-                  <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
-                    <div className="flex items-center gap-1.5 text-purple-300 font-semibold text-xs select-none">
-                      <Type className="w-3.5 h-3.5 text-purple-400" />
-                      <span>{t('fontSettings', 'Настройки текста')}</span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowFontSizePopup(false);
-                      }}
-                      className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                      title={t('close', 'Закрыть')}
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-
                   {/* Top: TT Icon + Range Slider */}
                   <div className="flex items-center gap-2">
                     <div className="flex items-center justify-center text-purple-300 font-serif font-bold text-sm select-none shrink-0 w-5">
@@ -1608,23 +1667,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                       onChange={(e) =>
                         onChange({ fontSize: parseInt(e.target.value, 10) })
                       }
-                      className="w-full accent-purple-500 bg-zinc-800 h-2 rounded-lg cursor-pointer"
+                      className="w-full accent-purple-500 bg-zinc-800/70 h-2 rounded-lg cursor-pointer"
                     />
-
-                    <div className="flex items-center shrink-0">
-                      <input
-                        type="number"
-                        min="18"
-                        max="1000"
-                        value={state.fontSize || 42}
-                        onChange={(e) => {
-                          const val = parseInt(e.target.value, 10);
-                          if (!isNaN(val)) onChange({ fontSize: Math.max(10, Math.min(1000, val)) });
-                        }}
-                        className="w-11 bg-zinc-800/90 border border-white/20 rounded px-1 py-0.5 text-center font-mono text-[10px] text-purple-300 font-bold focus:outline-none focus:border-purple-400"
-                      />
-                      <span className="text-[9px] font-mono text-purple-300 ml-0.5">px</span>
-                    </div>
                   </div>
 
                   {/* Bottom: Main Color Palette row + Last square for Full Color Picker / Mixer */}
@@ -1884,7 +1928,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                 <div data-tour="generator-buttons" className="flex items-center gap-1 sm:gap-1.5 shrink-0">
                   {/* 4. Quick Regenerate Procedural Background */}
                   <button
-                    onClick={handleRegenerateBackground}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRegenerateBackground();
+                    }}
                     className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-950/70 hover:bg-purple-900/90 text-purple-300 hover:text-purple-100 border border-purple-500/40 hover:border-purple-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group"
                     title={t('regenerateBg', 'Сгенерировать другой фон')}
                     aria-label={t('regenerateBg', 'Сгенерировать другой фон')}
@@ -1894,7 +1942,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
                   {/* 5. Quick Regenerate Procedural Music */}
                   <button
-                    onClick={handleRegenerateMusic}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRegenerateMusic();
+                    }}
                     className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-indigo-100 border border-indigo-500/40 hover:border-indigo-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group"
                     title={t('regenerateMusic', 'Сгенерировать другую музыку')}
                     aria-label={t('regenerateMusic', 'Сгенерировать другую музыку')}
@@ -1904,7 +1956,11 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
                   {/* 6. Quick Regenerate Typography, Font & Animations (T with Stars) */}
                   <button
-                    onClick={handleRegenerateTypography}
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleRegenerateTypography();
+                    }}
                     className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-fuchsia-950/70 hover:bg-fuchsia-900/90 text-fuchsia-300 hover:text-fuchsia-100 border border-fuchsia-500/40 hover:border-fuchsia-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group"
                     title={t('regenerateTypography', 'Случайный шрифт, анимация и стиль текста')}
                     aria-label={t('regenerateTypography', 'Случайный шрифт, анимация и стиль текста')}
@@ -1915,8 +1971,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
                 {/* 7. Presets & Templates Library */}
                 <button
+                  type="button"
                   data-tour="catalog-feature"
-                  onClick={() => setIsCatalogOpen(true)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsCatalogOpen(true);
+                  }}
                   className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-900/60 hover:bg-purple-800/80 text-purple-200 hover:text-white border border-purple-500/50 hover:border-purple-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group"
                   title={t('templatesPanelTitle', 'Каталог шаблонов')}
                   aria-label={t('templatesPanelTitle', 'Каталог шаблонов')}
@@ -1929,8 +1989,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
                 {/* 8. Capture & Fullscreen Recording Studio Button */}
                 <button
+                  type="button"
                   data-tour="record-feature"
-                  onClick={openFullscreen}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    openFullscreen();
+                  }}
                   className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-rose-500/20 hover:bg-rose-500/35 text-rose-300 hover:text-white border-2 border-rose-500/90 hover:border-rose-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 shadow-md shadow-rose-950/40"
                   title={t('captureStudioTitle', 'Окно захвата и записи видео')}
                   aria-label={t('captureStudioTitle', 'Окно захвата')}

@@ -17,6 +17,9 @@ import {
   CheckCircle2,
   Sparkles,
   Type,
+  Rocket,
+  Music,
+  User,
   Minus,
   Plus,
   MoveVertical,
@@ -36,6 +39,7 @@ import { safeFixWebm } from '../utils/safeWebmFix';
 import { trackRecordWebm } from '../utils/analytics';
 import { ColorPickerModal } from './ColorPickerModal';
 import { useLanguage } from '../context/LanguageContext';
+import { MUSIC_PRESETS } from '../utils/audioGenerator';
 
 const POPULAR_TEXT_COLORS = [
   '#FFFFFF', // White
@@ -60,6 +64,10 @@ interface FullscreenPlayerProps {
   onBackToCatalog?: () => void;
   onOpenTour?: () => void;
   isTourActive?: boolean;
+  isLuckyMode?: boolean;
+  onBackToLuckyGrid?: () => void;
+  onOpenTextInput?: () => void;
+  onOpenRocketConfirm?: () => void;
 }
 
 export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
@@ -73,6 +81,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   onBackToCatalog,
   onOpenTour,
   isTourActive = false,
+  isLuckyMode = false,
+  onBackToLuckyGrid,
+  onOpenTextInput,
+  onOpenRocketConfirm,
 }) => {
   const { t } = useLanguage();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -91,11 +103,78 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   const [recordingSuccessMsg, setRecordingSuccessMsg] = useState<string | null>(null);
 
   const [videoDuration, setVideoDuration] = useState<number>(0);
+  const [soundNotice, setSoundNotice] = useState<string | null>(null);
+  const noteLongPressTimerRef = useRef<number | null>(null);
+  const isNoteLongPressRef = useRef<boolean>(false);
 
   // Gesture state: Drag text 2D (adjust textPositionX and textPositionY) & Long-press for Font Size popup
   const [isDraggingText, setIsDraggingText] = useState(false);
   const [showFontSizePopup, setShowFontSizePopup] = useState(false);
   const [isTextColorPickerOpen, setIsTextColorPickerOpen] = useState(false);
+  const [popupOffset, setPopupOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const popupOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const isDraggingPopupRef = useRef(false);
+  const popupDragStartRef = useRef<{ startX: number; startY: number; startOffsetX: number; startOffsetY: number }>({
+    startX: 0,
+    startY: 0,
+    startOffsetX: 0,
+    startOffsetY: 0,
+  });
+
+  const updatePopupOffset = (newOffset: { x: number; y: number }) => {
+    popupOffsetRef.current = newOffset;
+    setPopupOffset(newOffset);
+  };
+
+  const handlePopupHeaderPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    // Only main mouse button or touch/pen
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('button, input, select, textarea, [role="button"]')) {
+      return;
+    }
+    e.stopPropagation();
+
+    const headerEl = e.currentTarget;
+    try {
+      headerEl.setPointerCapture(e.pointerId);
+    } catch {}
+
+    isDraggingPopupRef.current = true;
+    popupDragStartRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      startOffsetX: popupOffsetRef.current.x,
+      startOffsetY: popupOffsetRef.current.y,
+    };
+
+    const onPointerMove = (moveEvt: PointerEvent) => {
+      if (!isDraggingPopupRef.current) return;
+      const dx = moveEvt.clientX - popupDragStartRef.current.startX;
+      const dy = moveEvt.clientY - popupDragStartRef.current.startY;
+      const maxOffsetX = typeof window !== 'undefined' ? window.innerWidth * 0.44 : 320;
+      const maxOffsetY = typeof window !== 'undefined' ? window.innerHeight * 0.44 : 420;
+
+      const newX = Math.max(-maxOffsetX, Math.min(maxOffsetX, popupDragStartRef.current.startOffsetX + dx));
+      const newY = Math.max(-maxOffsetY, Math.min(maxOffsetY, popupDragStartRef.current.startOffsetY + dy));
+      updatePopupOffset({ x: newX, y: newY });
+    };
+
+    const onPointerUp = (upEvt: PointerEvent) => {
+      isDraggingPopupRef.current = false;
+      try {
+        headerEl.releasePointerCapture(upEvt.pointerId);
+      } catch {}
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onPointerUp);
+      window.removeEventListener('pointercancel', onPointerUp);
+    };
+
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onPointerUp);
+    window.addEventListener('pointercancel', onPointerUp);
+  };
+
   const dragStartXRef = useRef<number>(0);
   const dragStartYRef = useRef<number>(0);
   const pointerDownInfoRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
@@ -130,6 +209,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
     fontSizeLongPressTimerRef.current = setTimeout(() => {
       if (!hasMovedGestureRef.current) {
+        updatePopupOffset({ x: 0, y: 0 });
         setShowFontSizePopup(true);
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           try {
@@ -163,20 +243,18 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       }
 
       if (isDraggingText || dist > 6) {
-        const viewportEl = viewportRef.current;
-        if (viewportEl) {
-          const rect = viewportEl.getBoundingClientRect();
-          if (rect.width > 0 && rect.height > 0) {
-            const deltaPercentX = (dx / rect.width) * 100;
-            const deltaPercentY = (dy / rect.height) * 100;
-            const newX = Math.min(90, Math.max(10, initialTextPosXRef.current + deltaPercentX));
-            const newY = Math.min(88, Math.max(12, initialTextPosYRef.current + deltaPercentY));
-            if (
-              Math.abs(newX - (state.textPositionX ?? 50)) > 0.05 ||
-              Math.abs(newY - (state.textPositionY ?? 50)) > 0.05
-            ) {
-              onChange({ textPositionX: Number(newX.toFixed(1)), textPositionY: Number(newY.toFixed(1)) });
-            }
+        const canvasEl = canvasRef.current;
+        const rect = canvasEl ? canvasEl.getBoundingClientRect() : (viewportRef.current ? viewportRef.current.getBoundingClientRect() : null);
+        if (rect && rect.width > 0 && rect.height > 0) {
+          const deltaPercentX = (dx / rect.width) * 100;
+          const deltaPercentY = (dy / rect.height) * 100;
+          const newX = Math.min(90, Math.max(10, initialTextPosXRef.current + deltaPercentX));
+          const newY = Math.min(88, Math.max(12, initialTextPosYRef.current + deltaPercentY));
+          if (
+            Math.abs(newX - (state.textPositionX ?? 50)) > 0.05 ||
+            Math.abs(newY - (state.textPositionY ?? 50)) > 0.05
+          ) {
+            onChange({ textPositionX: Number(newX.toFixed(1)), textPositionY: Number(newY.toFixed(1)) });
           }
         }
       }
@@ -215,6 +293,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             const textX = state.textPositionX ?? 50;
             // Tap directly on or very close to the text element (both X and Y)
             if (Math.abs(relativeYPercent - textY) <= 15 && Math.abs(relativeXPercent - textX) <= 35) {
+              updatePopupOffset({ x: 0, y: 0 });
               setShowFontSizePopup(true);
               isTextTap = true;
             }
@@ -532,9 +611,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         bgMediaElement,
         dimensions: dims,
         targetDuration: renderTargetDur,
+        isDraggingText,
       });
     },
-    [bgMediaElement]
+    [bgMediaElement, isDraggingText]
   );
 
   // Stop live recording cleanly
@@ -576,7 +656,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       bgMediaElement.currentTime = 0;
       bgMediaElement.play().catch(() => {});
     }
-    if (!isTourActive && state.audio.enabled && state.audio.sourceType !== 'none') {
+    if (!isTourActive && !isMuted && (state.audio.volume ?? 0) > 0 && state.audio.enabled && state.audio.sourceType !== 'none') {
       audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
     }
 
@@ -607,7 +687,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               bgMediaElement.currentTime = 0;
               bgMediaElement.play().catch(() => {});
             }
-            if (!isTourActive && state.audio.enabled && state.audio.sourceType !== 'none') {
+            if (!isTourActive && !isMuted && (state.audio.volume ?? 0) > 0 && state.audio.enabled && state.audio.sourceType !== 'none') {
               audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
             }
           } else {
@@ -626,7 +706,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               bgMediaElement.currentTime = 0;
               bgMediaElement.play().catch(() => {});
             }
-            if (!isTourActive && state.audio.enabled && state.audio.sourceType !== 'none') {
+            if (!isTourActive && !isMuted && (state.audio.volume ?? 0) > 0 && state.audio.enabled && state.audio.sourceType !== 'none') {
               audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
             }
           }
@@ -1008,6 +1088,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   const toggleMute = () => {
     const nextMute = !isMuted;
     setIsMuted(nextMute);
+    audioMixer.setMuted(nextMute);
     if (bgMediaElement instanceof HTMLVideoElement) {
       bgMediaElement.muted = nextMute;
     }
@@ -1039,9 +1120,26 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       onPointerUp={(e) => e.stopPropagation()}
       onTouchStart={(e) => e.stopPropagation()}
       onTouchEnd={(e) => e.stopPropagation()}
-      className="fixed inset-0 z-[9999999] w-full h-full bg-black flex flex-col items-center justify-center select-none overflow-hidden pointer-events-auto"
+      className="fixed inset-0 z-[100000] w-full h-full bg-black flex flex-col items-center justify-center select-none overflow-hidden pointer-events-auto"
       style={{ height: '100dvh', maxHeight: '100dvh' }}
     >
+      {/* Sound Mute / Change Notification Toast */}
+      {soundNotice && (
+        <div className="absolute top-14 sm:top-16 left-1/2 -translate-x-1/2 max-w-sm w-11/12 bg-purple-950/90 border border-purple-500/60 text-purple-200 px-4 py-2 rounded-2xl text-xs z-50 shadow-2xl backdrop-blur-md flex items-center justify-between gap-2 animate-fade-in">
+          <div className="flex items-center gap-2 min-w-0">
+            <Music className="w-4 h-4 text-purple-300 shrink-0" />
+            <span className="font-bold text-white truncate text-xs">
+              {soundNotice}
+            </span>
+          </div>
+          <button
+            onClick={() => setSoundNotice(null)}
+            className="p-1 hover:bg-white/10 rounded-lg text-purple-300 hover:text-white cursor-pointer shrink-0"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
       {/* Top Right Help / Tour Button */}
       {onOpenTour && (
         <button
@@ -1197,228 +1295,399 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         onClick={(e) => e.stopPropagation()}
         className="w-full h-full flex items-center justify-center overflow-hidden p-1 sm:p-4 pt-12 pb-16 sm:pt-14 sm:pb-20 select-none touch-none relative"
       >
-        <canvas
-          ref={canvasRef}
-          width={dimensions.width}
-          height={dimensions.height}
-          className="max-h-full max-w-full object-contain shadow-2xl rounded-none sm:rounded-lg cursor-pointer transition-transform"
+        <div
+          className="relative flex items-center justify-center max-h-full max-w-full"
           style={{
             aspectRatio: `${dimensions.width} / ${dimensions.height}`,
           }}
-        />
-
-        {/* Live 2D Drag Guideline and Badge */}
-        {isDraggingText && (
-          <div
-            className="absolute inset-x-4 sm:inset-x-12 z-40 pointer-events-none flex flex-col items-center transition-all duration-75"
-            style={{ top: `${state.textPositionY ?? 50}%` }}
-          >
-            <div className="w-full border-t-2 border-dashed border-purple-400 shadow-sm" />
-            <div className="-mt-3 px-3.5 py-1 rounded-full bg-purple-600 text-white text-xs font-bold shadow-2xl border border-purple-300 flex items-center gap-1.5 animate-in fade-in zoom-in-95">
-              <Move className="w-3.5 h-3.5 animate-pulse" />
-              <span>X: {state.textPositionX ?? 50}%, Y: {state.textPositionY ?? 50}%</span>
-            </div>
-          </div>
-        )}
-
-        {/* Floating Font Size & Color Adjustment Popup */}
-        {showFontSizePopup && (
-          <>
-            <div
-              className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] cursor-pointer"
-              onPointerDown={(e) => {
-                e.stopPropagation();
-                setShowFontSizePopup(false);
-              }}
-              onPointerUp={(e) => {
-                e.stopPropagation();
-              }}
-              onTouchStart={(e) => {
-                e.stopPropagation();
-                setShowFontSizePopup(false);
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowFontSizePopup(false);
-              }}
-            />
-            <div
-              data-dock="true"
-              onPointerDown={(e) => e.stopPropagation()}
-              onPointerUp={(e) => e.stopPropagation()}
-              onTouchStart={(e) => e.stopPropagation()}
-              onTouchEnd={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 sm:w-72 p-3 rounded-2xl bg-[#161622]/95 backdrop-blur-xl border border-purple-500/40 shadow-2xl shadow-black z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-150 pointer-events-auto"
-            >
-              {/* Header with Title and Explicit Close Button */}
-              <div className="flex items-center justify-between pb-1.5 border-b border-white/10">
-                <div className="flex items-center gap-1.5 text-purple-300 font-semibold text-xs select-none">
-                  <Type className="w-3.5 h-3.5 text-purple-400" />
-                  <span>{t('fontSettings', 'Настройки текста')}</span>
-                </div>
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setShowFontSizePopup(false);
-                  }}
-                  className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
-                  title={t('close', 'Закрыть')}
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Top: TT Icon + Range Slider */}
-              <div className="flex items-center gap-2">
-                <div className="flex items-center justify-center text-purple-300 font-serif font-bold text-sm select-none shrink-0 w-5">
-                  <span className="tracking-tighter text-sm">Тт</span>
-                </div>
-
-                <input
-                  type="range"
-                  min="18"
-                  max="500"
-                  step="2"
-                  value={state.fontSize || 42}
-                  onChange={(e) =>
-                    onChange({ fontSize: parseInt(e.target.value, 10) })
-                  }
-                  className="w-full accent-purple-500 bg-zinc-800 h-2 rounded-lg cursor-pointer"
-                />
-
-                <div className="flex items-center shrink-0">
-                  <input
-                    type="number"
-                    min="18"
-                    max="1000"
-                    value={state.fontSize || 42}
-                    onChange={(e) => {
-                      const val = parseInt(e.target.value, 10);
-                      if (!isNaN(val)) onChange({ fontSize: Math.max(10, Math.min(1000, val)) });
-                    }}
-                    className="w-11 bg-zinc-800/90 border border-white/20 rounded px-1 py-0.5 text-center font-mono text-[10px] text-purple-300 font-bold focus:outline-none focus:border-purple-400"
-                  />
-                  <span className="text-[9px] font-mono text-purple-300 ml-0.5">px</span>
-                </div>
-              </div>
-
-              {/* Bottom: Main Color Palette row + Last square for Full Color Picker / Mixer */}
-              <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/10">
-                {POPULAR_TEXT_COLORS.map((color) => {
-                  const isSelected = (state.textColor || '#ffffff').toLowerCase() === color.toLowerCase();
-                  return (
-                    <button
-                      key={color}
-                      type="button"
-                      onClick={() => onChange({ textColor: color })}
-                      className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg transition-transform flex items-center justify-center cursor-pointer shadow-sm ${
-                        isSelected
-                          ? 'scale-110 ring-2 ring-purple-400 ring-offset-1 ring-offset-black'
-                          : 'hover:scale-105 opacity-90 hover:opacity-100 border border-white/20'
-                      }`}
-                      style={{ backgroundColor: color }}
-                      title={color}
-                    >
-                      {isSelected && (
-                        <Check
-                          className={`w-3.5 h-3.5 ${
-                            color === '#FFFFFF' || color === '#FDE047' ? 'text-black' : 'text-white'
-                          }`}
-                        />
-                      )}
-                    </button>
-                  );
-                })}
-
-                {/* Last square: rainbow gradient icon launcher for ColorPickerModal / mixer */}
-                <button
-                  type="button"
-                  onClick={() => setIsTextColorPickerOpen(true)}
-                  className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-tr from-rose-500 via-purple-500 to-cyan-400 p-0.5 shadow-md flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-transform border border-white/30"
-                  title={t('colorPaletteMixer', 'Палитра цветов и микшер')}
-                >
-                  <Palette className="w-3.5 h-3.5 text-white drop-shadow" />
-                </button>
-              </div>
-
-              {/* Formatting: Checkbox "Заглавные" (Uppercase) & 3 Alignment Buttons (Left, Center, Right) */}
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10 select-none">
-                {/* Checkbox Заглавные */}
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-200 hover:text-white transition-colors">
-                  <input
-                    type="checkbox"
-                    checked={Boolean(state.isUppercase)}
-                    onChange={(e) => onChange({ isUppercase: e.target.checked })}
-                    className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-purple-500 cursor-pointer accent-purple-500"
-                  />
-                  <span className="text-[11px] sm:text-xs font-semibold">{t('uppercase', 'Заглавные')}</span>
-                </label>
-
-                {/* 3 Alignment Buttons */}
-                <div className="flex items-center bg-black/60 p-0.5 rounded-lg border border-white/10 gap-0.5">
-                  <button
-                    type="button"
-                    onClick={() => onChange({ textAlign: 'left' })}
-                    className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
-                      state.textAlign === 'left'
-                        ? 'bg-purple-600 text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/10'
-                    }`}
-                    title={t('alignLeft', 'По левому краю')}
-                  >
-                    <AlignLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onChange({ textAlign: 'center' })}
-                    className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
-                      state.textAlign === 'center' || !state.textAlign
-                        ? 'bg-purple-600 text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/10'
-                    }`}
-                    title={t('alignCenter', 'По центру')}
-                  >
-                    <AlignCenter className="w-3.5 h-3.5" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onChange({ textAlign: 'right' })}
-                    className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
-                      state.textAlign === 'right'
-                        ? 'bg-purple-600 text-white shadow-sm'
-                        : 'text-zinc-400 hover:text-white hover:bg-white/10'
-                    }`}
-                    title={t('alignRight', 'По правому краю')}
-                  >
-                    <AlignRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </>
-        )}
-
-        {/* Full Color Picker & Mixer Modal */}
-        <ColorPickerModal
-          isOpen={isTextColorPickerOpen}
-          onClose={() => setIsTextColorPickerOpen(false)}
-          color={state.textColor || '#ffffff'}
-          onChange={(newColor) => onChange({ textColor: newColor })}
-          title={t('textColor', 'Цвет текста')}
-        />
+        >
+          <canvas
+            ref={canvasRef}
+            width={dimensions.width}
+            height={dimensions.height}
+            className="w-full h-full max-h-full max-w-full object-contain shadow-2xl rounded-none sm:rounded-lg cursor-pointer transition-transform"
+          />
+        </div>
       </div>
 
+      {/* Floating Font Size & Color Adjustment Popup */}
+      {showFontSizePopup && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] cursor-pointer"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              setShowFontSizePopup(false);
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+            }}
+            onTouchStart={(e) => {
+              e.stopPropagation();
+              setShowFontSizePopup(false);
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              setShowFontSizePopup(false);
+            }}
+          />
+          <div
+            data-dock="true"
+            onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 w-64 sm:w-72 p-3 rounded-2xl bg-[#0d0914]/20 backdrop-blur-md border border-white/10 shadow-2xl shadow-black/80 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
+          >
+            {/* Top: TT Icon + Range Slider */}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center text-purple-300 font-serif font-bold text-sm select-none shrink-0 w-5">
+                <span className="tracking-tighter text-sm">Тт</span>
+              </div>
+
+              <input
+                type="range"
+                min="18"
+                max="500"
+                step="2"
+                value={state.fontSize || 42}
+                onChange={(e) =>
+                  onChange({ fontSize: parseInt(e.target.value, 10) })
+                }
+                className="w-full accent-purple-500 bg-zinc-800/70 h-2 rounded-lg cursor-pointer"
+              />
+            </div>
+
+            {/* Bottom: Main Color Palette row + Last square for Full Color Picker / Mixer */}
+            <div className="flex items-center justify-between gap-1.5 pt-2 border-t border-white/10">
+              {POPULAR_TEXT_COLORS.map((color) => {
+                const isSelected = (state.textColor || '#ffffff').toLowerCase() === color.toLowerCase();
+                return (
+                  <button
+                    key={color}
+                    type="button"
+                    onClick={() => onChange({ textColor: color })}
+                    className={`w-6 h-6 sm:w-7 sm:h-7 rounded-lg transition-transform flex items-center justify-center cursor-pointer shadow-sm ${
+                      isSelected
+                        ? 'scale-110 ring-2 ring-purple-400 ring-offset-1 ring-offset-black'
+                        : 'hover:scale-105 opacity-90 hover:opacity-100 border border-white/20'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    title={color}
+                  >
+                    {isSelected && (
+                      <Check
+                        className={`w-3.5 h-3.5 ${
+                          color === '#FFFFFF' || color === '#FDE047' ? 'text-black' : 'text-white'
+                        }`}
+                      />
+                    )}
+                  </button>
+                );
+              })}
+
+              {/* Last square: rainbow gradient icon launcher for ColorPickerModal / mixer */}
+              <button
+                type="button"
+                onClick={() => setIsTextColorPickerOpen(true)}
+                className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-tr from-rose-500 via-purple-500 to-cyan-400 p-0.5 shadow-md flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-transform border border-white/30"
+                title={t('colorPaletteMixer', 'Палитра цветов и микшер')}
+              >
+                <Palette className="w-3.5 h-3.5 text-white drop-shadow" />
+              </button>
+            </div>
+
+            {/* Formatting: Checkbox "Заглавные" (Uppercase) & 3 Alignment Buttons (Left, Center, Right) */}
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-white/10 select-none">
+              {/* Checkbox Заглавные */}
+              <label className="flex items-center gap-1.5 cursor-pointer text-xs text-zinc-200 hover:text-white transition-colors">
+                <input
+                  type="checkbox"
+                  checked={Boolean(state.isUppercase)}
+                  onChange={(e) => onChange({ isUppercase: e.target.checked })}
+                  className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-purple-500 cursor-pointer accent-purple-500"
+                />
+                <span className="text-[11px] sm:text-xs font-semibold">{t('uppercase', 'Заглавные')}</span>
+              </label>
+
+              {/* 3 Alignment Buttons */}
+              <div className="flex items-center bg-black/60 p-0.5 rounded-lg border border-white/10 gap-0.5">
+                <button
+                  type="button"
+                  onClick={() => onChange({ textAlign: 'left' })}
+                  className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
+                    state.textAlign === 'left'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={t('alignLeft', 'По левому краю')}
+                >
+                  <AlignLeft className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ textAlign: 'center' })}
+                  className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
+                    state.textAlign === 'center' || !state.textAlign
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={t('alignCenter', 'По центру')}
+                >
+                  <AlignCenter className="w-3.5 h-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onChange({ textAlign: 'right' })}
+                  className={`w-6 h-6 rounded flex items-center justify-center transition-all cursor-pointer ${
+                    state.textAlign === 'right'
+                      ? 'bg-purple-600 text-white shadow-sm'
+                      : 'text-zinc-400 hover:text-white hover:bg-white/10'
+                  }`}
+                  title={t('alignRight', 'По правому краю')}
+                >
+                  <AlignRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* Full Color Picker & Mixer Modal */}
+      <ColorPickerModal
+        isOpen={isTextColorPickerOpen}
+        onClose={() => setIsTextColorPickerOpen(false)}
+        color={state.textColor || '#ffffff'}
+        onChange={(newColor) => onChange({ textColor: newColor })}
+        title={t('textColor', 'Цвет текста')}
+      />
+
       {/* Bottom Floating Control Bar */}
-      <div
-        data-dock="true"
-        onPointerDown={(e) => e.stopPropagation()}
-        onTouchStart={(e) => e.stopPropagation()}
-        className={`absolute bottom-3 sm:bottom-5 inset-x-0 flex justify-center items-center z-30 transition-all duration-300 px-1 sm:px-2 pb-[env(safe-area-inset-bottom,0px)] ${
-          hideControls ? 'opacity-0 translate-y-full pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
-        }`}
-      >
+      {isLuckyMode ? (
+        <div
+          data-dock="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className={`absolute bottom-4 sm:bottom-6 inset-x-0 flex justify-center items-center gap-2 sm:gap-4 z-30 transition-all duration-300 px-3 sm:px-6 pb-[env(safe-area-inset-bottom,0px)] ${
+            hideControls ? 'opacity-0 translate-y-full pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
+          }`}
+        >
+          {/* 1. Round Button: TEXT (T) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onOpenTextInput) onOpenTextInput();
+            }}
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-xl border border-white/25 text-purple-300 font-black text-lg sm:text-xl flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
+            title={t('text', 'ТЕКСТ')}
+          >
+            Т
+          </button>
+
+          {/* 2. Round Button: ROCKET (Rocket to Expert Mode) */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onOpenRocketConfirm) onOpenRocketConfirm();
+            }}
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-rose-950/80 hover:bg-rose-900/90 backdrop-blur-xl border border-rose-500/50 text-rose-300 flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
+            title={t('transferToExpertBtn', 'Перенести в Эксперт')}
+          >
+            <Rocket className="w-5 h-5 text-rose-300" />
+          </button>
+
+          {/* 3. Center Round Button: RECORD / DOWNLOAD */}
+          {recordedVideoUrl && !isRecordingScreen && !isProcessingVideo ? (
+            <button
+              type="button"
+              onClick={handleSaveRecordedVideo}
+              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-teal-500 hover:bg-teal-400 text-white flex items-center justify-center shadow-2xl shadow-teal-500/50 transition-all cursor-pointer active:scale-95 animate-bounce shrink-0 border-2 border-white/30"
+              title={t('downloadWebm', 'Скачать видео WebM')}
+            >
+              <Download className="w-6 h-6 text-white stroke-[2.5]" />
+            </button>
+          ) : isProcessingVideo ? (
+            <button
+              type="button"
+              disabled
+              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60 flex items-center justify-center cursor-not-allowed opacity-80 shrink-0"
+            >
+              <Sparkles className="w-6 h-6 text-purple-400 animate-spin" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                toggleLiveScreenRecord();
+              }}
+              className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 border-2 shadow-2xl ${
+                isRecordingScreen
+                  ? 'bg-rose-600 text-white animate-pulse border-rose-300 shadow-rose-600/60'
+                  : 'bg-rose-600 hover:bg-rose-500 text-white border-white/30 shadow-rose-950/60'
+              }`}
+              title={isRecordingScreen ? t('stopRecording', 'Остановить запись') : t('captureScreen', 'Захват видео')}
+            >
+              {isRecordingScreen ? (
+                <Square className="w-5 h-5 fill-white text-white" />
+              ) : (
+                <Video className="w-6 h-6 text-white" />
+              )}
+            </button>
+          )}
+
+          {/* 4. Round Button: NOTES / MELODY (Tap: Remix, Long Press: Mute) */}
+          <button
+            type="button"
+            onPointerDown={(e) => {
+              e.stopPropagation();
+              isNoteLongPressRef.current = false;
+              if (noteLongPressTimerRef.current) {
+                clearTimeout(noteLongPressTimerRef.current);
+              }
+              noteLongPressTimerRef.current = window.setTimeout(() => {
+                isNoteLongPressRef.current = true;
+                const nextEnabled = !state.audio.enabled;
+                onChange({ audio: { ...state.audio, enabled: nextEnabled } });
+                if (!nextEnabled) {
+                  audioMixer.stop();
+                }
+                if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                  try {
+                    navigator.vibrate(50);
+                  } catch {}
+                }
+                setSoundNotice(
+                  nextEnabled
+                    ? t('soundUnmutedToast', 'Звук включен 🔔')
+                    : t('soundMutedToast', 'Звук отключен 🔕')
+                );
+                setTimeout(() => setSoundNotice(null), 3000);
+              }, 600);
+            }}
+            onPointerUp={(e) => {
+              e.stopPropagation();
+              if (noteLongPressTimerRef.current) {
+                clearTimeout(noteLongPressTimerRef.current);
+                noteLongPressTimerRef.current = null;
+              }
+            }}
+            onPointerCancel={(e) => {
+              e.stopPropagation();
+              if (noteLongPressTimerRef.current) {
+                clearTimeout(noteLongPressTimerRef.current);
+                noteLongPressTimerRef.current = null;
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (noteLongPressTimerRef.current) {
+                clearTimeout(noteLongPressTimerRef.current);
+                noteLongPressTimerRef.current = null;
+              }
+              if (isNoteLongPressRef.current) {
+                isNoteLongPressRef.current = false;
+                return;
+              }
+              // If sound was disabled, enable it and start playing
+              if (!state.audio.enabled) {
+                onChange({ audio: { ...state.audio, enabled: true } });
+                setSoundNotice(t('soundUnmutedToast', 'Звук включен 🔔'));
+                setTimeout(() => setSoundNotice(null), 3000);
+                return;
+              }
+              // User uploaded file cannot be procedurally remixed
+              if (state.audio.sourceType === 'file') {
+                setSoundNotice('👤 Используется ваш аудиофайл');
+                setTimeout(() => setSoundNotice(null), 3000);
+                return;
+              }
+              // Cycle to the next procedural music preset from MUSIC_PRESETS
+              const presetIds = MUSIC_PRESETS.map((p) => p.id);
+              const curIdx = presetIds.indexOf(state.audio.presetId);
+              const nextPresetId = presetIds[(curIdx + 1) % presetIds.length];
+              const nextSeed = Math.floor(Math.random() * 999999) + 1;
+              const presetInfo = MUSIC_PRESETS.find((p) => p.id === nextPresetId);
+
+              // Stop previous audio immediately before starting the new track
+              audioMixer.stop();
+
+              onChange({
+                audio: {
+                  ...state.audio,
+                  enabled: true,
+                  sourceType: 'generator',
+                  presetId: nextPresetId,
+                  seed: nextSeed,
+                  volume: (state.audio.volume ?? 0.7) > 0 ? state.audio.volume : 0.7,
+                },
+              });
+
+              setSoundNotice(`🎵 ${presetInfo ? `${presetInfo.emoji} ${presetInfo.name}` : 'Новая мелодия'}`);
+              setTimeout(() => setSoundNotice(null), 3000);
+            }}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              const nextEnabled = !state.audio.enabled;
+              onChange({ audio: { ...state.audio, enabled: nextEnabled } });
+              if (!nextEnabled) {
+                audioMixer.stop();
+              }
+              setSoundNotice(
+                nextEnabled
+                  ? t('soundUnmutedToast', 'Звук включен 🔔')
+                  : t('soundMutedToast', 'Звук отключен 🔕')
+              );
+              setTimeout(() => setSoundNotice(null), 3000);
+            }}
+            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-xl border flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0 relative ${
+              !state.audio.enabled
+                ? 'bg-zinc-900/80 border-zinc-700 text-zinc-500'
+                : state.audio.sourceType === 'file'
+                ? 'bg-cyan-950/80 hover:bg-cyan-900 border-cyan-500/50 text-cyan-300'
+                : 'bg-purple-950/80 hover:bg-purple-900 border-purple-500/50 text-purple-300'
+            }`}
+            title={state.audio.enabled ? t('remixMelodyBtn', 'Сменить мелодию (долгий клик: выключить звук)') : t('soundMutedToast', 'Звук отключен')}
+          >
+            {state.audio.enabled ? (
+              state.audio.sourceType === 'file' ? (
+                <div className="flex items-center justify-center relative">
+                  <Music className="w-5 h-5 text-cyan-300" />
+                  <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />
+                </div>
+              ) : (
+                <Music className="w-5 h-5 text-purple-300 animate-pulse" />
+              )
+            ) : (
+              <VolumeX className="w-5 h-5 text-zinc-500" />
+            )}
+          </button>
+
+          {/* 5. Round Button: BACK ARROW */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onBackToLuckyGrid) onBackToLuckyGrid();
+            }}
+            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-xl border border-white/25 text-white flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
+            title={t('backToVariants', 'Назад к вариантам')}
+          >
+            <ArrowLeft className="w-5 h-5 text-zinc-200" />
+          </button>
+        </div>
+      ) : (
+        <div
+          data-dock="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className={`absolute bottom-3 sm:bottom-5 inset-x-0 flex justify-center items-center z-30 transition-all duration-300 px-1 sm:px-2 pb-[env(safe-area-inset-bottom,0px)] ${
+            hideControls ? 'opacity-0 translate-y-full pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
+          }`}
+        >
         <div className="pointer-events-auto flex items-center gap-1 sm:gap-1.5 bg-black/90 backdrop-blur-xl border border-white/15 px-1.5 sm:px-2.5 py-1 sm:py-1.5 rounded-xl sm:rounded-2xl shadow-2xl overflow-x-auto no-scrollbar flex-nowrap shrink-0 max-w-[98vw]">
           {/* Playback Controls Group: Play / Pause, Restart (SkipBack), Mute / Sound */}
           <div data-tour="playback-controls" className="flex items-center gap-1 sm:gap-1.5 shrink-0">
@@ -1645,6 +1914,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           </button>
         </div>
       </div>
+      )}
     </div>,
     document.body
   );

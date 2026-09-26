@@ -14,7 +14,9 @@ import { SpeedSection } from './components/SpeedSection';
 import { ExportModal } from './components/ExportModal';
 import { UploadModal } from './components/UploadModal';
 import { InteractiveTour } from './components/InteractiveTour';
-import { SAMPLE_TEXTS, getDefaultSampleText } from './data/presets';
+import { StartLanding } from './components/StartLanding';
+import { LuckyMode } from './components/LuckyMode';
+import { SAMPLE_TEXTS, getDefaultSampleText, LOCALIZED_DEFAULT_TEXTS } from './data/presets';
 import { VideoProjectState } from './types';
 import { ExportProgress, exportVideo } from './utils/videoRecorder';
 import { splitTextIntoSegments } from './utils/textSplitter';
@@ -56,7 +58,7 @@ const DEFAULT_STATE: VideoProjectState = {
 
   // Text
   rawText: getDefaultSampleText(detectBrowserLanguage()),
-  authorText: '',
+  authorText: 'Мудрец',
   textMode: 'sentence',
   fontFamily: "'Amatic SC', cursive",
   fontSize: 128,
@@ -134,6 +136,7 @@ export default function App() {
     return DEFAULT_STATE;
   });
 
+  const [appMode, setAppMode] = useState<'start' | 'expert' | 'lucky'>('start');
   const [isFullscreenOpen, setIsFullscreenOpen] = useState<boolean>(false);
   const [isTourForceOpen, setIsTourForceOpen] = useState<boolean>(false);
   const [isHelpTourActive, setIsHelpTourActive] = useState<boolean>(false);
@@ -806,6 +809,89 @@ export default function App() {
       ? (fileName || (projectState.bgType === 'video' ? 'video.mp4' : 'image.jpg'))
       : null;
 
+  const handleTransferToExpert = useCallback((transferredState: VideoProjectState) => {
+    setProjectState(transferredState);
+    saveProjectState(transferredState);
+    setAppMode('expert');
+  }, []);
+
+  if (appMode === 'start') {
+    return (
+      <StartLanding
+        onSelectExpert={() => {
+          const isMatrixText =
+            projectState.rawText?.includes('синюю таблетку') ||
+            projectState.rawText?.includes('красную') ||
+            projectState.rawText?.includes('страну чудес') ||
+            projectState.rawText?.includes('blue pill') ||
+            projectState.rawText?.includes('red pill');
+
+          if (isMatrixText || !projectState.rawText || !projectState.rawText.trim()) {
+            handleStateChange({
+              rawText: getDefaultSampleText(language),
+              authorText: '',
+            });
+          }
+          setAppMode('expert');
+        }}
+        onSelectLucky={() => {
+          const matrixText = t(
+            'matrixQuoteText',
+            'Примешь синюю таблетку — и сказке конец... Примешь красную — войдешь в страну чудес!'
+          );
+          const matrixAuthor = t('matrixQuoteAuthor', 'Морфеус');
+
+          const isExpertDefault =
+            !projectState.rawText ||
+            !projectState.rawText.trim() ||
+            Object.values(LOCALIZED_DEFAULT_TEXTS).includes(projectState.rawText) ||
+            projectState.rawText.includes('предел') ||
+            projectState.rawText.includes('собственный разум') ||
+            projectState.rawText.includes('limit') ||
+            projectState.rawText.includes('límite') ||
+            projectState.rawText.includes('Grenze') ||
+            projectState.rawText.includes('limite') ||
+            projectState.rawText.includes('限制') ||
+            projectState.rawText.includes('Введи') ||
+            projectState.rawText.includes('Type your text') ||
+            projectState.rawText.includes('Gib hier');
+
+          if (isExpertDefault) {
+            handleStateChange({
+              rawText: matrixText,
+              authorText: matrixAuthor,
+            });
+          }
+          setAppMode('lucky');
+        }}
+      />
+    );
+  }
+
+  if (appMode === 'lucky') {
+    return (
+      <>
+        <LuckyMode
+          baseState={projectState}
+          onUpdateBaseState={handleStateChange}
+          onSelectExpert={() => setAppMode('expert')}
+          onTransferToExpert={handleTransferToExpert}
+          onReturnToLanding={() => setAppMode('start')}
+          bgMediaElement={bgMediaElement}
+          onOpenUploadModal={() => setIsUploadModalOpen(true)}
+        />
+        <UploadModal
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onFileUpload={(file) => {
+            handleFileUpload(file);
+            setIsUploadModalOpen(false);
+          }}
+        />
+      </>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-[#0F0F12] text-zinc-100 flex flex-col font-sans selection:bg-purple-600/30 selection:text-purple-200 overflow-x-clip w-full max-w-[100vw]">
       {/* Top Header with File Upload Action - Hidden in Fullscreen or Pinned Fullscreen */}
@@ -817,6 +903,8 @@ export default function App() {
           onResetProject={handleResetAll}
           onOpenUploadModal={() => setIsUploadModalOpen(true)}
           onOpenTour={() => setIsTourForceOpen(true)}
+          onSwitchToLucky={() => setAppMode('lucky')}
+          onReturnToStart={() => setAppMode('start')}
         />
       )}
 
@@ -965,7 +1053,7 @@ export default function App() {
             </p>
             <div className="pt-1.5 flex items-center justify-center">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/25 shadow-sm">
-                Version 1.01
+                Version 1.1
               </span>
             </div>
           </div>

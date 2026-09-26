@@ -30,10 +30,22 @@ class AudioMixer {
   private cachedSeed: number | undefined = undefined;
   private cachedAudioUrl: string | null = null;
   private isPlaying = false;
+  private isMuted = false;
   private startTime = 0;
   private pausedOffset = 0;
   private volumeMultiplier = 1.0;
   private currentBaseVolume = 0.7;
+
+  public setMuted(muted: boolean): void {
+    this.isMuted = muted;
+    if (muted) {
+      this.stop();
+    }
+  }
+
+  public getIsMuted(): boolean {
+    return this.isMuted;
+  }
 
   private getContext(): AudioContext {
     if (!this.audioCtx) {
@@ -203,6 +215,11 @@ class AudioMixer {
     offsetSeconds = 0,
     bgVideoUrl?: string
   ) {
+    if (this.isMuted) {
+      this.stop();
+      return;
+    }
+
     const effVolume = typeof audioState.musicVolume === 'number'
       ? audioState.musicVolume
       : typeof audioState.volume === 'number'

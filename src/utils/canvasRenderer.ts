@@ -237,6 +237,7 @@ export function renderCanvasFrame({
   bgMediaElement,
   dimensions,
   targetDuration,
+  isDraggingText = false,
 }: {
   ctx: CanvasRenderingContext2D;
   state: VideoProjectState;
@@ -244,6 +245,7 @@ export function renderCanvasFrame({
   bgMediaElement: HTMLImageElement | HTMLVideoElement | null;
   dimensions: CanvasDimensions;
   targetDuration?: number;
+  isDraggingText?: boolean;
 }) {
   const { width, height } = dimensions;
 
@@ -303,6 +305,7 @@ export function renderCanvasFrame({
       canvasWidth: width,
       canvasHeight: height,
       isLastSegment,
+      isDraggingText,
     });
   }
 
@@ -1454,16 +1457,55 @@ function calculateTextLayout(
     fontSize = Math.floor(fontSize * 0.9);
   }
 
-  // Fallback if very tight
+  // Fallback if very tight or long unbroken word
   ctx.font = `bold ${minFontSize}px ${fontFamily}`;
   const lineHeight = minFontSize * 1.25;
-  const lines = [text.slice(0, 30)];
+  const rawWords = text.split(/\s+/);
+  const fallbackLines: string[] = [];
+  let cur = '';
+
+  for (let i = 0; i < rawWords.length; i++) {
+    const w = rawWords[i];
+    if (ctx.measureText(w).width > maxWidth) {
+      // Chunk the word
+      if (cur) {
+        fallbackLines.push(cur);
+        cur = '';
+      }
+      let chunk = '';
+      for (const ch of w) {
+        if (ctx.measureText(chunk + ch).width > maxWidth) {
+          fallbackLines.push(chunk);
+          chunk = ch;
+        } else {
+          chunk += ch;
+        }
+      }
+      if (chunk) cur = chunk;
+    } else {
+      const test = cur ? `${cur} ${w}` : w;
+      if (ctx.measureText(test).width > maxWidth && cur) {
+        fallbackLines.push(cur);
+        cur = w;
+      } else {
+        cur = test;
+      }
+    }
+  }
+  if (cur) fallbackLines.push(cur);
+
+  let maxW = 0;
+  fallbackLines.forEach((l) => {
+    const w = ctx.measureText(l).width;
+    if (w > maxW) maxW = w;
+  });
+
   return {
-    lines,
+    lines: fallbackLines.length > 0 ? fallbackLines : [text.slice(0, 30)],
     fontSize: minFontSize,
     lineHeight,
-    totalHeight: lineHeight,
-    maxLineWidth: maxWidth,
+    totalHeight: (fallbackLines.length || 1) * lineHeight,
+    maxLineWidth: Math.min(maxWidth, maxW || maxWidth),
   };
 }
 
@@ -1475,6 +1517,7 @@ function drawTextSegment({
   canvasWidth,
   canvasHeight,
   isLastSegment = false,
+  isDraggingText = false,
 }: {
   ctx: CanvasRenderingContext2D;
   segment: { text: string; words: string[]; startTime: number; endTime: number; duration: number };
@@ -1483,10 +1526,13 @@ function drawTextSegment({
   canvasWidth: number;
   canvasHeight: number;
   isLastSegment?: boolean;
+  isDraggingText?: boolean;
 }) {
-  const safeMarginX = canvasWidth * 0.08;
-  const maxWidth = canvasWidth - safeMarginX * 2;
-  const maxHeight = canvasHeight * 0.7;
+  // Strict 50px margins on all 4 borders (Expert and Lucky modes)
+  const safeMarginX = 50;
+  const safeMarginY = 50;
+  const maxWidth = Math.max(100, canvasWidth - safeMarginX * 2);
+  const maxHeight = Math.max(100, canvasHeight - safeMarginY * 2);
 
   // Calculate layout
   const layout = calculateTextLayout(
@@ -1504,8 +1550,6 @@ function drawTextSegment({
   const { speedFactor, wordDuration } = getEffectiveSpeed(effectiveSpeed);
 
   // Speed-based animation duration calculations:
-  // Derived directly from the UI speed controller (state.speedMultiplier)
-  // so typing/entrance animation rates match perfectly between preview and export!
   let animDuration: number;
   if (state.animationStyle === 'typewriter') {
     const charsPerSec = Math.max(1.0, 5.0 / wordDuration);
@@ -1528,37 +1572,70 @@ function drawTextSegment({
   // Author details (displayed ONLY on the final phrase, word, or sentence of the quote)
   const rawAuthor = state.authorText ? state.authorText.trim() : '';
   const hasAuthor = isLastSegment && rawAuthor.length > 0;
-  // Author size is ~82% of main quote font size (twice as large as original 40%), clearly visible while smaller than main text
-  const authorFontSize = Math.max(32, Math.min(96, Math.round(layout.fontSize * 0.82)));
-  // Расстояние до имени автора: базовый отступ + дополнительные полстроки (layout.lineHeight * 0.5), чтобы не приклеивалось к тексту
-  const authorGap = Math.max(36, Math.round(layout.fontSize * 0.42 + layout.lineHeight * 0.5));
-  const authorHeight = hasAuthor ? authorGap + authorFontSize * 1.3 : 0;
+  const authorFontSize = Math.max(28, Math.min(84, Math.round(layout.fontSize * 0.80)));
+  const authorGap = Math.max(30, Math.round(layout.fontSize * 0.40 + layout.lineHeight * 0.4));
+  const authorHeight = hasAuthor ? authorGap + authorFontSize * 1.25 : 0;
   const totalCombinedHeight = layout.totalHeight + authorHeight;
 
-  // Position calculations
-  // Support granular vertical percentage (15% to 85%), with fallback to position preset
-  let posYRatio = 0.5;
-  if (typeof state.textPositionY === 'number' && Number.isFinite(state.textPositionY)) {
-    posYRatio = Math.max(0.12, Math.min(0.88, state.textPositionY / 100));
-  } else if (state.textPosition === 'top') {
-    posYRatio = 0.25;
-  } else if (state.textPosition === 'bottom') {
-    posYRatio = 0.75;
+  // Measure author width if present
+  let authorWidth = 0;
+  const authorStr = hasAuthor
+    ? (rawAuthor.startsWith('—') || rawAuthor.startsWith('-') ? rawAuthor : `— ${rawAuthor}`)
+    : '';
+  if (hasAuthor) {
+    ctx.save();
+    ctx.font = `italic 600 ${authorFontSize}px 'Playfair Display', 'Caveat', 'Montserrat', Georgia, serif`;
+    authorWidth = ctx.measureText(authorStr).width;
+    ctx.restore();
   }
 
-  const targetCenterY = canvasHeight * posYRatio;
-  const startY = targetCenterY - totalCombinedHeight / 2 + layout.fontSize * 0.8;
-  const textCenterY = targetCenterY;
+  const blockWidth = Math.min(maxWidth, Math.max(layout.maxLineWidth, authorWidth));
 
-  let textCenterX = canvasWidth / 2;
+  // Horizontal block placement strictly within [safeMarginX, canvasWidth - safeMarginX]
+  const minBlockLeft = safeMarginX;
+  const maxBlockLeft = Math.max(safeMarginX, canvasWidth - safeMarginX - blockWidth);
+
+  let blockLeft = safeMarginX;
   if (typeof state.textPositionX === 'number' && Number.isFinite(state.textPositionX)) {
-    const posXRatio = Math.max(0.1, Math.min(0.9, state.textPositionX / 100));
-    textCenterX = canvasWidth * posXRatio;
-  } else if (state.textAlign === 'left') {
-    textCenterX = safeMarginX + layout.maxLineWidth / 2;
+    const normX = Math.max(0, Math.min(100, state.textPositionX)) / 100;
+    blockLeft = minBlockLeft + (maxBlockLeft - minBlockLeft) * normX;
+  } else if (state.textAlign === 'center') {
+    blockLeft = minBlockLeft + (maxBlockLeft - minBlockLeft) * 0.5;
   } else if (state.textAlign === 'right') {
-    textCenterX = canvasWidth - safeMarginX - layout.maxLineWidth / 2;
+    blockLeft = maxBlockLeft;
+  } else {
+    blockLeft = minBlockLeft;
   }
+
+  const blockRight = blockLeft + blockWidth;
+  const blockCenter = blockLeft + blockWidth / 2;
+
+  // Vertical block placement strictly within [safeMarginY, canvasHeight - safeMarginY]
+  const minBlockTop = safeMarginY;
+  const maxBlockTop = Math.max(safeMarginY, canvasHeight - safeMarginY - totalCombinedHeight);
+
+  let blockTop = safeMarginY;
+  if (typeof state.textPositionY === 'number' && Number.isFinite(state.textPositionY)) {
+    const normY = Math.max(0, Math.min(100, state.textPositionY)) / 100;
+    blockTop = minBlockTop + (maxBlockTop - minBlockTop) * normY;
+  } else if (state.textPosition === 'top') {
+    blockTop = minBlockTop;
+  } else if (state.textPosition === 'bottom') {
+    blockTop = maxBlockTop;
+  } else {
+    blockTop = minBlockTop + (maxBlockTop - minBlockTop) * 0.5;
+  }
+
+  const startY = blockTop + layout.fontSize * 0.88;
+  const textCenterY = blockTop + totalCombinedHeight / 2;
+  const textCenterX = blockCenter;
+
+  const bounds = {
+    x: blockLeft,
+    y: blockTop,
+    width: blockWidth,
+    height: totalCombinedHeight,
+  };
 
   ctx.save();
 
@@ -1573,7 +1650,7 @@ function drawTextSegment({
       break;
     case 'slide':
       alpha = easeOutCubic(progress);
-      offsetY = (1 - easeOutCubic(progress)) * 80;
+      offsetY = (1 - easeOutCubic(progress)) * 60;
       break;
     case 'zoom':
       alpha = easeOutCubic(progress);
@@ -1581,22 +1658,18 @@ function drawTextSegment({
       break;
     case 'glitch': {
       const baseAlpha = easeOutCubic(progress);
-      // High-frequency electric stutter: flickers on and off rapidly during entrance
       const flickerPulse = Math.sin(currentTime * 75) * Math.cos(currentTime * 43);
       const isStutterDip = progress < 0.8 && flickerPulse < -0.3;
       alpha = isStutterDip ? baseAlpha * 0.35 : baseAlpha;
 
-      // Small vertical tremor during entrance
       if (progress < 1) {
         offsetY = Math.sin(currentTime * 65) * 3 * (1 - progress);
       }
       break;
     }
     case 'words':
-      // Progressively reveal words
       break;
     case 'typewriter':
-      // Typewriter string slicing
       break;
   }
 
@@ -1627,14 +1700,6 @@ function drawTextSegment({
     ctx.shadowBlur = 0;
   }
 
-  // Text bounds for particle generators
-  const bounds = {
-    x: textCenterX - layout.maxLineWidth / 2,
-    y: startY - layout.fontSize * 0.8,
-    width: layout.maxLineWidth,
-    height: totalCombinedHeight + layout.fontSize * 0.4,
-  };
-
   // Determine what text to draw for typewriter or word-by-word
   let linesToDraw = layout.lines;
 
@@ -1643,11 +1708,9 @@ function drawTextSegment({
     const charCount = Math.floor(fullCombined.length * progress);
     const visibleCombined = fullCombined.slice(0, charCount);
 
-    // Cursor blink: show if typing is in progress
     const showCursor = Math.sin(currentTime * 12) > 0;
     const withCursor = visibleCombined + (showCursor && progress < 1 ? ' |' : '');
 
-    // Reconstruct lines
     linesToDraw = [];
     let remaining = withCursor;
     for (let i = 0; i < layout.lines.length; i++) {
@@ -1664,7 +1727,6 @@ function drawTextSegment({
       state.isUppercase ? w.toUpperCase() : w
     );
 
-    // Draw only the revealed words
     const joined = activeWordsList.join(' ');
     linesToDraw = [];
     let rem = joined;
@@ -1679,19 +1741,13 @@ function drawTextSegment({
   // Draw lines of main text
   linesToDraw.forEach((line, index) => {
     const lineY = startY + index * layout.lineHeight + offsetY;
-    let lineX = canvasWidth / 2;
-    if (typeof state.textPositionX === 'number' && Number.isFinite(state.textPositionX)) {
-      const posXRatio = Math.max(0.1, Math.min(0.9, state.textPositionX / 100));
-      if (state.textAlign === 'left') {
-        lineX = canvasWidth * posXRatio - layout.maxLineWidth / 2;
-      } else if (state.textAlign === 'right') {
-        lineX = canvasWidth * posXRatio + layout.maxLineWidth / 2;
-      } else {
-        lineX = canvasWidth * posXRatio;
-      }
+    let lineX = blockCenter;
+    if (state.textAlign === 'left') {
+      lineX = blockLeft;
+    } else if (state.textAlign === 'right') {
+      lineX = blockRight;
     } else {
-      if (state.textAlign === 'left') lineX = safeMarginX;
-      if (state.textAlign === 'right') lineX = canvasWidth - safeMarginX;
+      lineX = blockCenter;
     }
 
     // Glitch / Electric Jitter calculations
@@ -1931,19 +1987,13 @@ function drawTextSegment({
       authorFontSize * 0.9 +
       offsetY;
 
-    let authorX = canvasWidth / 2;
-    if (typeof state.textPositionX === 'number' && Number.isFinite(state.textPositionX)) {
-      const posXRatio = Math.max(0.1, Math.min(0.9, state.textPositionX / 100));
-      if (state.textAlign === 'left') {
-        authorX = canvasWidth * posXRatio - layout.maxLineWidth / 2;
-      } else if (state.textAlign === 'right') {
-        authorX = canvasWidth * posXRatio + layout.maxLineWidth / 2;
-      } else {
-        authorX = canvasWidth * posXRatio;
-      }
+    let authorX = blockCenter;
+    if (state.textAlign === 'left') {
+      authorX = blockLeft;
+    } else if (state.textAlign === 'right') {
+      authorX = blockRight;
     } else {
-      if (state.textAlign === 'left') authorX = safeMarginX;
-      if (state.textAlign === 'right') authorX = canvasWidth - safeMarginX;
+      authorX = blockCenter;
     }
 
     if (state.animationStyle === 'glitch') {
@@ -1989,5 +2039,138 @@ function drawTextSegment({
   }
   if (state.effects.particles) {
     particleEngine.updateAndDrawDust(ctx, bounds, state.textColor, currentTime);
+  }
+
+  // Draw 2D Coordinate Ruler (Рейсшина) when dragging text
+  if (isDraggingText) {
+    ctx.save();
+
+    // 1. Full-width horizontal T-square guide line strictly through textCenterY
+    ctx.beginPath();
+    ctx.setLineDash([12, 8]);
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 3;
+    ctx.shadowColor = 'rgba(192, 132, 252, 0.8)';
+    ctx.shadowBlur = 8;
+    ctx.moveTo(0, textCenterY);
+    ctx.lineTo(canvasWidth, textCenterY);
+    ctx.stroke();
+
+    // Ruler tick marks along horizontal line
+    ctx.setLineDash([]);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.lineWidth = 2;
+    for (let x = 40; x < canvasWidth; x += 60) {
+      const tickH = x % 120 === 0 ? 18 : 10;
+      ctx.beginPath();
+      ctx.moveTo(x, textCenterY - tickH / 2);
+      ctx.lineTo(x, textCenterY + tickH / 2);
+      ctx.stroke();
+    }
+
+    // 2. Full-height vertical crosshair guide line strictly through textCenterX
+    ctx.beginPath();
+    ctx.setLineDash([12, 8]);
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.75)';
+    ctx.lineWidth = 2;
+    ctx.moveTo(textCenterX, 0);
+    ctx.lineTo(textCenterX, canvasHeight);
+    ctx.stroke();
+
+    // 3. Text bounding box with glowing corners
+    ctx.setLineDash([6, 6]);
+    ctx.strokeStyle = 'rgba(232, 121, 249, 0.9)';
+    ctx.lineWidth = 2;
+    const pad = 14;
+    const boxX = bounds.x - pad;
+    const boxY = bounds.y - pad;
+    const boxW = bounds.width + pad * 2;
+    const boxH = bounds.height + pad * 2;
+    ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+    // Solid corner brackets
+    ctx.setLineDash([]);
+    ctx.strokeStyle = '#38bdf8';
+    ctx.lineWidth = 3;
+    const cLen = Math.min(26, boxW * 0.2);
+    // Top-Left
+    ctx.beginPath();
+    ctx.moveTo(boxX, boxY + cLen);
+    ctx.lineTo(boxX, boxY);
+    ctx.lineTo(boxX + cLen, boxY);
+    ctx.stroke();
+    // Top-Right
+    ctx.beginPath();
+    ctx.moveTo(boxX + boxW - cLen, boxY);
+    ctx.lineTo(boxX + boxW, boxY);
+    ctx.lineTo(boxX + boxW, boxY + cLen);
+    ctx.stroke();
+    // Bottom-Left
+    ctx.beginPath();
+    ctx.moveTo(boxX, boxY + boxH - cLen);
+    ctx.lineTo(boxX, boxY + boxH);
+    ctx.lineTo(boxX + cLen, boxY + boxH);
+    ctx.stroke();
+    // Bottom-Right
+    ctx.beginPath();
+    ctx.moveTo(boxX + boxW - cLen, boxY + boxH);
+    ctx.lineTo(boxX + boxW, boxY + boxH);
+    ctx.lineTo(boxX + boxW, boxY + boxH - cLen);
+    ctx.stroke();
+
+    // 4. Center reticle / target at (textCenterX, textCenterY)
+    ctx.beginPath();
+    ctx.arc(textCenterX, textCenterY, 14, 0, Math.PI * 2);
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 3;
+    ctx.stroke();
+
+    ctx.beginPath();
+    ctx.arc(textCenterX, textCenterY, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#f43f5e';
+    ctx.fill();
+
+    // 5. Floating coordinate HUD badge pill above/below text block
+    const posX = Number((state.textPositionX ?? 50).toFixed(1));
+    const posY = Number((state.textPositionY ?? 50).toFixed(1));
+    const badgeText = `X: ${posX}%  Y: ${posY}%`;
+    const badgeFontSize = Math.max(24, Math.round(canvasWidth * 0.026));
+    ctx.font = `bold ${badgeFontSize}px 'Montserrat', sans-serif`;
+    const textMetric = ctx.measureText(badgeText);
+    const badgeW = textMetric.width + 36;
+    const badgeH = badgeFontSize + 20;
+    const badgeX = textCenterX - badgeW / 2;
+    const badgeY = boxY - badgeH - 12 > 10 ? boxY - badgeH - 12 : boxY + boxH + 14;
+
+    // Draw badge background pill
+    ctx.fillStyle = 'rgba(15, 12, 25, 0.94)';
+    ctx.strokeStyle = 'rgba(192, 132, 252, 0.9)';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 12;
+
+    const radius = badgeH / 2;
+    ctx.beginPath();
+    ctx.moveTo(badgeX + radius, badgeY);
+    ctx.lineTo(badgeX + badgeW - radius, badgeY);
+    ctx.quadraticCurveTo(badgeX + badgeW, badgeY, badgeX + badgeW, badgeY + radius);
+    ctx.lineTo(badgeX + badgeW, badgeY + badgeH - radius);
+    ctx.quadraticCurveTo(badgeX + badgeW, badgeY + badgeH, badgeX + badgeW - radius, badgeY + badgeH);
+    ctx.lineTo(badgeX + radius, badgeY + badgeH);
+    ctx.quadraticCurveTo(badgeX, badgeY + badgeH, badgeX, badgeY + badgeH - radius);
+    ctx.lineTo(badgeX, badgeY + radius);
+    ctx.quadraticCurveTo(badgeX, badgeY, badgeX + radius, badgeY);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+
+    // Draw badge text
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(badgeText, textCenterX, badgeY + badgeH / 2);
+
+    ctx.restore();
   }
 }
