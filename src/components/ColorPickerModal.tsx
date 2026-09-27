@@ -208,13 +208,15 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   return createPortal(
     <div
       id="color-picker-overlay"
-      className="fixed inset-0 z-[9999] flex items-center justify-center p-3 bg-black/75 backdrop-blur-sm animate-fade-in"
+      className="fixed inset-0 z-[2147483647] flex items-center justify-center p-3 bg-black/80 backdrop-blur-md animate-fade-in pointer-events-auto select-none"
       onClick={onClose}
+      onPointerDown={(e) => e.stopPropagation()}
     >
       <div
         id="color-picker-dialog"
-        className="w-full max-w-sm sm:max-w-md max-h-[92vh] overflow-y-auto bg-[#1a1a24] border border-white/15 rounded-2xl shadow-2xl p-4 sm:p-5 space-y-3.5 sm:space-y-4 text-zinc-100 animate-scale-up"
+        className="w-full max-w-sm sm:max-w-md max-h-[92vh] overflow-y-auto bg-[#1a1a24] border border-white/20 rounded-2xl shadow-2xl p-4 sm:p-5 space-y-3.5 sm:space-y-4 text-zinc-100 animate-scale-up pointer-events-auto"
         onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between pb-2 border-b border-white/10">

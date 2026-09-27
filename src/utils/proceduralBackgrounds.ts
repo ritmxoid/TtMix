@@ -125,19 +125,20 @@ export function drawProceduralMoodBackground(
   height: number,
   time: number,
   moodStyle: ProceduralMoodStyle = 'cosmic',
-  seed: number = 42
+  seed: number = 42,
+  skipSolidBg: boolean = false
 ) {
   const rng = seededRandom(seed);
 
   switch (moodStyle) {
     case 'cosmic':
-      drawCosmic(ctx, width, height, time, rng, seed);
+      drawCosmic(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'cyberpunk':
       drawCyberpunk(ctx, width, height, time, rng, seed);
       break;
     case 'ember':
-      drawEmber(ctx, width, height, time, rng, seed);
+      drawEmber(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'nature':
       drawNature(ctx, width, height, time, rng, seed);
@@ -149,16 +150,16 @@ export function drawProceduralMoodBackground(
       drawFluid(ctx, width, height, time, rng, seed);
       break;
     case 'equalizer':
-      drawEqualizer(ctx, width, height, time, rng, seed);
+      drawEqualizer(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'shapes':
-      drawShapes(ctx, width, height, time, rng, seed);
+      drawShapes(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'emojis':
-      drawEmojis(ctx, width, height, time, rng, seed);
+      drawEmojis(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     default:
-      drawCosmic(ctx, width, height, time, rng, seed);
+      drawCosmic(ctx, width, height, time, rng, seed, skipSolidBg);
   }
 }
 
@@ -169,7 +170,8 @@ function drawCosmic(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
   // Cosmic palette selection based on seed
   const paletteMode = Math.floor(rng() * 5);
@@ -202,8 +204,10 @@ function drawCosmic(
     bg.addColorStop(1, '#020408');
   }
 
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
+  if (!skipSolidBg) {
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   // Swirling Pulsing Nebulae clouds
   const nebulaCount = 3 + Math.floor(rng() * 3);
@@ -512,7 +516,8 @@ function drawEmber(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
   // Wide range upper gradient palette: Charcoal, Ruby, Violet Plasma, Steel Dark Blue
   const topBgType = Math.floor(rng() * 5);
@@ -552,12 +557,14 @@ function drawEmber(
     flameColor2 = '#ea580c';
   }
 
-  const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, topColor);
-  bg.addColorStop(0.55, midColor);
-  bg.addColorStop(1, botColor);
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
+  if (!skipSolidBg) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, topColor);
+    bg.addColorStop(0.55, midColor);
+    bg.addColorStop(1, botColor);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   // Bottom explosive flashing flames reaching variable heights!
   const flameHeightBase = h * (0.22 + rng() * 0.28);
@@ -948,22 +955,31 @@ function drawEqualizer(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
-  // 12 Distinct Equalizer Layouts and Morphologies!
-  const layoutType = Math.floor(rng() * 12);
-  const colorMode = Math.floor(rng() * 5); // 5 Color Palettes
+  // 21 Distinct Equalizer Layouts and Morphologies (including 9 new image architectures)!
+  const layoutType = Math.floor(rng() * 21);
+  const colorMode = Math.floor(rng() * 6); // 6 Rich Neon & Spectrum Color Palettes
+  const orientationMode = Math.floor(rng() * 4); // 0: Normal / Center, 1: Inverted (Top-down), 2: Mirrored / Alt, 3: Dynamic Tilt / Vertical
+  const speedFactor = 0.65 + rng() * 0.95; // 0.65x to 1.6x Speed variation
+  const animT = t * speedFactor;
+  t = animT; // Scale tempo for all animations
 
   const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
   let neon1 = '#ec4899';
   let neon2 = '#a855f7';
   let neon3 = '#06b6d4';
+  let particleCol = '#ffffff';
 
   if (colorMode === 0) {
     // Cyber Synthwave
     bgGrad.addColorStop(0, '#030712');
     bgGrad.addColorStop(0.5, '#0f172a');
     bgGrad.addColorStop(1, '#3b0764');
+    neon1 = '#ec4899';
+    neon2 = '#a855f7';
+    neon3 = '#06b6d4';
   } else if (colorMode === 1) {
     // Electric Ultra Cyan
     bgGrad.addColorStop(0, '#090514');
@@ -988,7 +1004,7 @@ function drawEqualizer(
     neon1 = '#ef4444';
     neon2 = '#f97316';
     neon3 = '#facc15';
-  } else {
+  } else if (colorMode === 4) {
     // Hyper Acid Violet
     bgGrad.addColorStop(0, '#1e1b4b');
     bgGrad.addColorStop(0.5, '#4c1d95');
@@ -996,17 +1012,55 @@ function drawEqualizer(
     neon1 = '#facc15';
     neon2 = '#ec4899';
     neon3 = '#3b82f6';
+  } else {
+    // Neon Sunset Violet-Rose Spectrum (User Palette)
+    bgGrad.addColorStop(0, '#050714');
+    bgGrad.addColorStop(0.5, '#190a2a');
+    bgGrad.addColorStop(1, '#0c1a3d');
+    neon1 = '#c084fc';
+    neon2 = '#e879f9';
+    neon3 = '#38bdf8';
   }
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, w, h);
+  if (!skipSolidBg) {
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
 
-  // Background central aura glow
-  const aura = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.65);
-  aura.addColorStop(0, 'rgba(168, 85, 247, 0.28)');
-  aura.addColorStop(0.6, 'rgba(6, 182, 212, 0.12)');
-  aura.addColorStop(1, 'transparent');
-  ctx.fillStyle = aura;
-  ctx.fillRect(0, 0, w, h);
+    // Background central aura glow
+    const aura = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.65);
+    aura.addColorStop(0, neon2 + '44');
+    aura.addColorStop(0.6, neon3 + '22');
+    aura.addColorStop(1, 'transparent');
+    ctx.fillStyle = aura;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Dynamic gradient helper
+  const createSpectrumGrad = (x1: number, y1: number, x2: number, y2: number) => {
+    const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+    grad.addColorStop(0, neon1);
+    grad.addColorStop(0.35, neon2);
+    grad.addColorStop(0.7, neon3);
+    grad.addColorStop(1, neon1);
+    return grad;
+  };
+
+  // Dynamic background particles helper
+  const drawBackgroundParticles = () => {
+    ctx.save();
+    for (let i = 0; i < 32; i++) {
+      const px = (Math.sin(i * 99 + animT * 0.22) * 0.5 + 0.5) * w;
+      const py = (Math.cos(i * 33 + animT * 0.32) * 0.5 + 0.5) * h;
+      const pSize = (Math.sin(i + animT) * 0.5 + 0.5) * 1.8 + 0.6;
+      ctx.fillStyle = i % 3 === 0 ? neon1 : i % 3 === 1 ? neon3 : particleCol;
+      ctx.shadowColor = neon2;
+      ctx.shadowBlur = 8;
+      ctx.globalAlpha = (Math.sin(i * 12 + animT * 2.2) * 0.5 + 0.5) * 0.75;
+      ctx.beginPath();
+      ctx.arc(px, py, pSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  };
 
   if (layoutType === 0) {
     // 0: Bottom classic spectrum bars (thickness varies from micro to huge)
@@ -1312,15 +1366,17 @@ function drawEqualizer(
       ctx.fillRect(w * 0.1, y + 3, barLen, barHeight - 6);
       ctx.restore();
     }
-  } else {
+  } else if (layoutType === 11) {
     // 11: Curved Bottom Arch Spectrum (Amphitheater Arch)
+    const isTopArch = orientationMode === 1;
     const cx = w * 0.5;
-    const cy = h * 0.95;
+    const cy = isTopArch ? h * 0.05 : h * 0.95;
     const archRadius = Math.min(w, h) * 0.65;
     const rayCount = 38;
 
     for (let i = 0; i < rayCount; i++) {
-      const angle = Math.PI + (i / (rayCount - 1)) * Math.PI; // Semicircle
+      const baseAngle = isTopArch ? 0 : Math.PI;
+      const angle = baseAngle + (i / (rayCount - 1)) * Math.PI;
       const rayLen =
         (Math.abs(Math.sin(t * 3.2 + i * 0.3)) * 0.7 +
           Math.abs(Math.cos(t * 2.0 + i * 0.2)) * 0.3) *
@@ -1341,6 +1397,346 @@ function drawEqualizer(
       ctx.stroke();
       ctx.restore();
     }
+  } else if (layoutType === 12) {
+    // ==========================================================
+    // 12 (NEW 1): Неоновая осциллограмма с заполнением и пылью
+    // ==========================================================
+    drawBackgroundParticles();
+    const centerY = orientationMode === 1 ? h * 0.35 : orientationMode === 2 ? h * 0.65 : h * 0.5;
+
+    ctx.save();
+    if (orientationMode === 3) {
+      ctx.translate(w * 0.5, h * 0.5);
+      ctx.rotate(-0.06);
+      ctx.translate(-w * 0.5, -h * 0.5);
+    }
+
+    ctx.beginPath();
+    ctx.moveTo(0, centerY);
+
+    for (let x = 0; x <= w; x += 5) {
+      const freq1 = Math.sin(x * 0.015 + t * 3) * 40;
+      const freq2 = Math.cos(x * 0.03 - t * 2) * 20;
+      const env = Math.sin((x / w) * Math.PI);
+      const y = centerY + (freq1 + freq2) * env;
+      ctx.lineTo(x, y);
+    }
+
+    ctx.strokeStyle = neon3;
+    ctx.lineWidth = 3.5;
+    ctx.shadowColor = neon2;
+    ctx.shadowBlur = 16;
+    ctx.stroke();
+
+    // Дополнительная полупрозрачная волна гармоники
+    ctx.beginPath();
+    ctx.moveTo(0, centerY);
+    for (let x = 0; x <= w; x += 5) {
+      const y = centerY + Math.sin(x * 0.02 + t * 4) * 25 * Math.sin((x / w) * Math.PI);
+      ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = neon1;
+    ctx.globalAlpha = 0.55;
+    ctx.lineWidth = 2;
+    ctx.stroke();
+    ctx.restore();
+  } else if (layoutType === 13) {
+    // ==========================================================
+    // 13 (NEW 2): Симметричный вертикальный спектрум (Soundwave)
+    // ==========================================================
+    drawBackgroundParticles();
+    const barCount = 70;
+    const isVertical = orientationMode === 3;
+    const centerY = h * 0.5;
+
+    ctx.save();
+    ctx.shadowBlur = 10;
+    if (isVertical) {
+      // 90-degree vertical orientation
+      const barHeight = h / barCount;
+      const centerX = w * 0.5;
+      for (let i = 0; i < barCount; i++) {
+        const y = i * barHeight;
+        const env = Math.sin((i / barCount) * Math.PI);
+        const amp = (Math.abs(Math.sin(t * 3 + i * 0.2)) * 0.7 + 0.3) * (w * 0.35) * env;
+
+        const grad = createSpectrumGrad(centerX - amp, y, centerX + amp, y);
+        ctx.fillStyle = grad;
+        ctx.shadowColor = neon3;
+        ctx.fillRect(centerX - amp, y + 1, amp * 2, barHeight - 2);
+      }
+    } else {
+      const barWidth = w / barCount;
+      for (let i = 0; i < barCount; i++) {
+        const x = i * barWidth;
+        const env = Math.sin((i / barCount) * Math.PI);
+        const amp = (Math.abs(Math.sin(t * 3 + i * 0.2)) * 0.7 + 0.3) * (h * 0.35) * env;
+
+        const grad = createSpectrumGrad(x, centerY - amp, x, centerY + amp);
+        ctx.fillStyle = grad;
+        ctx.shadowColor = neon3;
+        ctx.fillRect(x + 1, centerY - amp, barWidth - 2, amp * 2);
+      }
+    }
+    ctx.restore();
+  } else if (layoutType === 14) {
+    // ==========================================================
+    // 14 (NEW 3): Блочный цифровой эквалайзер с отражением
+    // ==========================================================
+    const cols = 24;
+    const rows = 16;
+    const gap = 2.5;
+    const blockW = (w - (cols + 1) * gap) / cols;
+    const blockH = (h * 0.42) / rows;
+    const startY = orientationMode === 1 ? h * 0.75 : orientationMode === 2 ? h * 0.35 : h * 0.5;
+
+    ctx.save();
+    for (let c = 0; c < cols; c++) {
+      const activeRows = Math.floor(
+        (Math.abs(Math.sin(t * 2.5 + c * 0.3)) * 0.7 + 0.3) * rows
+      );
+
+      for (let r = 0; r < rows; r++) {
+        const x = gap + c * (blockW + gap);
+        const y = startY - (r + 1) * (blockH + gap);
+        const reflectY = startY + r * (blockH + gap) + gap * 2;
+
+        if (r < activeRows) {
+          // Цвета по высоте (neon3 -> neon2 -> neon1)
+          ctx.fillStyle = r > rows * 0.7 ? neon1 : r > rows * 0.4 ? neon2 : neon3;
+
+          // Верхние блоки
+          ctx.fillRect(x, y, blockW, blockH);
+
+          // Нижнее зеркальное отражение
+          ctx.save();
+          ctx.globalAlpha = 0.28 - (r / rows) * 0.22;
+          ctx.fillRect(x, reflectY, blockW, blockH);
+          ctx.restore();
+        }
+      }
+    }
+    ctx.restore();
+  } else if (layoutType === 15) {
+    // ==========================================================
+    // 15 (NEW 4): Тонкие полосы с круглой вершиной и отражением
+    // ==========================================================
+    drawBackgroundParticles();
+    const barCount = 40;
+    const gap = 4;
+    const barW = (w - (barCount + 1) * gap) / barCount;
+    const isHanging = orientationMode === 1;
+    const startY = isHanging ? h * 0.45 : h * 0.55;
+
+    ctx.save();
+    for (let i = 0; i < barCount; i++) {
+      const x = gap + i * (barW + gap);
+      const amp = (Math.abs(Math.sin(t * 3.5 + i * 0.25)) * 0.75 + 0.25) * (h * 0.35);
+
+      if (isHanging) {
+        // Свисающие сверху вниз со стеклянным отражением
+        const grad = createSpectrumGrad(x, startY, x, startY + amp);
+        ctx.fillStyle = grad;
+        ctx.shadowColor = neon3;
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.roundRect(x, startY, barW, amp, [0, 0, barW / 2, barW / 2]);
+        ctx.fill();
+
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.beginPath();
+        ctx.roundRect(x, startY - amp * 0.6 - 4, barW, amp * 0.6, [barW / 2, barW / 2, 0, 0]);
+        ctx.fill();
+        ctx.restore();
+      } else {
+        const grad = createSpectrumGrad(x, startY, x, startY - amp);
+        ctx.fillStyle = grad;
+        ctx.shadowColor = neon3;
+        ctx.shadowBlur = 8;
+
+        // Основной столбец
+        ctx.beginPath();
+        ctx.roundRect(x, startY - amp, barW, amp, [barW / 2, barW / 2, 0, 0]);
+        ctx.fill();
+
+        // Отражение
+        ctx.save();
+        ctx.globalAlpha = 0.25;
+        ctx.beginPath();
+        ctx.roundRect(x, startY + 4, barW, amp * 0.6, [0, 0, barW / 2, barW / 2]);
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+    ctx.restore();
+  } else if (layoutType === 16) {
+    // ==========================================================
+    // 16 (NEW 5): Зеркальный точечный спектр (Dot Matrix Spectrum)
+    // ==========================================================
+    const cols = 45;
+    const dotsPerCol = 14;
+    const dotRadius = Math.min(w / cols, h / dotsPerCol) * 0.24;
+    const stepX = w / cols;
+    const stepY = (h * 0.36) / dotsPerCol;
+    const centerY = orientationMode === 1 ? h * 0.4 : orientationMode === 2 ? h * 0.6 : h * 0.5;
+
+    ctx.save();
+    for (let c = 0; c < cols; c++) {
+      const activeDots = Math.floor(
+        (Math.abs(Math.sin(t * 3 + c * 0.2)) * 0.8 + 0.2) * dotsPerCol
+      );
+
+      for (let d = 0; d < activeDots; d++) {
+        const x = c * stepX + stepX * 0.5;
+        const offset = d * stepY;
+
+        // Динамический цвет точек
+        const ratio = d / dotsPerCol;
+        ctx.fillStyle = ratio > 0.6 ? neon1 : ratio > 0.3 ? neon2 : neon3;
+        ctx.shadowColor = ctx.fillStyle;
+        ctx.shadowBlur = 8;
+
+        // Точка вверх
+        ctx.beginPath();
+        ctx.arc(x, centerY - offset, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Точка вниз
+        ctx.beginPath();
+        ctx.arc(x, centerY + offset, dotRadius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  } else if (layoutType === 17) {
+    // ==========================================================
+    // 17 (NEW 6): Плотная пиксельная сетка с яркой неоновой линией
+    // ==========================================================
+    const cols = 60;
+    const rows = 20;
+    const cellW = w / cols;
+    const cellH = (h * 0.42) / rows;
+    const isTopBase = orientationMode === 1;
+    const baseY = isTopBase ? h * 0.35 : h * 0.65;
+
+    ctx.save();
+    // Яркое неоновое основание
+    ctx.shadowColor = neon3;
+    ctx.shadowBlur = 14;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, baseY, w, 2.5);
+
+    for (let c = 0; c < cols; c++) {
+      const activeRows = Math.floor(
+        (Math.abs(Math.sin(t * 2.8 + c * 0.15)) * 0.8 + 0.2) * rows
+      );
+
+      for (let r = 0; r < activeRows; r++) {
+        const x = c * cellW;
+        const y = isTopBase ? baseY + (r + 1) * cellH : baseY - (r + 1) * cellH;
+
+        ctx.fillStyle = r > rows * 0.6 ? neon1 : r > rows * 0.3 ? neon2 : neon3;
+        ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+      }
+    }
+    ctx.restore();
+  } else if (layoutType === 18) {
+    // ==========================================================
+    // 18 (NEW 7): Пересекающиеся синусоиды (Аудиоволна)
+    // ==========================================================
+    const centerY = orientationMode === 1 ? h * 0.4 : orientationMode === 2 ? h * 0.6 : h * 0.5;
+    const waveCount = 5;
+
+    ctx.save();
+    ctx.shadowBlur = 12;
+
+    for (let wIdx = 0; wIdx < waveCount; wIdx++) {
+      ctx.beginPath();
+      const phase = t * (2 + wIdx * 0.5);
+      const color = wIdx % 3 === 0 ? neon1 : wIdx % 3 === 1 ? neon2 : neon3;
+
+      for (let x = 0; x <= w; x += 4) {
+        const env = Math.sin((x / w) * Math.PI);
+        const y =
+          centerY +
+          Math.sin(x * 0.02 + phase + wIdx) * (30 + wIdx * 9) * env;
+
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      ctx.strokeStyle = color;
+      ctx.shadowColor = color;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (layoutType === 19) {
+    // ==========================================================
+    // 19 (NEW 8): Изогнутая динамическая аудиолента (Curved Ribbon)
+    // ==========================================================
+    drawBackgroundParticles();
+    const barCount = 80;
+    const stepX = w / barCount;
+    const centerY = h * 0.5;
+    const curveAmp = orientationMode === 1 ? 65 : 45;
+
+    ctx.save();
+    ctx.shadowColor = neon3;
+    ctx.shadowBlur = 10;
+
+    for (let i = 0; i < barCount; i++) {
+      const x = i * stepX;
+      // Изгиб центральной линии (синусоида)
+      const curveY = centerY + Math.sin(x * 0.008 + t * 1.5) * curveAmp;
+      const amp = (Math.abs(Math.sin(t * 3.5 + i * 0.2)) * 0.7 + 0.3) * 38;
+
+      const grad = ctx.createLinearGradient(x, curveY - amp, x, curveY + amp);
+      grad.addColorStop(0, neon1);
+      grad.addColorStop(0.5, neon2);
+      grad.addColorStop(1, neon3);
+
+      ctx.fillStyle = grad;
+      ctx.fillRect(x, curveY - amp, stepX * 0.75, amp * 2);
+    }
+    ctx.restore();
+  } else {
+    // ==========================================================
+    // 20 (NEW 9): Радиальный неоновый круг
+    // ==========================================================
+    const cx = w * 0.5;
+    const cy = h * 0.5;
+    const radius = Math.min(w, h) * (0.2 + (orientationMode === 1 ? 0.05 : 0));
+    const rayCount = 90;
+    const spinSpeed = (orientationMode % 2 === 0 ? 1 : -1) * 0.3;
+
+    ctx.save();
+    ctx.shadowColor = neon3;
+    ctx.shadowBlur = 14;
+
+    for (let i = 0; i < rayCount; i++) {
+      const angle = (i / rayCount) * Math.PI * 2 + t * spinSpeed;
+      const amp = (Math.abs(Math.sin(t * 4 + i * 0.3)) * 0.7 + 0.3) * 48;
+
+      const x1 = cx + Math.cos(angle) * radius;
+      const y1 = cy + Math.sin(angle) * radius;
+      const x2 = cx + Math.cos(angle) * (radius + amp);
+      const y2 = cy + Math.sin(angle) * (radius + amp);
+
+      const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+      grad.addColorStop(0, neon1);
+      grad.addColorStop(0.5, neon2);
+      grad.addColorStop(1, neon3);
+
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    ctx.restore();
   }
 }
 
@@ -1351,7 +1747,8 @@ function drawShapes(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
   // Diverse dynamic background gradient driven by seed
   const bgTheme = Math.floor(rng() * 5);
@@ -1377,8 +1774,10 @@ function drawShapes(
     bgGrad.addColorStop(0.5, '#431407');
     bgGrad.addColorStop(1, '#0c0a09');
   }
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, w, h);
+  if (!skipSolidBg) {
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   // Generate 35 shapes with extreme size ranges (from micro crystals 10px to gigantic 550px wireframe structures!)
   const shapeCount = 35;
@@ -1488,7 +1887,8 @@ function drawEmojis(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
   // Surreal space void / neon dimension background
   const bgTheme = Math.floor(rng() * 5);
@@ -1514,8 +1914,10 @@ function drawEmojis(
     bgGrad.addColorStop(0.5, '#1e1005');
     bgGrad.addColorStop(1, '#050208');
   }
-  ctx.fillStyle = bgGrad;
-  ctx.fillRect(0, 0, w, h);
+  if (!skipSolidBg) {
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   // Expanded rich emoji pool
   const fullEmojiLibrary = [

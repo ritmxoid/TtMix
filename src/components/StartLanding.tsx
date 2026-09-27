@@ -110,7 +110,7 @@ export const StartLanding: React.FC<StartLandingProps> = ({
         {/* Glowing App Badge */}
         <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-200 text-xs font-semibold tracking-wider uppercase mb-5 shadow-lg shadow-purple-500/10 animate-pulse">
           <Wand2 className="w-3.5 h-3.5 text-purple-300" />
-          <span>TtMix v1.1 • {t('appTaglineBadge', 'Аниматор Текста')}</span>
+          <span>TtMix v1.11 • {t('appTaglineBadge', 'Аниматор Текста')}</span>
         </div>
 
         {/* Title */}

@@ -68,26 +68,29 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
 
   return (
     <>
-      {/* Backdrop overlay: tapping anywhere closes popup */}
-      <div
-        className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] cursor-pointer"
-        onPointerDown={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-        onClick={(e) => {
-          e.stopPropagation();
-          onClose();
-        }}
-      />
+      {/* Backdrop overlay: tapping anywhere closes popup (only active when color picker modal is not open) */}
+      {!isPickerOpen && (
+        <div
+          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] cursor-pointer"
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+          onClick={(e) => {
+            e.stopPropagation();
+            onClose();
+          }}
+        />
+      )}
 
-      {/* Main floating popup docked at bottom */}
+      {/* Main floating popup docked at the bottom of the screen covering tool buttons */}
       <div
         data-dock="true"
+        data-tour="text-properties-panel"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
-        className="absolute bottom-3 sm:bottom-6 left-1/2 -translate-x-1/2 w-60 sm:w-64 max-w-[92vw] p-2.5 rounded-2xl bg-black/20 backdrop-blur-md border border-white/10 shadow-2xl shadow-black/80 z-50 flex flex-col gap-2 pointer-events-auto select-none"
+        className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 w-64 sm:w-72 max-w-[94vw] p-3 pb-[max(0.75rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))] rounded-2xl bg-zinc-900/95 backdrop-blur-2xl border border-white/20 shadow-2xl shadow-black/90 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
       >
         {/* TOP SECTION: Swaps between Text Size Slider and Background Opacity/Width Sliders */}
         {currentTab === 'text' ? (
@@ -177,7 +180,11 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
           {/* Rainbow Launcher for ColorPickerModal */}
           <button
             type="button"
-            onClick={() => setIsPickerOpen(true)}
+            onPointerDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              e.stopPropagation();
+              setIsPickerOpen(true);
+            }}
             className="w-6 h-6 sm:w-7 sm:h-7 rounded-lg bg-gradient-to-tr from-rose-500 via-purple-500 to-cyan-400 p-0.5 shadow-md flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-transform border border-white/30 shrink-0"
             title={t('colorPaletteMixer', 'Палитра цветов и микшер')}
           >

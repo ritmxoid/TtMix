@@ -558,8 +558,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
         if (rect && rect.width > 0 && rect.height > 0) {
           const deltaPercentX = (dx / rect.width) * 100;
           const deltaPercentY = (dy / rect.height) * 100;
-          const newX = Math.round(Math.min(90, Math.max(10, initialTextPosXRef.current + deltaPercentX)));
-          const newY = Math.round(Math.min(88, Math.max(12, initialTextPosYRef.current + deltaPercentY)));
+          const newX = Math.round(Math.min(100, Math.max(0, initialTextPosXRef.current + deltaPercentX)));
+          const newY = Math.round(Math.min(100, Math.max(0, initialTextPosYRef.current + deltaPercentY)));
           if (newX !== state.textPositionX || newY !== state.textPositionY) {
             onChange({ textPositionX: newX, textPositionY: newY });
           }

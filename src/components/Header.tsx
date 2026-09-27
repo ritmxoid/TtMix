@@ -80,7 +80,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </h1>
                 <div className="text-[10px] sm:text-[11px] font-medium text-purple-300/90 truncate leading-none mt-0.5">
-                  {t('appSubtitle', 'Аниматор Текста')} v1.1
+                  {t('appSubtitle', 'Аниматор Текста')} v1.11
                 </div>
               </div>
             </button>
@@ -98,7 +98,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </h1>
                 <div className="text-[10px] sm:text-[11px] font-medium text-purple-300/90 truncate leading-none mt-0.5">
-                  {t('appSubtitle', 'Аниматор Текста')} v1.1
+                  {t('appSubtitle', 'Аниматор Текста')} v1.11
                 </div>
               </div>
             </>

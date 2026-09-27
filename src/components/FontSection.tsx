@@ -25,6 +25,7 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
   const { t } = useLanguage();
   const [isTextColorPickerOpen, setIsTextColorPickerOpen] = useState(false);
   const [isStrokeColorPickerOpen, setIsStrokeColorPickerOpen] = useState(false);
+  const [isTextBgColorPickerOpen, setIsTextBgColorPickerOpen] = useState(false);
 
   return (
     <div data-tour="font-audio" className="bg-[#16161D] border border-white/10 rounded-2xl p-5 shadow-lg shadow-black/20 space-y-5">
@@ -381,6 +382,14 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
                         style={{ backgroundColor: c }}
                       />
                     ))}
+                    <button
+                      type="button"
+                      onClick={() => setIsTextBgColorPickerOpen(true)}
+                      className="w-5 h-5 rounded-md bg-gradient-to-tr from-rose-500 via-purple-500 to-cyan-400 p-0.5 flex items-center justify-center cursor-pointer hover:scale-110 active:scale-95 transition-transform border border-white/30"
+                      title={t('bgColorPicker', 'Микшер цвета фона')}
+                    >
+                      <Palette className="w-3 h-3 text-white drop-shadow" />
+                    </button>
                   </div>
                 </div>
 
@@ -421,6 +430,14 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
         color={state.strokeColor}
         onChange={(newColor) => onChange({ strokeColor: newColor })}
         title={t('strokeColorPicker', 'Микшер цвета обводки')}
+      />
+
+      <ColorPickerModal
+        isOpen={isTextBgColorPickerOpen}
+        onClose={() => setIsTextBgColorPickerOpen(false)}
+        color={state.textBgColor || '#0070f3'}
+        onChange={(newColor) => onChange({ textBgColor: newColor })}
+        title={t('bgColorPicker', 'Микшер цвета фона')}
       />
     </div>
   );

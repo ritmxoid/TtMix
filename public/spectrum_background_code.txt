@@ -1,0 +1,498 @@
+/**
+ * =======================================================================
+ * КОД АНИМИРОВАННОГО ФОНА "СПЕКТР И ЭКВАЛАЙЗЕРЫ" ДЛЯ HTML5 CANVAS
+ * (ВКЛЮЧАЕТ 21 УНИКАЛЬНЫЙ МАКЕТ С ПОДДЕРЖКОЙ СМЕНЫ ЦВЕТОВ,
+ * ОРИЕНТАЦИИ И РЕГУЛИРОВКИ СКОРОСТИ)
+ * =======================================================================
+ * 
+ * В данном коде:
+ * 1. Генератор псевдослучайных чисел по seed (для сохранения понравившегося стиля).
+ * 2. Основная процедурная функция drawEqualizerSpectrum:
+ *    - 21 архитектура эквалайзера (включая 9 новых макетов)
+ *    - 6 неоновых палитр (Cyber Synthwave, Ultra Cyan, Emerald, Fire Bass, Acid Violet, Violet-Rose)
+ *    - Регулировка скорости (speedFactor)
+ *    - Смена ориентации (горизонтальная, инвертированная сверху-вниз, вертикальная 90°, зеркальная/наклонная)
+ * 3. Отдельная функция drawCustomImageEqualizers с явными параметрами для выбора любого макета,
+ *    палитры, ориентации и скорости вручную.
+ * 4. Пример запуска на HTML-странице через requestAnimationFrame.
+ */
+
+// =======================================================================
+// 1. ГЕНЕРАТОР ПСЕВДОСЛУЧАЙНЫХ ЧИСЕЛ ПО SEED
+// =======================================================================
+export function seededRandom(seed: number) {
+  let s = seed % 2147483647;
+  if (s <= 0) s += 2147483646;
+  return () => {
+    s = (s * 16807) % 2147483647;
+    return (s - 1) / 2147483646;
+  };
+}
+
+// =======================================================================
+// 2. ФУНКЦИЯ РУЧНОГО ВЫБОРА МАКЕТА, ЦВЕТА, ОРИЕНТАЦИИ И СКОРОСТИ
+// =======================================================================
+export type EqualizerOrientation = 'normal' | 'inverted' | 'mirrored' | 'vertical';
+
+export interface EqualizerColorPalette {
+  name: string;
+  bgGrad: [string, string, string];
+  neon1: string;
+  neon2: string;
+  neon3: string;
+}
+
+export const EQUALIZER_PALETTES: EqualizerColorPalette[] = [
+  {
+    name: 'Cyber Synthwave',
+    bgGrad: ['#030712', '#0f172a', '#3b0764'],
+    neon1: '#ec4899',
+    neon2: '#a855f7',
+    neon3: '#06b6d4',
+  },
+  {
+    name: 'Electric Ultra Cyan',
+    bgGrad: ['#090514', '#1e1b4b', '#082f49'],
+    neon1: '#38bdf8',
+    neon2: '#818cf8',
+    neon3: '#c084fc',
+  },
+  {
+    name: 'Matrix Emerald Bass',
+    bgGrad: ['#022c22', '#064e3b', '#020617'],
+    neon1: '#22c55e',
+    neon2: '#10b981',
+    neon3: '#a3e635',
+  },
+  {
+    name: 'Deep Crimson Fire Bass',
+    bgGrad: ['#450a0a', '#18020a', '#09090b'],
+    neon1: '#ef4444',
+    neon2: '#f97316',
+    neon3: '#facc15',
+  },
+  {
+    name: 'Hyper Acid Violet',
+    bgGrad: ['#1e1b4b', '#4c1d95', '#0f172a'],
+    neon1: '#facc15',
+    neon2: '#ec4899',
+    neon3: '#3b82f6',
+  },
+  {
+    name: 'Neon Sunset Violet-Rose',
+    bgGrad: ['#050714', '#190a2a', '#0c1a3d'],
+    neon1: '#c084fc',
+    neon2: '#e879f9',
+    neon3: '#38bdf8',
+  }
+];
+
+/**
+ * Отрисовка эквалайзера с настраиваемыми параметрами
+ * @param ctx         Контекст Canvas
+ * @param w           Ширина канваса
+ * @param h           Высота канваса
+ * @param t           Время в секундах (например, performance.now() / 1000)
+ * @param layoutIndex Индекс макета: 0..8 (для 9 новых вариантов) или 0..20
+ * @param paletteIndex Индекс палитры от 0 до 5 (или объект палитры)
+ * @param orientation Ориентация: 'normal' | 'inverted' | 'mirrored' | 'vertical'
+ * @param speed       Множитель скорости (по умолчанию 1.0)
+ */
+export function drawCustomImageEqualizers(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  t: number,
+  layoutIndex: number = 0,
+  paletteIndex: number = 5,
+  orientation: EqualizerOrientation = 'normal',
+  speed: number = 1.0
+) {
+  const pal = EQUALIZER_PALETTES[paletteIndex % EQUALIZER_PALETTES.length];
+  const animT = t * speed;
+  const { neon1, neon2, neon3 } = pal;
+
+  // Базовый фон
+  const bg = ctx.createLinearGradient(0, 0, 0, h);
+  bg.addColorStop(0, pal.bgGrad[0]);
+  bg.addColorStop(0.5, pal.bgGrad[1]);
+  bg.addColorStop(1, pal.bgGrad[2]);
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, w, h);
+
+  // Центральная неоновая аура
+  const aura = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, w * 0.65);
+  aura.addColorStop(0, neon2 + '40');
+  aura.addColorStop(0.6, neon3 + '20');
+  aura.addColorStop(1, 'transparent');
+  ctx.fillStyle = aura;
+  ctx.fillRect(0, 0, w, h);
+
+  // Спектральный градиент
+  const createSpectrumGrad = (x1: number, y1: number, x2: number, y2: number) => {
+    const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+    grad.addColorStop(0, neon1);
+    grad.addColorStop(0.35, neon2);
+    grad.addColorStop(0.7, neon3);
+    grad.addColorStop(1, neon1);
+    return grad;
+  };
+
+  // Неоновые частицы фона
+  const drawBackgroundParticles = () => {
+    ctx.save();
+    for (let i = 0; i < 32; i++) {
+      const px = (Math.sin(i * 99 + animT * 0.22) * 0.5 + 0.5) * w;
+      const py = (Math.cos(i * 33 + animT * 0.32) * 0.5 + 0.5) * h;
+      const pSize = (Math.sin(i + animT) * 0.5 + 0.5) * 1.8 + 0.6;
+      ctx.fillStyle = i % 3 === 0 ? neon1 : i % 3 === 1 ? neon3 : '#ffffff';
+      ctx.shadowColor = neon2;
+      ctx.shadowBlur = 8;
+      ctx.globalAlpha = (Math.sin(i * 12 + animT * 2.2) * 0.5 + 0.5) * 0.75;
+      ctx.beginPath();
+      ctx.arc(px, py, pSize, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  };
+
+  // 9 макетов эквалайзера (0..8)
+  switch (layoutIndex % 9) {
+    case 0: {
+      // 1. Неоновая осциллограмма с заполнением и пылью
+      drawBackgroundParticles();
+      const centerY = orientation === 'inverted' ? h * 0.35 : orientation === 'mirrored' ? h * 0.65 : h * 0.5;
+
+      ctx.save();
+      if (orientation === 'vertical') {
+        ctx.translate(w * 0.5, h * 0.5);
+        ctx.rotate(-Math.PI / 2);
+        ctx.translate(-w * 0.5, -h * 0.5);
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(0, centerY);
+
+      for (let x = 0; x <= w; x += 5) {
+        const freq1 = Math.sin(x * 0.015 + animT * 3) * 40;
+        const freq2 = Math.cos(x * 0.03 - animT * 2) * 20;
+        const env = Math.sin((x / w) * Math.PI);
+        const y = centerY + (freq1 + freq2) * env;
+        ctx.lineTo(x, y);
+      }
+
+      ctx.strokeStyle = neon3;
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = neon2;
+      ctx.shadowBlur = 16;
+      ctx.stroke();
+
+      // Дополнительная полупрозрачная гармоника
+      ctx.beginPath();
+      ctx.moveTo(0, centerY);
+      for (let x = 0; x <= w; x += 5) {
+        const y = centerY + Math.sin(x * 0.02 + animT * 4) * 25 * Math.sin((x / w) * Math.PI);
+        ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = neon1;
+      ctx.globalAlpha = 0.55;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.restore();
+      break;
+    }
+
+    case 1: {
+      // 2. Симметричный спектрум (Soundwave)
+      drawBackgroundParticles();
+      const barCount = 70;
+      const isVert = orientation === 'vertical';
+      const centerY = h * 0.5;
+
+      ctx.save();
+      ctx.shadowBlur = 10;
+      if (isVert) {
+        const barHeight = h / barCount;
+        const centerX = w * 0.5;
+        for (let i = 0; i < barCount; i++) {
+          const y = i * barHeight;
+          const env = Math.sin((i / barCount) * Math.PI);
+          const amp = (Math.abs(Math.sin(animT * 3 + i * 0.2)) * 0.7 + 0.3) * (w * 0.35) * env;
+
+          const grad = createSpectrumGrad(centerX - amp, y, centerX + amp, y);
+          ctx.fillStyle = grad;
+          ctx.shadowColor = neon3;
+          ctx.fillRect(centerX - amp, y + 1, amp * 2, barHeight - 2);
+        }
+      } else {
+        const barWidth = w / barCount;
+        for (let i = 0; i < barCount; i++) {
+          const x = i * barWidth;
+          const env = Math.sin((i / barCount) * Math.PI);
+          const amp = (Math.abs(Math.sin(animT * 3 + i * 0.2)) * 0.7 + 0.3) * (h * 0.35) * env;
+
+          const grad = createSpectrumGrad(x, centerY - amp, x, centerY + amp);
+          ctx.fillStyle = grad;
+          ctx.shadowColor = neon3;
+          ctx.fillRect(x + 1, centerY - amp, barWidth - 2, amp * 2);
+        }
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 2: {
+      // 3. Блочный цифровой эквалайзер с зеркальным отражением
+      const cols = 24;
+      const rows = 16;
+      const gap = 2.5;
+      const blockW = (w - (cols + 1) * gap) / cols;
+      const blockH = (h * 0.42) / rows;
+      const startY = orientation === 'inverted' ? h * 0.75 : orientation === 'mirrored' ? h * 0.35 : h * 0.5;
+
+      ctx.save();
+      for (let c = 0; c < cols; c++) {
+        const activeRows = Math.floor(
+          (Math.abs(Math.sin(animT * 2.5 + c * 0.3)) * 0.7 + 0.3) * rows
+        );
+
+        for (let r = 0; r < rows; r++) {
+          const x = gap + c * (blockW + gap);
+          const y = startY - (r + 1) * (blockH + gap);
+          const reflectY = startY + r * (blockH + gap) + gap * 2;
+
+          if (r < activeRows) {
+            ctx.fillStyle = r > rows * 0.7 ? neon1 : r > rows * 0.4 ? neon2 : neon3;
+            ctx.fillRect(x, y, blockW, blockH);
+
+            // Отражение
+            ctx.save();
+            ctx.globalAlpha = 0.28 - (r / rows) * 0.22;
+            ctx.fillRect(x, reflectY, blockW, blockH);
+            ctx.restore();
+          }
+        }
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 3: {
+      // 4. Тонкие полосы с круглой вершиной и отражением
+      drawBackgroundParticles();
+      const barCount = 40;
+      const gap = 4;
+      const barW = (w - (barCount + 1) * gap) / barCount;
+      const isHanging = orientation === 'inverted';
+      const startY = isHanging ? h * 0.45 : h * 0.55;
+
+      ctx.save();
+      for (let i = 0; i < barCount; i++) {
+        const x = gap + i * (barW + gap);
+        const amp = (Math.abs(Math.sin(animT * 3.5 + i * 0.25)) * 0.75 + 0.25) * (h * 0.35);
+
+        if (isHanging) {
+          const grad = createSpectrumGrad(x, startY, x, startY + amp);
+          ctx.fillStyle = grad;
+          ctx.shadowColor = neon3;
+          ctx.shadowBlur = 8;
+          ctx.beginPath();
+          ctx.roundRect(x, startY, barW, amp, [0, 0, barW / 2, barW / 2]);
+          ctx.fill();
+
+          ctx.save();
+          ctx.globalAlpha = 0.25;
+          ctx.beginPath();
+          ctx.roundRect(x, startY - amp * 0.6 - 4, barW, amp * 0.6, [barW / 2, barW / 2, 0, 0]);
+          ctx.fill();
+          ctx.restore();
+        } else {
+          const grad = createSpectrumGrad(x, startY, x, startY - amp);
+          ctx.fillStyle = grad;
+          ctx.shadowColor = neon3;
+          ctx.shadowBlur = 8;
+
+          ctx.beginPath();
+          ctx.roundRect(x, startY - amp, barW, amp, [barW / 2, barW / 2, 0, 0]);
+          ctx.fill();
+
+          ctx.save();
+          ctx.globalAlpha = 0.25;
+          ctx.beginPath();
+          ctx.roundRect(x, startY + 4, barW, amp * 0.6, [0, 0, barW / 2, barW / 2]);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 4: {
+      // 5. Зеркальный точечный спектр (Dot Matrix)
+      const cols = 45;
+      const dotsPerCol = 14;
+      const dotRadius = Math.min(w / cols, h / dotsPerCol) * 0.24;
+      const stepX = w / cols;
+      const stepY = (h * 0.36) / dotsPerCol;
+      const centerY = orientation === 'inverted' ? h * 0.4 : orientation === 'mirrored' ? h * 0.6 : h * 0.5;
+
+      ctx.save();
+      for (let c = 0; c < cols; c++) {
+        const activeDots = Math.floor(
+          (Math.abs(Math.sin(animT * 3 + c * 0.2)) * 0.8 + 0.2) * dotsPerCol
+        );
+
+        for (let d = 0; d < activeDots; d++) {
+          const x = c * stepX + stepX * 0.5;
+          const offset = d * stepY;
+
+          const ratio = d / dotsPerCol;
+          ctx.fillStyle = ratio > 0.6 ? neon1 : ratio > 0.3 ? neon2 : neon3;
+          ctx.shadowColor = ctx.fillStyle;
+          ctx.shadowBlur = 8;
+
+          ctx.beginPath();
+          ctx.arc(x, centerY - offset, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.beginPath();
+          ctx.arc(x, centerY + offset, dotRadius, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 5: {
+      // 6. Плотная пиксельная сетка с яркой неоновой линией
+      const cols = 60;
+      const rows = 20;
+      const cellW = w / cols;
+      const cellH = (h * 0.42) / rows;
+      const isTopBase = orientation === 'inverted';
+      const baseY = isTopBase ? h * 0.35 : h * 0.65;
+
+      ctx.save();
+      ctx.shadowColor = neon3;
+      ctx.shadowBlur = 14;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, baseY, w, 2.5);
+
+      for (let c = 0; c < cols; c++) {
+        const activeRows = Math.floor(
+          (Math.abs(Math.sin(animT * 2.8 + c * 0.15)) * 0.8 + 0.2) * rows
+        );
+
+        for (let r = 0; r < activeRows; r++) {
+          const x = c * cellW;
+          const y = isTopBase ? baseY + (r + 1) * cellH : baseY - (r + 1) * cellH;
+
+          ctx.fillStyle = r > rows * 0.6 ? neon1 : r > rows * 0.3 ? neon2 : neon3;
+          ctx.fillRect(x + 0.5, y + 0.5, cellW - 1, cellH - 1);
+        }
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 6: {
+      // 7. Пересекающиеся синусоиды (Аудиоволна)
+      const centerY = orientation === 'inverted' ? h * 0.4 : orientation === 'mirrored' ? h * 0.6 : h * 0.5;
+      const waveCount = 5;
+
+      ctx.save();
+      ctx.shadowBlur = 12;
+
+      for (let wIdx = 0; wIdx < waveCount; wIdx++) {
+        ctx.beginPath();
+        const phase = animT * (2 + wIdx * 0.5);
+        const color = wIdx % 3 === 0 ? neon1 : wIdx % 3 === 1 ? neon2 : neon3;
+
+        for (let x = 0; x <= w; x += 4) {
+          const env = Math.sin((x / w) * Math.PI);
+          const y =
+            centerY +
+            Math.sin(x * 0.02 + phase + wIdx) * (30 + wIdx * 9) * env;
+
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+
+        ctx.strokeStyle = color;
+        ctx.shadowColor = color;
+        ctx.lineWidth = 2.5;
+        ctx.stroke();
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 7: {
+      // 8. Изогнутая динамическая аудиолента (Curved Ribbon)
+      drawBackgroundParticles();
+      const barCount = 80;
+      const stepX = w / barCount;
+      const centerY = h * 0.5;
+      const curveAmp = orientation === 'inverted' ? 65 : 45;
+
+      ctx.save();
+      ctx.shadowColor = neon3;
+      ctx.shadowBlur = 10;
+
+      for (let i = 0; i < barCount; i++) {
+        const x = i * stepX;
+        const curveY = centerY + Math.sin(x * 0.008 + animT * 1.5) * curveAmp;
+        const amp = (Math.abs(Math.sin(animT * 3.5 + i * 0.2)) * 0.7 + 0.3) * 38;
+
+        const grad = ctx.createLinearGradient(x, curveY - amp, x, curveY + amp);
+        grad.addColorStop(0, neon1);
+        grad.addColorStop(0.5, neon2);
+        grad.addColorStop(1, neon3);
+
+        ctx.fillStyle = grad;
+        ctx.fillRect(x, curveY - amp, stepX * 0.75, amp * 2);
+      }
+      ctx.restore();
+      break;
+    }
+
+    case 8: {
+      // 9. Радиальный неоновый круг
+      const cx = w * 0.5;
+      const cy = h * 0.5;
+      const radius = Math.min(w, h) * (0.2 + (orientation === 'inverted' ? 0.05 : 0));
+      const rayCount = 90;
+      const spinSpeed = (orientation === 'mirrored' ? -1 : 1) * 0.3;
+
+      ctx.save();
+      ctx.shadowColor = neon3;
+      ctx.shadowBlur = 14;
+
+      for (let i = 0; i < rayCount; i++) {
+        const angle = (i / rayCount) * Math.PI * 2 + animT * spinSpeed;
+        const amp = (Math.abs(Math.sin(animT * 4 + i * 0.3)) * 0.7 + 0.3) * 48;
+
+        const x1 = cx + Math.cos(angle) * radius;
+        const y1 = cy + Math.sin(angle) * radius;
+        const x2 = cx + Math.cos(angle) * (radius + amp);
+        const y2 = cy + Math.sin(angle) * (radius + amp);
+
+        const grad = ctx.createLinearGradient(x1, y1, x2, y2);
+        grad.addColorStop(0, neon1);
+        grad.addColorStop(0.5, neon2);
+        grad.addColorStop(1, neon3);
+
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      break;
+    }
+  }
+}

@@ -93,6 +93,8 @@ export interface VideoProjectState {
   proceduralMood?: ProceduralMoodStyle; // AI Procedural generator mood style
   proceduralSeed?: number; // Seed variation for unique generated background
   bgOverlayOpacity: number; // 0 to 0.9
+  mediaOverlayTheme?: string | null; // Theme ID for floating particles/elements overlay on user media (hearts, balloons, snow, etc.)
+  mediaColorTint?: string | null; // Color tint overlay for user media
 
   // Audio / Music
   audio: AudioState;

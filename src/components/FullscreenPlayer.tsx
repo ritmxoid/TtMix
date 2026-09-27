@@ -66,6 +66,7 @@ interface FullscreenPlayerProps {
   onOpenTour?: () => void;
   isTourActive?: boolean;
   isLuckyMode?: boolean;
+  tourStepIdx?: number;
   onBackToLuckyGrid?: () => void;
   onOpenTextInput?: () => void;
   onOpenRocketConfirm?: () => void;
@@ -83,6 +84,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   onOpenTour,
   isTourActive = false,
   isLuckyMode = false,
+  tourStepIdx = -1,
   onBackToLuckyGrid,
   onOpenTextInput,
   onOpenRocketConfirm,
@@ -251,8 +253,8 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         if (rect && rect.width > 0 && rect.height > 0) {
           const deltaPercentX = (dx / rect.width) * 100;
           const deltaPercentY = (dy / rect.height) * 100;
-          const newX = Math.min(90, Math.max(10, initialTextPosXRef.current + deltaPercentX));
-          const newY = Math.min(88, Math.max(12, initialTextPosYRef.current + deltaPercentY));
+          const newX = Math.min(100, Math.max(0, initialTextPosXRef.current + deltaPercentX));
+          const newY = Math.min(100, Math.max(0, initialTextPosYRef.current + deltaPercentY));
           if (
             Math.abs(newX - (state.textPositionX ?? 50)) > 0.05 ||
             Math.abs(newY - (state.textPositionY ?? 50)) > 0.05
@@ -479,6 +481,51 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, hideControls, onClose, showFontSizePopup, isTextColorPickerOpen]);
 
+  // Tour step 11: Animated text movement across the screen
+  const tourStep11StartTimeRef = useRef<number>(0);
+  const step11FingerRef = useRef<HTMLDivElement>(null);
+  const tourStepIdxRef = useRef<number>(tourStepIdx);
+
+  useEffect(() => {
+    tourStepIdxRef.current = tourStepIdx;
+    if (tourStepIdx === 11) {
+      tourStep11StartTimeRef.current = performance.now();
+    }
+  }, [tourStepIdx]);
+
+  const getStep11Pos = (currentTimeMs?: number) => {
+    if (tourStepIdxRef.current === 11) {
+      const nowMs = currentTimeMs ?? performance.now();
+      const startTime = tourStep11StartTimeRef.current || nowMs;
+      const elapsed = (nowMs - startTime) / 1000;
+      // Smooth sinusoidal oscillation from top-left (0,0) to bottom-right (100,100) and back
+      const progress = (Math.sin(elapsed * 1.8 - Math.PI / 2) + 1) / 2;
+      return {
+        textX: Number((0 + 100 * progress).toFixed(1)),
+        textY: Number((0 + 100 * progress).toFixed(1)),
+        fingerX: Number((10 + 80 * progress).toFixed(1)),
+        fingerY: Number((10 + 80 * progress).toFixed(1)),
+      };
+    }
+    return {
+      textX: state.textPositionX ?? 50,
+      textY: state.textPositionY ?? 50,
+      fingerX: state.textPositionX ?? 50,
+      fingerY: state.textPositionY ?? 50,
+    };
+  };
+
+  // Tour step 12: Automatically show text properties editing popup panel
+  useEffect(() => {
+    if (tourStepIdx === 12) {
+      updatePopupOffset({ x: 0, y: 0 });
+      setShowFontSizePopup(true);
+      return () => {
+        setShowFontSizePopup(false);
+      };
+    }
+  }, [tourStepIdx]);
+
   // Sync background video element playback
   useEffect(() => {
     if (!isOpen) {
@@ -609,9 +656,19 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       const isSync = Boolean(currentSt.syncWithVideo) && vidDur > 0;
       const renderTargetDur = isSync ? vidDur : undefined;
 
+      let effectiveSt = currentSt;
+      if (tourStepIdxRef.current === 11) {
+        const p = getStep11Pos();
+        effectiveSt = {
+          ...currentSt,
+          textPositionX: p.textX,
+          textPositionY: p.textY,
+        };
+      }
+
       renderCanvasFrame({
         ctx,
-        state: currentSt,
+        state: effectiveSt,
         currentTime: time,
         bgMediaElement,
         dimensions: dims,
@@ -731,6 +788,13 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       } else {
         lastTimeRef.current = now;
         drawFrame(currentTimeRef.current);
+      }
+
+      // Live smooth update of step 11 finger DOM position
+      if (tourStepIdxRef.current === 11 && step11FingerRef.current) {
+        const p = getStep11Pos(now);
+        step11FingerRef.current.style.left = `${p.fingerX}%`;
+        step11FingerRef.current.style.top = `${p.fingerY}%`;
       }
 
       animationFrameRef.current = requestAnimationFrame(loop);
@@ -1154,8 +1218,8 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           </button>
         </div>
       )}
-      {/* Top Right Help / Tour Button */}
-      {onOpenTour && (
+      {/* Top Right Help / Tour Button (Expert mode only) */}
+      {!isLuckyMode && onOpenTour && (
         <button
           type="button"
           onClick={(e) => {
@@ -1301,7 +1365,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       {/* Main Canvas Viewport */}
       <div
         ref={viewportRef}
-        data-tour="canvas-stage"
+        data-tour="fullscreen-canvas-text"
         onPointerDown={handleStagePointerDown}
         onPointerMove={handleStagePointerMove}
         onPointerUp={handleStagePointerUp}
@@ -1331,6 +1395,39 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 : 'max-h-full max-w-full shadow-2xl rounded-none sm:rounded-lg'
             }`}
           />
+
+          {/* Tour Step 11: Animated Finger Pointer dragging text from top-left to bottom-right */}
+          {tourStepIdx === 11 && (
+            <div
+              ref={step11FingerRef}
+              style={{
+                left: `${getStep11Pos().fingerX}%`,
+                top: `${getStep11Pos().fingerY}%`,
+              }}
+              className="absolute z-50 pointer-events-none -translate-x-1/2 -translate-y-1/2"
+            >
+              <div className="w-14 h-14 rounded-full border-2 border-cyan-400 bg-cyan-400/30 animate-ping absolute -inset-1 m-auto" />
+              <div className="w-10 h-10 rounded-full border-2 border-white bg-cyan-500 shadow-[0_0_25px_rgba(6,182,212,1)] flex items-center justify-center">
+                <span className="text-white text-xl font-bold drop-shadow select-none">👆</span>
+              </div>
+            </div>
+          )}
+
+          {/* Tour Step 12: Long-Press Touch Ring Trigger */}
+          {tourStepIdx === 12 && (
+            <div
+              style={{
+                left: `${state.textPositionX ?? 50}%`,
+                top: `${state.textPositionY ?? 50}%`,
+              }}
+              className="absolute z-40 pointer-events-none -translate-x-1/2 -translate-y-1/2"
+            >
+              <div className="w-16 h-16 rounded-full border-2 border-purple-400 bg-purple-500/30 animate-ping absolute -inset-3 m-auto" />
+              <div className="w-10 h-10 rounded-full border-2 border-white bg-purple-600/80 shadow-[0_0_25px_rgba(168,85,247,1)] flex items-center justify-center">
+                <span className="text-white text-lg font-bold drop-shadow animate-pulse select-none">👆</span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1357,6 +1454,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             {/* 1. Round Button: TEXT (T) */}
             <button
               type="button"
+              data-tour="fullscreen-btn-text"
               onClick={(e) => {
                 e.stopPropagation();
                 if (onOpenTextInput) onOpenTextInput();
@@ -1370,6 +1468,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             {/* 2. Round Button: ROCKET (Rocket to Expert Mode) */}
             <button
               type="button"
+              data-tour="fullscreen-btn-rocket"
               onClick={(e) => {
                 e.stopPropagation();
                 if (onOpenRocketConfirm) onOpenRocketConfirm();
@@ -1384,6 +1483,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             {recordedVideoUrl && !isRecordingScreen && !isProcessingVideo ? (
               <button
                 type="button"
+                data-tour="fullscreen-btn-record"
                 onClick={handleSaveRecordedVideo}
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-teal-500/80 hover:bg-teal-400 text-white flex items-center justify-center shadow-2xl shadow-teal-500/50 transition-all cursor-pointer active:scale-95 animate-bounce shrink-0 border-2 border-white/30"
                 title={t('downloadWebm', 'Скачать видео WebM')}
@@ -1393,6 +1493,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             ) : isProcessingVideo ? (
               <button
                 type="button"
+                data-tour="fullscreen-btn-record"
                 disabled
                 className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/40 border border-zinc-700/60 flex items-center justify-center cursor-not-allowed opacity-80 shrink-0"
               >
@@ -1401,6 +1502,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             ) : (
               <button
                 type="button"
+                data-tour="fullscreen-btn-record"
                 onClick={(e) => {
                   e.stopPropagation();
                   toggleLiveScreenRecord();
@@ -1421,7 +1523,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             )}
 
             {/* 4. Round Button: NOTES / MELODY (Tap: Remix / Close volume, Long Press: Vertical Volume Slider Popout) */}
-            <div className="relative">
+            <div className="relative" data-tour="fullscreen-btn-music">
               {/* Vertical Volume Slider Popout */}
               {showVolumePopover && (
                 <div
@@ -1613,6 +1715,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             {/* 5. Round Button: BACK ARROW */}
             <button
               type="button"
+              data-tour="fullscreen-btn-back"
               onClick={(e) => {
                 e.stopPropagation();
                 if (onBackToLuckyGrid) onBackToLuckyGrid();

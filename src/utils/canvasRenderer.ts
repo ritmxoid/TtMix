@@ -338,22 +338,74 @@ function drawBackground(
 
       try {
         ctx.drawImage(bgMedia, drawX, drawY, drawW, drawH);
-        return;
       } catch (err) {
         console.warn('Unable to draw background frame:', err);
       }
+
+      // Dynamic color tint overlay (e.g. from Lucky Mode Eye variations)
+      if (state.mediaColorTint) {
+        ctx.save();
+        ctx.fillStyle = state.mediaColorTint;
+        ctx.fillRect(0, 0, width, height);
+        ctx.restore();
+      }
+
+      // If mediaOverlayTheme is set, overlay the animated floating theme WITHOUT its solid background!
+      if (state.mediaOverlayTheme) {
+        drawPresetOrOverlayBackground(
+          ctx,
+          state.mediaOverlayTheme,
+          state,
+          width,
+          height,
+          time,
+          true,
+          activeSegment,
+          activeSegmentIndex,
+          totalSegmentsCount
+        );
+      }
+
+      return;
     }
   }
 
   // Fallback to preset
+  const presetId = state.bgPresetId || 'ai-procedural-cosmic';
+  drawPresetOrOverlayBackground(
+    ctx,
+    presetId,
+    state,
+    width,
+    height,
+    time,
+    false,
+    activeSegment,
+    activeSegmentIndex,
+    totalSegmentsCount
+  );
+}
+
+function drawPresetOrOverlayBackground(
+  ctx: CanvasRenderingContext2D,
+  presetId: string,
+  state: VideoProjectState,
+  width: number,
+  height: number,
+  time: number,
+  skipSolidBg: boolean = false,
+  activeSegment: any = null,
+  activeSegmentIndex: number = 0,
+  totalSegmentsCount: number = 1
+) {
   const preset =
-    BACKGROUND_PRESETS.find((p) => p.id === state.bgPresetId) ||
+    BACKGROUND_PRESETS.find((p) => p.id === presetId) ||
     BACKGROUND_PRESETS[0];
 
   if (preset.id.startsWith('ai-procedural-')) {
     const moodStyle = (preset.id.replace('ai-procedural-', '') as ProceduralMoodStyle) || state.proceduralMood || 'cosmic';
     const seed = state.proceduralSeed || 42;
-    drawProceduralMoodBackground(ctx, width, height, time, moodStyle, seed);
+    drawProceduralMoodBackground(ctx, width, height, time, moodStyle, seed, skipSolidBg);
     return;
   }
 
@@ -528,8 +580,16 @@ function drawBackground(
     qGrad.addColorStop(0, '#090a1a');
     qGrad.addColorStop(0.5, '#1e1035');
     qGrad.addColorStop(1, '#05030a');
-    ctx.fillStyle = qGrad;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = qGrad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = qGrad;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     // Сетка парящих знаков
     const count = 24;
@@ -580,8 +640,16 @@ function drawBackground(
     exGrad.addColorStop(0, '#1f0606');
     exGrad.addColorStop(0.5, '#450a0a');
     exGrad.addColorStop(1, '#0c0202');
-    ctx.fillStyle = exGrad;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = exGrad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = exGrad;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     const count = 26;
     const colors = ['#facc15', '#fbbf24', '#f97316', '#ef4444', '#f43f5e'];
@@ -629,8 +697,16 @@ function drawBackground(
     kissGrad.addColorStop(0, '#2d0612');
     kissGrad.addColorStop(0.5, '#500724');
     kissGrad.addColorStop(1, '#18020a');
-    ctx.fillStyle = kissGrad;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = kissGrad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = kissGrad;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     const count = 22;
     const kissIcons = ['💋', '😘', '💕', '💋', '💖'];
@@ -667,8 +743,16 @@ function drawBackground(
     moneyGrad.addColorStop(0, '#022115');
     moneyGrad.addColorStop(0.5, '#064e3b');
     moneyGrad.addColorStop(1, '#01140c');
-    ctx.fillStyle = moneyGrad;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = moneyGrad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = moneyGrad;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     const count = 28;
     const currencies = ['$', '€', '¥', '₽', '$', '£'];
@@ -800,8 +884,16 @@ function drawBackground(
     heartBg.addColorStop(0, '#26040d');
     heartBg.addColorStop(0.5, '#5c0b20');
     heartBg.addColorStop(1, '#1a0309');
-    ctx.fillStyle = heartBg;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = heartBg;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = heartBg;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     // Отрисовка поднимающихся сердец
     const count = 28;
@@ -846,8 +938,16 @@ function drawBackground(
     skyGrad.addColorStop(0, '#0f172a');
     skyGrad.addColorStop(0.5, '#1e293b');
     skyGrad.addColorStop(1, '#020617');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     const balloonColors = ['#f43f5e', '#38bdf8', '#a855f7', '#fbbf24', '#34d399', '#f97316'];
     const balloonCount = 20;
@@ -916,8 +1016,16 @@ function drawBackground(
     nightGrad.addColorStop(0.4, '#090821');
     nightGrad.addColorStop(0.8, '#030712');
     nightGrad.addColorStop(1, '#000000');
-    ctx.fillStyle = nightGrad;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = nightGrad;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = nightGrad;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     ctx.save();
     // 70 звезд разной величины и мерцания
@@ -958,8 +1066,10 @@ function drawBackground(
     ctx.restore();
   } else if (preset.id === 'gradient-smoke') {
     // 7. Разноцветный градиентный дым / неоновые вихри
-    ctx.fillStyle = '#050508';
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = '#050508';
+      ctx.fillRect(0, 0, width, height);
+    }
 
     ctx.save();
     // Несколько плавающих цветных дымовых центров
@@ -1019,8 +1129,16 @@ function drawBackground(
     laughterBg.addColorStop(0, '#1e0538');
     laughterBg.addColorStop(0.5, '#3b0764');
     laughterBg.addColorStop(1, '#110224');
-    ctx.fillStyle = laughterBg;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = laughterBg;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = laughterBg;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     const laughEmojis = ['😂', '🤣', '😆', '😹', '😜', '😂', '🤣'];
     const count = 26;
@@ -1064,8 +1182,16 @@ function drawBackground(
     autumnBg.addColorStop(0, '#2a1104');
     autumnBg.addColorStop(0.5, '#451a03');
     autumnBg.addColorStop(1, '#180701');
-    ctx.fillStyle = autumnBg;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = autumnBg;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = autumnBg;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     const leafIcons = ['🍁', '🍂', '🍃'];
     const count = 30;
@@ -1102,8 +1228,16 @@ function drawBackground(
     winterBg.addColorStop(0, '#031926');
     winterBg.addColorStop(0.5, '#0a2e46');
     winterBg.addColorStop(1, '#020b12');
-    ctx.fillStyle = winterBg;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = winterBg;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = winterBg;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     const count = 48;
     ctx.save();
@@ -1156,8 +1290,16 @@ function drawBackground(
     musicBg.addColorStop(0, '#0a061c');
     musicBg.addColorStop(0.5, '#1e1445');
     musicBg.addColorStop(1, '#05030e');
-    ctx.fillStyle = musicBg;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = musicBg;
+      ctx.fillRect(0, 0, width, height);
+    } else if (!state.mediaColorTint) {
+      ctx.save();
+      ctx.globalAlpha = 0.16;
+      ctx.fillStyle = musicBg;
+      ctx.fillRect(0, 0, width, height);
+      ctx.restore();
+    }
 
     // Волновые звуковые линии
     ctx.save();
@@ -1216,8 +1358,10 @@ function drawBackground(
     discoBg.addColorStop(0, '#09090f');
     discoBg.addColorStop(0.5, '#190a2a');
     discoBg.addColorStop(1, '#05020a');
-    ctx.fillStyle = discoBg;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = discoBg;
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // Верхние диско-лучи
     ctx.save();
@@ -1280,8 +1424,10 @@ function drawBackground(
     ctx.restore();
   } else if (preset.id === 'lasers') {
     // 13. Лучи: Разноцветные лазерные лучи в клубящемся дыму
-    ctx.fillStyle = '#03050a';
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      ctx.fillStyle = '#03050a';
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // Клубящийся дым
     ctx.save();
@@ -1528,11 +1674,12 @@ function drawTextSegment({
   isLastSegment?: boolean;
   isDraggingText?: boolean;
 }) {
-  // Safe margins
-  const safeMarginX = 40;
-  const safeMarginY = 50;
+  // Safe margins strictly 25px on all 4 borders
+  const safeMarginX = 25;
+  const safeMarginY = 25;
   const targetWidthPercent = state.textMaxWidthPercent ?? 85;
-  const maxWidth = Math.max(120, Math.min(canvasWidth - safeMarginX * 2, (canvasWidth * targetWidthPercent) / 100));
+  const maxAllowedWidth = Math.max(120, canvasWidth - safeMarginX * 2);
+  const maxWidth = Math.max(120, Math.min(maxAllowedWidth, (canvasWidth * targetWidthPercent) / 100));
   const maxHeight = Math.max(100, canvasHeight - safeMarginY * 2);
 
   // Calculate layout

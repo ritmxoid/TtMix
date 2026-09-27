@@ -1066,9 +1066,12 @@ export default function App() {
             <p className="text-xs sm:text-sm text-zinc-300 leading-relaxed max-w-2xl mx-auto font-normal">
               {t('appDescription', 'Приложение для наложения анимированного текста на короткие видео или анимированные фоны, с генератором фоновых мелодий и возможностью добавить свою. Отлично подойдет для создания красивых субтитров, цитат и динамических инструкций.')}
             </p>
-            <div className="pt-1.5 flex items-center justify-center">
+            <div className="pt-1.5 flex flex-col items-center justify-center gap-1">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/25 shadow-sm">
-                Version 1.1
+                Version 1.11
+              </span>
+              <span className="text-[11px] text-zinc-400 font-medium tracking-wide">
+                ...by RitmXoid
               </span>
             </div>
           </div>

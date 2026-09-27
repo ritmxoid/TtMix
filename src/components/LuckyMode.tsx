@@ -7,6 +7,7 @@ import { MUSIC_PRESETS } from '../utils/audioGenerator';
 import { renderCanvasFrame, particleEngine } from '../utils/canvasRenderer';
 import { splitTextIntoSegments } from '../utils/textSplitter';
 import { FullscreenPlayer } from './FullscreenPlayer';
+import { LuckyModeTour } from './LuckyModeTour';
 import { useLanguage } from '../context/LanguageContext';
 
 interface LuckyModeProps {
@@ -65,10 +66,92 @@ const LUCKY_TEXT_COLORS = [
 
 const LUCKY_NEON_COLORS = ['#a855f7', '#06b6d4', '#ec4899', '#facc15', '#3b82f6', '#10b981'];
 
+// Pool of floating themes without solid backgrounds for Eye Mode
+export const EYE_MODE_OVERLAY_THEMES = [
+  'flying-balloons',      // 🎈 Воздушные шары
+  'flying-hearts',        // ❤️ Красные сердца
+  'flying-questions',     // ❓ Знаки вопроса
+  'flying-exclamations',  // ❗ Восклицания
+  'flying-kisses',        // 💋 Поцелуи
+  'flying-currency',      // 💵 Валюты $, €, ¥, ₽
+  'anecdote',             // 😂 Смеющиеся смайлики
+  'music',                // 🎵 Летающие ноты
+  'winter',               // ❄️ Снежинки
+  'autumn',               // 🍁 Осенние листья
+  'stary-sky',            // ✨ Звездное небо
+  'disco',                // 📊 Диско эквалайзер
+  'lasers',               // ⚡ Неоновые лучи
+  'gradient-smoke',       // 💨 Радужный дым
+  'ai-procedural-equalizer', // 🎶 Спектр и эквалайзеры
+  'ai-procedural-shapes',    // 📐 Динамическая геометрия
+  'ai-procedural-emojis',    // 🥳 Эмодзи вселенная
+  'ai-procedural-cosmic',    // 🌌 Космос и магия
+  'ai-procedural-ember',     // 🔥 Огонь и искры
+];
+
+// Atmospheric semi-transparent color tint options for Eye Mode
+export const EYE_MODE_COLOR_TINTS = [
+  null, // Оригинальные чистые цвета фото/видео
+  'rgba(168, 85, 247, 0.18)', // Кибер-лаванда
+  'rgba(6, 182, 212, 0.18)',  // Электрик бирюза
+  'rgba(244, 63, 94, 0.16)',  // Коралловый неон
+  'rgba(250, 204, 21, 0.15)', // Золотой закат
+  'rgba(16, 185, 129, 0.15)', // Изумрудный свет
+  'rgba(0, 0, 0, 0.22)',      // Кинематографичный контраст
+];
+
+// Animated Blinking Eye Icon Component
+export const BlinkingEyeIcon: React.FC<{ className?: string; isGenerating?: boolean }> = ({
+  className = 'w-6 h-6',
+  isGenerating = false,
+}) => {
+  const [isBlink, setIsBlink] = useState(false);
+
+  useEffect(() => {
+    const triggerBlink = () => {
+      setIsBlink(true);
+      setTimeout(() => setIsBlink(false), 200);
+    };
+
+    const interval = setInterval(() => {
+      triggerBlink();
+      if (Math.random() > 0.6) {
+        setTimeout(triggerBlink, 380);
+      }
+    }, 2800);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return (
+    <div className={`relative flex items-center justify-center ${className}`}>
+      <svg
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        className={`w-full h-full text-cyan-200 transition-all duration-150 origin-center ${
+          isGenerating ? 'animate-spin' : isBlink ? 'scale-y-[0.1]' : 'scale-y-100'
+        }`}
+      >
+        <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+        <circle cx="12" cy="12" r="3.5" fill="#38bdf8" stroke="#a855f7" strokeWidth="1.5" />
+      </svg>
+      {/* Radiant pupil sparkle */}
+      {!isBlink && !isGenerating && (
+        <span className="absolute w-1.5 h-1.5 rounded-full bg-white shadow-sm shadow-cyan-300 pointer-events-none animate-ping" />
+      )}
+    </div>
+  );
+};
+
 export function generate4Variations(
   baseState: VideoProjectState,
   overrideText?: string,
-  overrideAuthor?: string
+  overrideAuthor?: string,
+  isEyeMode?: boolean
 ): VideoProjectState[] {
   const result: VideoProjectState[] = [];
 
@@ -82,6 +165,9 @@ export function generate4Variations(
 
   const textModeOptions: ('word' | 'sentence' | 'full')[] = ['word', 'sentence', 'full'];
   const textAlignOptions: ('center' | 'left' | 'right')[] = ['center', 'left', 'right'];
+
+  // Shuffle overlay themes so all 4 variations get completely different themes!
+  const shuffledOverlays = [...EYE_MODE_OVERLAY_THEMES].sort(() => Math.random() - 0.5);
 
   for (let i = 0; i < 4; i++) {
     // 1. Completely independent font selection
@@ -166,6 +252,13 @@ export function generate4Variations(
           audioDuration: 30,
         };
 
+    const chosenOverlayTheme = hasCustomMediaBg && isEyeMode
+      ? shuffledOverlays[i % shuffledOverlays.length]
+      : null;
+    const chosenColorTint = hasCustomMediaBg && isEyeMode
+      ? EYE_MODE_COLOR_TINTS[Math.floor(Math.random() * EYE_MODE_COLOR_TINTS.length)]
+      : null;
+
     const varState: VideoProjectState = {
       ...baseState,
       textBgEnabled: false,
@@ -178,6 +271,8 @@ export function generate4Variations(
       bgPresetId: hasCustomMediaBg ? baseState.bgPresetId : randomPreset.id,
       bgMediaUrl: hasCustomMediaBg ? baseState.bgMediaUrl : null,
       bgMediaType: hasCustomMediaBg ? baseState.bgMediaType : null,
+      mediaOverlayTheme: chosenOverlayTheme,
+      mediaColorTint: chosenColorTint,
       proceduralMood: randomMood,
       proceduralSeed: Math.floor(Math.random() * 999999) + 1,
       fontFamily: randomFont.family,
@@ -246,11 +341,15 @@ const LuckyCard: React.FC<{
   const fontObj = FONT_OPTIONS.find((f) => f.family === variation.fontFamily);
   const fontName = fontObj ? fontObj.name : 'Шрифт';
   const presetObj = BACKGROUND_PRESETS.find((p) => p.id === variation.bgPresetId);
-  const presetName = presetObj ? presetObj.name : 'Стиль';
+  const overlayObj = variation.mediaOverlayTheme
+    ? BACKGROUND_PRESETS.find((p) => p.id === variation.mediaOverlayTheme)
+    : null;
+  const presetName = overlayObj ? overlayObj.name : (presetObj ? presetObj.name : 'Стиль');
 
   return (
     <div
       onClick={onSelect}
+      data-tour={`lucky-card-${index}`}
       className="group relative rounded-2xl sm:rounded-3xl overflow-hidden border-2 border-white/10 hover:border-cyan-400/80 bg-zinc-900 shadow-2xl transition-all duration-300 hover:scale-[1.02] active:scale-95 cursor-pointer flex flex-col aspect-[9/16] w-full max-w-[280px] sm:max-w-[340px] mx-auto select-none"
     >
       {/* Canvas Live Preview - 100% visible, uncropped canvas with exact 9:16 aspect ratio */}
@@ -265,8 +364,16 @@ const LuckyCard: React.FC<{
 
       {/* Glass Top Badge */}
       <div className="relative z-10 p-2 sm:p-2.5 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/30 to-transparent pointer-events-none">
-        <div className="flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full bg-black/65 backdrop-blur-md border border-white/15 text-[10px] sm:text-xs font-bold text-white shadow-md">
-          <Sparkles className="w-3 h-3 text-cyan-300" />
+        <div className={`flex items-center gap-1.5 px-2.5 py-0.5 sm:py-1 rounded-full backdrop-blur-md border text-[10px] sm:text-xs font-bold shadow-md ${
+          variation.mediaOverlayTheme
+            ? 'bg-purple-950/80 border-purple-400/50 text-purple-200 shadow-purple-900/40'
+            : 'bg-black/65 border-white/15 text-white'
+        }`}>
+          {variation.mediaOverlayTheme ? (
+            <Eye className="w-3 h-3 text-cyan-300 animate-pulse" />
+          ) : (
+            <Sparkles className="w-3 h-3 text-cyan-300" />
+          )}
           <span>Вариант #{index + 1}</span>
         </div>
       </div>
@@ -283,7 +390,11 @@ const LuckyCard: React.FC<{
 
       {/* Bottom Style Info Pills */}
       <div className="relative z-10 mt-auto p-2 sm:p-2.5 bg-gradient-to-t from-black/85 via-black/40 to-transparent flex flex-wrap items-center gap-1 pointer-events-none">
-        <span className="px-2 py-0.5 rounded-md bg-black/60 backdrop-blur-md text-[9px] sm:text-[10px] font-semibold text-zinc-200 border border-white/15 truncate max-w-[110px]">
+        <span className={`px-2 py-0.5 rounded-md backdrop-blur-md text-[9px] sm:text-[10px] font-semibold border truncate max-w-[125px] ${
+          variation.mediaOverlayTheme
+            ? 'bg-purple-900/60 border-purple-400/50 text-purple-200'
+            : 'bg-black/60 border-white/15 text-zinc-200'
+        }`}>
           {presetName}
         </span>
         <span className="px-2 py-0.5 rounded-md bg-cyan-500/25 backdrop-blur-md text-[9px] sm:text-[10px] font-semibold text-cyan-300 border border-cyan-500/40 truncate max-w-[95px]">
@@ -493,13 +604,72 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
     );
   }, [defaultMatrixText, defaultMatrixAuthor, isExpertDefault, onUpdateBaseState]);
 
-  const [variations, setVariations] = useState<VideoProjectState[]>(() =>
-    generate4Variations(baseState, currentActiveText, currentActiveAuthor)
+  const [isEyeMode, setIsEyeMode] = useState<boolean>(false);
+  const [isHoldingMix, setIsHoldingMix] = useState<boolean>(false);
+  const [holdProgress, setHoldProgress] = useState<number>(0);
+  const mixLongPressTimerRef = useRef<number | null>(null);
+  const mixHoldIntervalRef = useRef<number | null>(null);
+  const isMixLongPressTriggeredRef = useRef<boolean>(false);
+  const [eyeModeNotice, setEyeModeNotice] = useState<string | null>(null);
+
+  const hasUserMedia = Boolean(
+    ((baseState.bgType === 'video' || baseState.bgType === 'image') && baseState.bgMediaUrl) ||
+    bgMediaElement
   );
+
+  const clearMixHoldTimers = useCallback(() => {
+    if (mixLongPressTimerRef.current) {
+      clearTimeout(mixLongPressTimerRef.current);
+      mixLongPressTimerRef.current = null;
+    }
+    if (mixHoldIntervalRef.current) {
+      clearInterval(mixHoldIntervalRef.current);
+      mixHoldIntervalRef.current = null;
+    }
+    setIsHoldingMix(false);
+    setHoldProgress(0);
+  }, []);
+
+  const [variations, setVariations] = useState<VideoProjectState[]>(() =>
+    generate4Variations(baseState, currentActiveText, currentActiveAuthor, false)
+  );
+
   const [selectedVariation, setSelectedVariation] = useState<VideoProjectState | null>(null);
   const [isTextInputOpen, setIsTextInputOpen] = useState<boolean>(false);
   const [isRocketConfirmOpen, setIsRocketConfirmOpen] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+
+  // When user uploads media, update the variations to incorporate user media
+  const prevMediaUrlRef = useRef<string | null>(baseState.bgMediaUrl || null);
+  useEffect(() => {
+    if (baseState.bgMediaUrl && baseState.bgMediaUrl !== prevMediaUrlRef.current) {
+      prevMediaUrlRef.current = baseState.bgMediaUrl;
+      const rawT = selectedVariation ? selectedVariation.rawText : baseState.rawText;
+      const activeT = rawT || defaultMatrixText;
+      const activeA = (selectedVariation ? selectedVariation.authorText : baseState.authorText) || defaultMatrixAuthor;
+      setVariations(generate4Variations(baseState, activeT, activeA, isEyeMode));
+    }
+  }, [baseState.bgMediaUrl, baseState.bgType, isEyeMode, defaultMatrixText, defaultMatrixAuthor, selectedVariation, baseState]);
+  const [isTourOpen, setIsTourOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('lucky_mode_help_never_show') !== 'true';
+    } catch {
+      return true;
+    }
+  });
+  const [tourStepIdx, setTourStepIdx] = useState<number>(-1);
+
+  const handleSelectVariation = useCallback((v: VideoProjectState | null) => {
+    setSelectedVariation(v);
+  }, []);
+
+  const handleCloseVariation = useCallback(() => {
+    setSelectedVariation(null);
+  }, []);
+
+  const handleTourStepChange = useCallback((stepIdx: number) => {
+    setTourStepIdx(stepIdx);
+  }, []);
 
   const gridPointerStartRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
 
@@ -536,10 +706,82 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
       const activeA = isExpert
         ? defaultMatrixAuthor
         : ((selectedVariation ? selectedVariation.authorText : baseState.authorText) || defaultMatrixAuthor);
-      setVariations(generate4Variations(baseState, activeT, activeA));
+      setVariations(generate4Variations(baseState, activeT, activeA, isEyeMode));
       setIsGenerating(false);
     }, 200);
-  }, [baseState, selectedVariation, defaultMatrixText, defaultMatrixAuthor]);
+  }, [baseState, selectedVariation, defaultMatrixText, defaultMatrixAuthor, isEyeMode]);
+
+  const handleMixPointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    isMixLongPressTriggeredRef.current = false;
+    clearMixHoldTimers();
+
+    const HOLD_DURATION = 520; // 520ms for comfortable responsive long-press
+    const startTime = Date.now();
+    setIsHoldingMix(true);
+
+    mixHoldIntervalRef.current = window.setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(100, (elapsed / HOLD_DURATION) * 100);
+      setHoldProgress(progress);
+    }, 25);
+
+    mixLongPressTimerRef.current = window.setTimeout(() => {
+      clearMixHoldTimers();
+      isMixLongPressTriggeredRef.current = true;
+
+      setIsEyeMode((prev) => {
+        const next = !prev;
+        if (next) {
+          setEyeModeNotice(t('eyeModeActiveNotice', '👁️ Режим «Магический Глаз»: при клике накладываются летающие темы поверх вашего медиа!'));
+          setTimeout(() => {
+            const rawT = selectedVariation ? selectedVariation.rawText : baseState.rawText;
+            const activeT = rawT || defaultMatrixText;
+            const activeA = (selectedVariation ? selectedVariation.authorText : baseState.authorText) || defaultMatrixAuthor;
+            setVariations(generate4Variations(baseState, activeT, activeA, true));
+          }, 60);
+        } else {
+          setEyeModeNotice(t('eyeModeInactiveNotice', '✨ Режим «Звёздный Микс»: возвращен стандартный режим'));
+          setTimeout(() => {
+            const rawT = selectedVariation ? selectedVariation.rawText : baseState.rawText;
+            const activeT = rawT || defaultMatrixText;
+            const activeA = (selectedVariation ? selectedVariation.authorText : baseState.authorText) || defaultMatrixAuthor;
+            setVariations(generate4Variations(baseState, activeT, activeA, false));
+          }, 60);
+        }
+        setTimeout(() => setEyeModeNotice(null), 4000);
+        return next;
+      });
+
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(60);
+        } catch {}
+      }
+    }, HOLD_DURATION);
+  };
+
+  const handleMixPointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    clearMixHoldTimers();
+  };
+
+  const handleMixPointerCancel = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    clearMixHoldTimers();
+  };
+
+  const handleMixClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    clearMixHoldTimers();
+    if (isMixLongPressTriggeredRef.current) {
+      setTimeout(() => {
+        isMixLongPressTriggeredRef.current = false;
+      }, 150);
+      return;
+    }
+    handleGenerateNew();
+  };
 
   // Update base text across all variations if text changes
   const handleSaveText = (newText: string, newAuthor: string) => {
@@ -590,6 +832,8 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
           }}
           bgMediaElement={bgMediaElement}
           isLuckyMode={true}
+          isTourActive={isTourOpen}
+          tourStepIdx={tourStepIdx}
           onBackToLuckyGrid={() => setSelectedVariation(null)}
           onOpenTextInput={() => setIsTextInputOpen(true)}
           onOpenRocketConfirm={() => setIsRocketConfirmOpen(true)}
@@ -602,7 +846,7 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
           className="relative z-10 flex-1 flex flex-col min-h-screen max-w-5xl mx-auto w-full p-2 sm:p-4 pb-24 touch-pan-y"
         >
           {/* 2x2 Grid of 4 Variations */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 items-center my-auto pt-4 sm:pt-6">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 items-center my-auto pt-8 sm:pt-10">
             {variations.map((varState, idx) => (
               <LuckyCard
                 key={idx}
@@ -620,6 +864,7 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
               {/* 1. Round Button: [Т] Text Input */}
               <button
                 type="button"
+                data-tour="lucky-btn-text"
                 onClick={() => setIsTextInputOpen(true)}
                 className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-purple-600/30 backdrop-blur-xl border border-purple-400/30 text-purple-200 font-black text-lg sm:text-xl flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
                 title={t('editTextInputTitle', 'Ввод текста')}
@@ -627,21 +872,84 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
                 Т
               </button>
 
-              {/* 2. Center Round Button: [Mix] Generator of New Quartets */}
-              <button
-                type="button"
-                onClick={handleGenerateNew}
-                disabled={isGenerating}
-                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/40 hover:bg-cyan-500/30 backdrop-blur-xl border-2 border-cyan-400/50 text-cyan-200 font-black text-sm sm:text-base flex items-center justify-center shadow-2xl shadow-cyan-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0 group"
-                title={t('generateMoreBtn', 'Генератор новых квартетов')}
-              >
-                <Sparkles className={`w-5 h-5 sm:w-6 sm:h-6 text-cyan-300 ${isGenerating ? 'animate-spin' : 'group-hover:rotate-12 transition-transform'}`} />
-              </button>
+              {/* 2. Center Round Button: [Mix] / [Eye] */}
+              <div className="relative">
+                {/* Starry Radiance Aura when user video/photo is loaded */}
+                {hasUserMedia && !isEyeMode && (
+                  <>
+                    {/* Animated glowing star halo */}
+                    <div className="absolute -inset-2 sm:-inset-2.5 rounded-full bg-gradient-to-r from-amber-400/50 via-cyan-400/50 to-fuchsia-400/50 blur-md animate-pulse pointer-events-none" />
+                    
+                    {/* Twinkling star particle 1: Top Right */}
+                    <span className="absolute -top-1.5 -right-1 text-xs animate-bounce pointer-events-none select-none">✨</span>
+                    {/* Twinkling star particle 2: Bottom Left */}
+                    <span className="absolute -bottom-1 -left-1 text-[11px] animate-pulse pointer-events-none select-none">⭐</span>
+                    {/* Twinkling star particle 3: Top Left subtle twinkle */}
+                    <span className="absolute -top-2 -left-1 text-[10px] animate-ping pointer-events-none select-none opacity-75">✦</span>
+                  </>
+                )}
+
+                {/* Hold progress ring indicator during long-press */}
+                {isHoldingMix && (
+                  <svg className="absolute -inset-1.5 w-[calc(100%+12px)] h-[calc(100%+12px)] -rotate-90 pointer-events-none z-20">
+                    <circle
+                      cx="50%"
+                      cy="50%"
+                      r="46%"
+                      fill="none"
+                      stroke={isEyeMode ? '#c084fc' : '#facc15'}
+                      strokeWidth="3.5"
+                      strokeDasharray="290"
+                      strokeDashoffset={290 - (290 * holdProgress) / 100}
+                      strokeLinecap="round"
+                      className="transition-all duration-75"
+                    />
+                  </svg>
+                )}
+
+                {/* Center Round Button: [Mix] / [Eye] */}
+                <button
+                  type="button"
+                  data-tour="lucky-btn-mix"
+                  onPointerDown={handleMixPointerDown}
+                  onPointerUp={handleMixPointerUp}
+                  onPointerCancel={handleMixPointerCancel}
+                  onPointerLeave={handleMixPointerCancel}
+                  onContextMenu={(e) => e.preventDefault()}
+                  onClick={handleMixClick}
+                  disabled={isGenerating}
+                  className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0 group relative z-10 ${
+                    isEyeMode
+                      ? 'bg-gradient-to-tr from-purple-900/80 via-indigo-900/70 to-cyan-950/80 hover:from-purple-800 hover:to-indigo-800 border-2 border-purple-400 text-purple-200 shadow-purple-500/50 hover:shadow-[0_0_30px_rgba(168,85,247,0.7)]'
+                      : hasUserMedia
+                      ? 'bg-black/50 hover:bg-cyan-500/30 backdrop-blur-xl border-2 border-amber-300/90 text-amber-200 shadow-[0_0_20px_rgba(250,204,21,0.55)] group-hover:shadow-[0_0_30px_rgba(250,204,21,0.8)]'
+                      : 'bg-black/40 hover:bg-cyan-500/30 backdrop-blur-xl border-2 border-cyan-400/50 text-cyan-200 shadow-cyan-500/30'
+                  }`}
+                  title={
+                    isEyeMode
+                      ? t('mixEyeBtnTitle', 'Магический Глаз (клик: микс с темами поверх медиа, долгий клик: вернуть звезды)')
+                      : hasUserMedia
+                      ? t('mixStarryBtnTitle', 'Звёздный Микс (клик: микс, долгий клик: включить Магический Глаз)')
+                      : t('generateMoreBtn', 'Генератор новых квартетов')
+                  }
+                >
+                  {isEyeMode ? (
+                    <BlinkingEyeIcon className="w-5 h-5 sm:w-6 sm:h-6" isGenerating={isGenerating} />
+                  ) : (
+                    <Sparkles
+                      className={`w-5 h-5 sm:w-6 sm:h-6 ${
+                        hasUserMedia ? 'text-amber-300' : 'text-cyan-300'
+                      } ${isGenerating ? 'animate-spin' : 'group-hover:rotate-12 transition-transform'}`}
+                    />
+                  )}
+                </button>
+              </div>
 
               {/* 3. Round Button: [Upload] User Media Files */}
               {onOpenUploadModal && (
                 <button
                   type="button"
+                  data-tour="lucky-btn-upload"
                   onClick={onOpenUploadModal}
                   className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-cyan-600/30 backdrop-blur-xl border border-cyan-400/30 text-cyan-200 flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
                   title={t('uploadVideoPhoto', 'Загрузить медиафайлы')}
@@ -651,8 +959,28 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
               )}
             </div>
           </div>
+
+          {/* Eye Mode Notification Toast */}
+          {eyeModeNotice && (
+            <div className="fixed bottom-20 sm:bottom-24 inset-x-0 z-40 flex justify-center px-4 pointer-events-none animate-fade-in">
+              <div className="bg-black/90 backdrop-blur-2xl border border-purple-500/50 text-purple-200 text-xs sm:text-sm font-bold px-4 py-2.5 rounded-2xl shadow-2xl shadow-purple-500/30 flex items-center gap-2 max-w-md text-center">
+                <span>{eyeModeNotice}</span>
+              </div>
+            </div>
+          )}
         </div>
       )}
+
+      {/* Animated Help Tour for Lucky Mode */}
+      <LuckyModeTour
+        isOpen={isTourOpen}
+        onClose={() => setIsTourOpen(false)}
+        selectedVariation={selectedVariation}
+        onSelectVariation={handleSelectVariation}
+        onCloseVariation={handleCloseVariation}
+        variations={variations}
+        onStepChange={handleTourStepChange}
+      />
 
       {/* Direct Keyboard Input Modal (opens keyboard immediately without intermediate windows!) */}
       <DirectTextInputModal
