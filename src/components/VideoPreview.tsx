@@ -420,6 +420,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   const [isHoldingBg, setIsHoldingBg] = useState<boolean>(false);
   const [bgHoldProgress, setBgHoldProgress] = useState<number>(0);
   const [isBgGenerating, setIsBgGenerating] = useState<boolean>(false);
+  const [eyeModeToast, setEyeModeToast] = useState<string | null>(null);
   const bgHoldTimerRef = useRef<number | null>(null);
   const bgHoldIntervalRef = useRef<number | null>(null);
   const isBgLongPressRef = useRef<boolean>(false);
@@ -1048,108 +1049,115 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   };
 
   const hasUserMedia = Boolean(
-    state.bgMediaUrl && (state.bgType === 'image' || state.bgType === 'video')
+    (state.bgMediaUrl && (state.bgType === 'image' || state.bgType === 'video')) ||
+    bgMediaElement ||
+    Boolean(state.bgMediaUrl && state.bgMediaType)
   );
 
-  const handleBgPointerDown = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    isBgLongPressRef.current = false;
+  const clearBgHoldTimers = useCallback(() => {
+    if (bgHoldTimerRef.current) {
+      clearTimeout(bgHoldTimerRef.current);
+      bgHoldTimerRef.current = null;
+    }
+    if (bgHoldIntervalRef.current) {
+      clearInterval(bgHoldIntervalRef.current);
+      bgHoldIntervalRef.current = null;
+    }
+    setIsHoldingBg(false);
+    setBgHoldProgress(0);
+  }, []);
 
+  const handleBgHoldStart = (e: React.SyntheticEvent) => {
+    // If user media is not present, skip long-press hold
     if (!hasUserMedia) return;
 
-    if (bgHoldTimerRef.current) clearTimeout(bgHoldTimerRef.current);
-    if (bgHoldIntervalRef.current) clearInterval(bgHoldIntervalRef.current);
+    if (fontSizeLongPressTimerRef.current) {
+      clearTimeout(fontSizeLongPressTimerRef.current);
+      fontSizeLongPressTimerRef.current = null;
+    }
 
-    setIsHoldingBg(true);
-    setBgHoldProgress(0);
+    isBgLongPressRef.current = false;
+    clearBgHoldTimers();
+
+    const HOLD_DURATION = 420; // 420ms long-press
     const startTime = Date.now();
-    const duration = 380;
+    setIsHoldingBg(true);
 
     bgHoldIntervalRef.current = window.setInterval(() => {
       const elapsed = Date.now() - startTime;
-      const progress = Math.min(100, (elapsed / duration) * 100);
+      const progress = Math.min(100, (elapsed / HOLD_DURATION) * 100);
       setBgHoldProgress(progress);
-    }, 16);
+    }, 20);
 
     bgHoldTimerRef.current = window.setTimeout(() => {
+      clearBgHoldTimers();
       isBgLongPressRef.current = true;
-      setIsHoldingBg(false);
-      setBgHoldProgress(0);
-      if (bgHoldIntervalRef.current) clearInterval(bgHoldIntervalRef.current);
 
-      const nextEyeMode = !isEyeMode;
-      setIsEyeMode(nextEyeMode);
+      setIsEyeMode((prev) => {
+        const next = !prev;
+        if (next) {
+          setEyeModeToast(
+            t(
+              'eyeModeActiveNotice',
+              '👁️ Режим «Магический Глаз»: нажимайте на глаз для наложения случайных анимаций поверх вашего фото/видео'
+            )
+          );
+          if (!state.mediaOverlayTheme) {
+            const randomOverlay =
+              EYE_MODE_OVERLAY_THEMES[
+                Math.floor(Math.random() * EYE_MODE_OVERLAY_THEMES.length)
+              ];
+            const newSeed = Math.floor(Math.random() * 1000000) + 1;
+            onChange({
+              mediaOverlayTheme: randomOverlay,
+              proceduralSeed: newSeed,
+            });
+          }
+        } else {
+          setEyeModeToast(
+            t('eyeModeInactiveNotice', '✨ Режим «Звёздный Фон»: анимации скрыты')
+          );
+          onChange({
+            mediaOverlayTheme: undefined,
+          });
+        }
+        setTimeout(() => setEyeModeToast(null), 3500);
+        return next;
+      });
 
       if (typeof navigator !== 'undefined' && navigator.vibrate) {
         try {
           navigator.vibrate(60);
         } catch {}
       }
-
-      if (nextEyeMode && !state.mediaOverlayTheme) {
-        const randomOverlay =
-          EYE_MODE_OVERLAY_THEMES[Math.floor(Math.random() * EYE_MODE_OVERLAY_THEMES.length)];
-        const newSeed = Math.floor(Math.random() * 1000000) + 1;
-        onChange({
-          mediaOverlayTheme: randomOverlay,
-          proceduralSeed: newSeed,
-        });
-      }
-    }, duration);
+    }, HOLD_DURATION);
   };
 
-  const handleBgPointerUp = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    if (bgHoldTimerRef.current) {
-      clearTimeout(bgHoldTimerRef.current);
-      bgHoldTimerRef.current = null;
-    }
-    if (bgHoldIntervalRef.current) {
-      clearInterval(bgHoldIntervalRef.current);
-      bgHoldIntervalRef.current = null;
-    }
-    setIsHoldingBg(false);
-    setBgHoldProgress(0);
-  };
-
-  const handleBgPointerCancel = (e: React.PointerEvent) => {
-    e.stopPropagation();
-    if (bgHoldTimerRef.current) {
-      clearTimeout(bgHoldTimerRef.current);
-      bgHoldTimerRef.current = null;
-    }
-    if (bgHoldIntervalRef.current) {
-      clearInterval(bgHoldIntervalRef.current);
-      bgHoldIntervalRef.current = null;
-    }
-    setIsHoldingBg(false);
-    setBgHoldProgress(0);
+  const handleBgHoldEnd = () => {
+    clearBgHoldTimers();
   };
 
   const handleBgClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (bgHoldTimerRef.current) {
-      clearTimeout(bgHoldTimerRef.current);
-      bgHoldTimerRef.current = null;
-    }
-    if (bgHoldIntervalRef.current) {
-      clearInterval(bgHoldIntervalRef.current);
-      bgHoldIntervalRef.current = null;
-    }
-    setIsHoldingBg(false);
-    setBgHoldProgress(0);
+    clearBgHoldTimers();
 
     if (isBgLongPressRef.current) {
       setTimeout(() => {
         isBgLongPressRef.current = false;
-      }, 200);
+      }, 150);
       return;
     }
 
-    if (isEyeMode && hasUserMedia) {
+    if (hasUserMedia) {
+      // With user media attached, clicking ALWAYS applies an animation overlay (never wipes media)
       setIsBgGenerating(true);
+      if (!isEyeMode) {
+        setIsEyeMode(true);
+      }
       const randomOverlay =
-        EYE_MODE_OVERLAY_THEMES[Math.floor(Math.random() * EYE_MODE_OVERLAY_THEMES.length)];
+        EYE_MODE_OVERLAY_THEMES[
+          Math.floor(Math.random() * EYE_MODE_OVERLAY_THEMES.length)
+        ];
       const newSeed = Math.floor(Math.random() * 1000000) + 1;
       onChange({
         mediaOverlayTheme: randomOverlay,
@@ -1444,6 +1452,13 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             {pinToast && (
               <div className="absolute top-12 right-3 z-40 px-2.5 py-1 rounded-lg bg-black/90 backdrop-blur-md border border-purple-500/40 text-purple-200 text-xs font-semibold shadow-xl pointer-events-none animate-in fade-in duration-150">
                 {pinToast}
+              </div>
+            )}
+
+            {/* Eye Mode / Star mode status toast */}
+            {eyeModeToast && (
+              <div className="absolute top-14 inset-x-0 mx-auto max-w-[90%] w-fit z-50 px-3.5 py-2 rounded-2xl bg-black/95 backdrop-blur-xl border border-purple-400/60 text-purple-100 text-xs font-bold shadow-2xl shadow-purple-950/60 pointer-events-none animate-in fade-in zoom-in-95 duration-150 text-center">
+                {eyeModeToast}
               </div>
             )}
 
@@ -1968,10 +1983,12 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
                     <button
                       type="button"
-                      onPointerDown={handleBgPointerDown}
-                      onPointerUp={handleBgPointerUp}
-                      onPointerCancel={handleBgPointerCancel}
-                      onPointerLeave={handleBgPointerCancel}
+                      onTouchStart={handleBgHoldStart}
+                      onTouchEnd={handleBgHoldEnd}
+                      onTouchCancel={handleBgHoldEnd}
+                      onMouseDown={handleBgHoldStart}
+                      onMouseUp={handleBgHoldEnd}
+                      onMouseLeave={handleBgHoldEnd}
                       onContextMenu={(e) => {
                         if (hasUserMedia) {
                           e.preventDefault();
@@ -1981,7 +1998,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                         }
                       }}
                       onClick={handleBgClick}
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 group relative z-10 ${
+                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 group relative z-10 touch-none select-none ${
                         isEyeMode
                           ? 'bg-gradient-to-tr from-purple-900/90 via-indigo-900/80 to-cyan-950/90 hover:from-purple-800 hover:to-indigo-800 border-2 border-purple-400 text-purple-200 shadow-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.7)]'
                           : hasUserMedia
@@ -1992,7 +2009,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                         isEyeMode
                           ? t('mixEyeBtnTitle', 'Магический Глаз (клик: наложить случайную анимацию поверх фото/видео, долгий клик: вернуть звезды)')
                           : hasUserMedia
-                          ? t('mixStarryBtnTitle', 'Звёздный Фон (клик: сменить фон, долгий клик: включить Магический Глаз)')
+                          ? t('mixStarryBtnTitle', 'Звёздный Фон (клик: включить анимацию, долгий клик: включить Магический Глаз)')
                           : t('regenerateBg', 'Сгенерировать другой фон')
                       }
                       aria-label={

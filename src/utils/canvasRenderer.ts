@@ -323,7 +323,7 @@ function drawBackground(
   activeSegmentIndex: number = 0,
   totalSegmentsCount: number = 1
 ) {
-  if (bgMedia && (state.bgType === 'image' || state.bgType === 'video')) {
+  if (bgMedia && (state.bgType === 'image' || state.bgType === 'video' || state.bgMediaType === 'image' || state.bgMediaType === 'video')) {
     const isVideo = bgMedia instanceof HTMLVideoElement;
     const mediaWidth = isVideo ? (bgMedia as HTMLVideoElement).videoWidth : (bgMedia as HTMLImageElement).naturalWidth;
     const mediaHeight = isVideo ? (bgMedia as HTMLVideoElement).videoHeight : (bgMedia as HTMLImageElement).naturalHeight;
