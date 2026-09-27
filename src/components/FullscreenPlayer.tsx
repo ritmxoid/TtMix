@@ -1767,23 +1767,133 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
             </button>
 
-            {/* Mute / Unmute Sound Toggle */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleMute();
-              }}
-              className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl border flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0 backdrop-blur-md shadow-md ${
-                isMuted
-                  ? 'bg-zinc-800/90 hover:bg-zinc-700 text-rose-400 border-rose-500/30'
-                  : 'bg-zinc-800/90 hover:bg-zinc-700 text-emerald-400 border-emerald-500/30'
-              }`}
-              title={isMuted ? t('unmute', 'Включить звук') : t('mute', 'Выключить звук')}
-              aria-label={isMuted ? t('unmute', 'Включить звук') : t('mute', 'Выключить звук')}
-            >
-              {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />}
-            </button>
+            {/* Mute / Unmute Sound Toggle & Long-Press Volume Slider */}
+            <div className="relative">
+              {showVolumePopover && (
+                <div
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-50 bg-black/90 backdrop-blur-2xl border border-white/20 p-2.5 rounded-3xl shadow-2xl flex flex-col items-center gap-2 animate-fade-in text-white pointer-events-auto select-none"
+                >
+                  <span className="text-[10px] font-black font-mono text-purple-200 select-none">
+                    {!state.audio.enabled || isMuted ? '0%' : `${Math.round((state.audio.volume ?? 0.7) * 100)}%`}
+                  </span>
+                  <div className="py-1 flex items-center justify-center">
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={!state.audio.enabled || isMuted ? 0 : Math.round((state.audio.volume ?? 0.7) * 100)}
+                      onChange={(e) => {
+                        const rawVal = parseInt(e.target.value, 10);
+                        const val = rawVal / 100;
+                        const isEnabled = rawVal > 0;
+                        if (val > 0 && isMuted) {
+                          setIsMuted(false);
+                        } else if (val === 0) {
+                          setIsMuted(true);
+                        }
+                        audioMixer.setVolume(val);
+                        if (!isEnabled) {
+                          audioMixer.stop();
+                        }
+                        onChange({
+                          audio: {
+                            ...state.audio,
+                            volume: val,
+                            musicVolume: val,
+                            enabled: isEnabled,
+                          },
+                        });
+                      }}
+                      style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+                      className="h-28 w-2 sm:w-2.5 accent-purple-400 bg-zinc-800/80 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleMute();
+                    }}
+                    className="p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                    title={isMuted || !state.audio.enabled ? 'Unmute' : 'Mute'}
+                  >
+                    <VolumeX className={`w-3.5 h-3.5 ${isMuted || !state.audio.enabled ? 'text-rose-400' : 'text-zinc-400'}`} />
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  isNoteLongPressRef.current = false;
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                  }
+                  noteLongPressTimerRef.current = window.setTimeout(() => {
+                    isNoteLongPressRef.current = true;
+                    setShowVolumePopover(true);
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      try {
+                        navigator.vibrate(50);
+                      } catch {}
+                    }
+                  }, 350);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                }}
+                onPointerCancel={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                  if (isNoteLongPressRef.current) {
+                    setTimeout(() => {
+                      isNoteLongPressRef.current = false;
+                    }, 200);
+                    return;
+                  }
+                  if (showVolumePopover) {
+                    setShowVolumePopover(false);
+                    return;
+                  }
+                  toggleMute();
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  isNoteLongPressRef.current = true;
+                  setShowVolumePopover(true);
+                }}
+                className={`w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl border flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0 backdrop-blur-md shadow-md ${
+                  isMuted
+                    ? 'bg-zinc-800/90 hover:bg-zinc-700 text-rose-400 border-rose-500/30'
+                    : 'bg-zinc-800/90 hover:bg-zinc-700 text-emerald-400 border-emerald-500/30'
+                }`}
+                title={isMuted ? t('unmute', 'Включить звук (долгий клик: регулятор громкости)') : t('mute', 'Выключить звук (долгий клик: регулятор громкости)')}
+                aria-label={isMuted ? t('unmute', 'Включить звук') : t('mute', 'Выключить звук')}
+              >
+                {isMuted ? <VolumeX className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" /> : <Volume2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-400" />}
+              </button>
+            </div>
           </div>
 
           {/* ФиксТхт & ФиксВид Buttons (Only in main editor mode) */}

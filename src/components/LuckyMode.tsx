@@ -87,6 +87,10 @@ export const EYE_MODE_OVERLAY_THEMES = [
   'ai-procedural-emojis',    // 🥳 Эмодзи вселенная
   'ai-procedural-cosmic',    // 🌌 Космос и магия
   'ai-procedural-ember',     // 🔥 Огонь и искры
+  'ai-procedural-cyberpunk', // ⚡ Неоновые кибер-линии
+  'ai-procedural-nature',    // 🌸 Лепестки сакуры и волны авроры
+  'ai-procedural-gold',      // ✨ Золотые боке и искры
+  'ai-procedural-fluid',     // 🫧 Плавающие цветные капли
 ];
 
 // Atmospheric semi-transparent color tint options for Eye Mode

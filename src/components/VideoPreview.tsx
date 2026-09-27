@@ -55,6 +55,7 @@ import { audioMixer } from '../utils/audioMixer';
 import { FullscreenPlayer } from './FullscreenPlayer';
 import { ColorPickerModal } from './ColorPickerModal';
 import { TextEditPopup } from './TextEditPopup';
+import { BlinkingEyeIcon, EYE_MODE_OVERLAY_THEMES } from './LuckyMode';
 import { useLanguage } from '../context/LanguageContext';
 import {
   trackApplyPreset,
@@ -410,6 +411,19 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   // Gesture state: Drag text 2D (adjust textPositionX and textPositionY) & Long-press on canvas for Font Size popup
   const [isDraggingText, setIsDraggingText] = useState(false);
   const [showFontSizePopup, setShowFontSizePopup] = useState(false);
+  const [showMusicVolumePopover, setShowMusicVolumePopover] = useState(false);
+  const noteLongPressTimerRef = useRef<number | null>(null);
+  const isNoteLongPressRef = useRef<boolean>(false);
+
+  // Magic Eye mode on stars button when user media is present
+  const [isEyeMode, setIsEyeMode] = useState<boolean>(false);
+  const [isHoldingBg, setIsHoldingBg] = useState<boolean>(false);
+  const [bgHoldProgress, setBgHoldProgress] = useState<number>(0);
+  const [isBgGenerating, setIsBgGenerating] = useState<boolean>(false);
+  const bgHoldTimerRef = useRef<number | null>(null);
+  const bgHoldIntervalRef = useRef<number | null>(null);
+  const isBgLongPressRef = useRef<boolean>(false);
+
   const [popupOffset, setPopupOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const popupOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const isDraggingPopupRef = useRef(false);
@@ -486,6 +500,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        if (showMusicVolumePopover) {
+          setShowMusicVolumePopover(false);
+          return;
+        }
         if (showFontSizePopup) {
           setShowFontSizePopup(false);
           return;
@@ -497,7 +515,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPinned, showFontSizePopup]);
+  }, [isPinned, showFontSizePopup, showMusicVolumePopover]);
 
   const handleStagePointerDown = (e: React.PointerEvent) => {
     // Ignore right click
@@ -506,9 +524,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     if (target && target.closest('button, input, select, textarea, [data-dock="true"], [role="button"]')) {
       return;
     }
-    // If font size popup is currently open, clicking stage dismisses it cleanly
-    if (showFontSizePopup) {
+    // If font size popup or music volume popover is currently open, clicking stage dismisses it cleanly
+    if (showFontSizePopup || showMusicVolumePopover) {
       setShowFontSizePopup(false);
+      setShowMusicVolumePopover(false);
       return;
     }
     dragStartXRef.current = e.clientX;
@@ -1026,6 +1045,128 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       audioMixer.play(state.audio, totalDuration, 0, state.bgMediaUrl || undefined);
     }
     drawFrame(0);
+  };
+
+  const hasUserMedia = Boolean(
+    state.bgMediaUrl && (state.bgType === 'image' || state.bgType === 'video')
+  );
+
+  const handleBgPointerDown = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    isBgLongPressRef.current = false;
+
+    if (!hasUserMedia) return;
+
+    if (bgHoldTimerRef.current) clearTimeout(bgHoldTimerRef.current);
+    if (bgHoldIntervalRef.current) clearInterval(bgHoldIntervalRef.current);
+
+    setIsHoldingBg(true);
+    setBgHoldProgress(0);
+    const startTime = Date.now();
+    const duration = 380;
+
+    bgHoldIntervalRef.current = window.setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(100, (elapsed / duration) * 100);
+      setBgHoldProgress(progress);
+    }, 16);
+
+    bgHoldTimerRef.current = window.setTimeout(() => {
+      isBgLongPressRef.current = true;
+      setIsHoldingBg(false);
+      setBgHoldProgress(0);
+      if (bgHoldIntervalRef.current) clearInterval(bgHoldIntervalRef.current);
+
+      const nextEyeMode = !isEyeMode;
+      setIsEyeMode(nextEyeMode);
+
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(60);
+        } catch {}
+      }
+
+      if (nextEyeMode && !state.mediaOverlayTheme) {
+        const randomOverlay =
+          EYE_MODE_OVERLAY_THEMES[Math.floor(Math.random() * EYE_MODE_OVERLAY_THEMES.length)];
+        const newSeed = Math.floor(Math.random() * 1000000) + 1;
+        onChange({
+          mediaOverlayTheme: randomOverlay,
+          proceduralSeed: newSeed,
+        });
+      }
+    }, duration);
+  };
+
+  const handleBgPointerUp = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (bgHoldTimerRef.current) {
+      clearTimeout(bgHoldTimerRef.current);
+      bgHoldTimerRef.current = null;
+    }
+    if (bgHoldIntervalRef.current) {
+      clearInterval(bgHoldIntervalRef.current);
+      bgHoldIntervalRef.current = null;
+    }
+    setIsHoldingBg(false);
+    setBgHoldProgress(0);
+  };
+
+  const handleBgPointerCancel = (e: React.PointerEvent) => {
+    e.stopPropagation();
+    if (bgHoldTimerRef.current) {
+      clearTimeout(bgHoldTimerRef.current);
+      bgHoldTimerRef.current = null;
+    }
+    if (bgHoldIntervalRef.current) {
+      clearInterval(bgHoldIntervalRef.current);
+      bgHoldIntervalRef.current = null;
+    }
+    setIsHoldingBg(false);
+    setBgHoldProgress(0);
+  };
+
+  const handleBgClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (bgHoldTimerRef.current) {
+      clearTimeout(bgHoldTimerRef.current);
+      bgHoldTimerRef.current = null;
+    }
+    if (bgHoldIntervalRef.current) {
+      clearInterval(bgHoldIntervalRef.current);
+      bgHoldIntervalRef.current = null;
+    }
+    setIsHoldingBg(false);
+    setBgHoldProgress(0);
+
+    if (isBgLongPressRef.current) {
+      setTimeout(() => {
+        isBgLongPressRef.current = false;
+      }, 200);
+      return;
+    }
+
+    if (isEyeMode && hasUserMedia) {
+      setIsBgGenerating(true);
+      const randomOverlay =
+        EYE_MODE_OVERLAY_THEMES[Math.floor(Math.random() * EYE_MODE_OVERLAY_THEMES.length)];
+      const newSeed = Math.floor(Math.random() * 1000000) + 1;
+      onChange({
+        mediaOverlayTheme: randomOverlay,
+        proceduralSeed: newSeed,
+      });
+      if (typeof navigator !== 'undefined' && navigator.vibrate) {
+        try {
+          navigator.vibrate(30);
+        } catch {}
+      }
+      setTimeout(() => {
+        setIsBgGenerating(false);
+      }, 300);
+      return;
+    }
+
+    handleRegenerateBackground();
   };
 
   const handleRegenerateBackground = () => {
@@ -1793,33 +1934,229 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
                 {/* 4, 5, 6: Generator Buttons Group: Bg, Music, Typography */}
                 <div data-tour="generator-buttons" className="flex items-center gap-1 sm:gap-1.5 shrink-0">
-                  {/* 4. Quick Regenerate Procedural Background */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRegenerateBackground();
-                    }}
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-950/70 hover:bg-purple-900/90 text-purple-300 hover:text-purple-100 border border-purple-500/40 hover:border-purple-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group"
-                    title={t('regenerateBg', 'Сгенерировать другой фон')}
-                    aria-label={t('regenerateBg', 'Сгенерировать другой фон')}
-                  >
-                    <Sparkles className="w-4 h-4 transition-transform group-hover:rotate-12" />
-                  </button>
+                  {/* 4. Quick Regenerate Background / Magic Eye (when user media is attached) */}
+                  <div className="relative" data-tour="preview-btn-bg">
+                    {/* Starry Radiance Aura when user video/photo is loaded */}
+                    {hasUserMedia && !isEyeMode && (
+                      <>
+                        {/* Animated glowing star halo */}
+                        <div className="absolute -inset-1 rounded-xl bg-gradient-to-r from-amber-400/40 via-cyan-400/40 to-fuchsia-400/40 blur-xs animate-pulse pointer-events-none" />
+                        {/* Twinkling star particle 1: Top Right */}
+                        <span className="absolute -top-1.5 -right-1 text-[9px] animate-bounce pointer-events-none select-none">✨</span>
+                        {/* Twinkling star particle 2: Bottom Left */}
+                        <span className="absolute -bottom-1 -left-1 text-[8px] animate-pulse pointer-events-none select-none">⭐</span>
+                      </>
+                    )}
 
-                  {/* 5. Quick Regenerate Procedural Music */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleRegenerateMusic();
-                    }}
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-indigo-100 border border-indigo-500/40 hover:border-indigo-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group"
-                    title={t('regenerateMusic', 'Сгенерировать другую музыку')}
-                    aria-label={t('regenerateMusic', 'Сгенерировать другую музыку')}
-                  >
-                    <Music className="w-4 h-4 transition-transform group-hover:scale-110" />
-                  </button>
+                    {/* Hold progress ring indicator during long-press */}
+                    {isHoldingBg && (
+                      <svg className="absolute -inset-1 w-[calc(100%+8px)] h-[calc(100%+8px)] -rotate-90 pointer-events-none z-20">
+                        <circle
+                          cx="50%"
+                          cy="50%"
+                          r="46%"
+                          fill="none"
+                          stroke={isEyeMode ? '#c084fc' : '#facc15'}
+                          strokeWidth="2.5"
+                          strokeDasharray="120"
+                          strokeDashoffset={120 - (120 * bgHoldProgress) / 100}
+                          strokeLinecap="round"
+                          className="transition-all duration-75"
+                        />
+                      </svg>
+                    )}
+
+                    <button
+                      type="button"
+                      onPointerDown={handleBgPointerDown}
+                      onPointerUp={handleBgPointerUp}
+                      onPointerCancel={handleBgPointerCancel}
+                      onPointerLeave={handleBgPointerCancel}
+                      onContextMenu={(e) => {
+                        if (hasUserMedia) {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          isBgLongPressRef.current = true;
+                          setIsEyeMode(!isEyeMode);
+                        }
+                      }}
+                      onClick={handleBgClick}
+                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 group relative z-10 ${
+                        isEyeMode
+                          ? 'bg-gradient-to-tr from-purple-900/90 via-indigo-900/80 to-cyan-950/90 hover:from-purple-800 hover:to-indigo-800 border-2 border-purple-400 text-purple-200 shadow-purple-500/50 hover:shadow-[0_0_20px_rgba(168,85,247,0.7)]'
+                          : hasUserMedia
+                          ? 'bg-purple-950/80 hover:bg-cyan-900/50 backdrop-blur-xl border border-amber-300/90 text-amber-200 shadow-[0_0_15px_rgba(250,204,21,0.55)]'
+                          : 'bg-purple-950/70 hover:bg-purple-900/90 text-purple-300 hover:text-purple-100 border border-purple-500/40 hover:border-purple-400'
+                      }`}
+                      title={
+                        isEyeMode
+                          ? t('mixEyeBtnTitle', 'Магический Глаз (клик: наложить случайную анимацию поверх фото/видео, долгий клик: вернуть звезды)')
+                          : hasUserMedia
+                          ? t('mixStarryBtnTitle', 'Звёздный Фон (клик: сменить фон, долгий клик: включить Магический Глаз)')
+                          : t('regenerateBg', 'Сгенерировать другой фон')
+                      }
+                      aria-label={
+                        isEyeMode
+                          ? t('mixEyeBtnTitle', 'Магический Глаз')
+                          : t('regenerateBg', 'Сгенерировать другой фон')
+                      }
+                    >
+                      {isEyeMode ? (
+                        <BlinkingEyeIcon className="w-4 h-4 text-purple-200" isGenerating={isBgGenerating} />
+                      ) : (
+                        <Sparkles
+                          className={`w-4 h-4 transition-transform group-hover:rotate-12 ${
+                            hasUserMedia ? 'text-amber-300' : ''
+                          }`}
+                        />
+                      )}
+                    </button>
+                  </div>
+
+                  {/* 5. Quick Regenerate Procedural Music (Tap: Remix, Long Press: Vertical Volume Slider Popout) */}
+                  <div className="relative" data-tour="preview-btn-music">
+                    {/* Vertical Volume Slider Popout */}
+                    {showMusicVolumePopover && (
+                      <div
+                        onPointerDown={(e) => e.stopPropagation()}
+                        onPointerUp={(e) => e.stopPropagation()}
+                        onTouchStart={(e) => e.stopPropagation()}
+                        onTouchEnd={(e) => e.stopPropagation()}
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-50 bg-black/90 backdrop-blur-2xl border border-white/20 p-2.5 rounded-3xl shadow-2xl flex flex-col items-center gap-2 animate-fade-in text-white pointer-events-auto select-none"
+                      >
+                        {/* Top Volume % Indicator */}
+                        <span className="text-[10px] font-black font-mono text-purple-200 select-none">
+                          {!state.audio.enabled || isMuted ? '0%' : `${Math.round((state.audio.volume ?? 0.7) * 100)}%`}
+                        </span>
+
+                        {/* Vertical Range Input Slider */}
+                        <div className="py-1 flex items-center justify-center">
+                          <input
+                            type="range"
+                            min={0}
+                            max={100}
+                            value={!state.audio.enabled || isMuted ? 0 : Math.round((state.audio.volume ?? 0.7) * 100)}
+                            onChange={(e) => {
+                              const rawVal = parseInt(e.target.value, 10);
+                              const val = rawVal / 100;
+                              const isEnabled = rawVal > 0;
+                              if (val > 0 && isMuted) {
+                                setIsMuted(false);
+                              } else if (val === 0) {
+                                setIsMuted(true);
+                              }
+                              audioMixer.setVolume(val);
+                              if (!isEnabled) {
+                                audioMixer.stop();
+                              }
+                              onChange({
+                                audio: {
+                                  ...state.audio,
+                                  volume: val,
+                                  musicVolume: val,
+                                  enabled: isEnabled,
+                                },
+                              });
+                            }}
+                            style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+                            className="h-28 w-2 sm:w-2.5 accent-purple-400 bg-zinc-800/80 rounded-lg cursor-pointer"
+                          />
+                        </div>
+
+                        {/* Bottom Mute Icon */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const nextMuted = !isMuted && state.audio.enabled && (state.audio.volume ?? 0) > 0;
+                            if (nextMuted) {
+                              setIsMuted(true);
+                              audioMixer.setVolume(0);
+                            } else {
+                              setIsMuted(false);
+                              const newVol = (state.audio.volume ?? 0) > 0 ? state.audio.volume : 0.7;
+                              audioMixer.setVolume(newVol);
+                              onChange({
+                                audio: {
+                                  ...state.audio,
+                                  enabled: true,
+                                  volume: newVol,
+                                },
+                              });
+                            }
+                          }}
+                          className="p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                          title={isMuted || !state.audio.enabled ? 'Unmute' : 'Mute'}
+                        >
+                          <VolumeX className={`w-3.5 h-3.5 ${isMuted || !state.audio.enabled ? 'text-rose-400' : 'text-zinc-400'}`} />
+                        </button>
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        isNoteLongPressRef.current = false;
+                        if (noteLongPressTimerRef.current) {
+                          clearTimeout(noteLongPressTimerRef.current);
+                        }
+                        noteLongPressTimerRef.current = window.setTimeout(() => {
+                          isNoteLongPressRef.current = true;
+                          setShowMusicVolumePopover(true);
+                          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                            try {
+                              navigator.vibrate(50);
+                            } catch {}
+                          }
+                        }, 350);
+                      }}
+                      onPointerUp={(e) => {
+                        e.stopPropagation();
+                        if (noteLongPressTimerRef.current) {
+                          clearTimeout(noteLongPressTimerRef.current);
+                          noteLongPressTimerRef.current = null;
+                        }
+                      }}
+                      onPointerCancel={(e) => {
+                        e.stopPropagation();
+                        if (noteLongPressTimerRef.current) {
+                          clearTimeout(noteLongPressTimerRef.current);
+                          noteLongPressTimerRef.current = null;
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (noteLongPressTimerRef.current) {
+                          clearTimeout(noteLongPressTimerRef.current);
+                          noteLongPressTimerRef.current = null;
+                        }
+                        if (isNoteLongPressRef.current) {
+                          setTimeout(() => {
+                            isNoteLongPressRef.current = false;
+                          }, 200);
+                          return;
+                        }
+                        if (showMusicVolumePopover) {
+                          setShowMusicVolumePopover(false);
+                          return;
+                        }
+                        handleRegenerateMusic();
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        isNoteLongPressRef.current = true;
+                        setShowMusicVolumePopover(true);
+                      }}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-indigo-100 border border-indigo-500/40 hover:border-indigo-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group relative"
+                      title={t('regenerateMusic', 'Сгенерировать другую музыку (долгий клик: регулятор громкости)')}
+                      aria-label={t('regenerateMusic', 'Сгенерировать другую музыку (долгий клик: регулятор громкости)')}
+                    >
+                      <Music className="w-4 h-4 transition-transform group-hover:scale-110" />
+                    </button>
+                  </div>
 
                   {/* 6. Quick Regenerate Typography, Font & Animations (T with Stars) */}
                   <button

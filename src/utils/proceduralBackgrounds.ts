@@ -135,19 +135,19 @@ export function drawProceduralMoodBackground(
       drawCosmic(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'cyberpunk':
-      drawCyberpunk(ctx, width, height, time, rng, seed);
+      drawCyberpunk(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'ember':
       drawEmber(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'nature':
-      drawNature(ctx, width, height, time, rng, seed);
+      drawNature(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'gold':
-      drawGold(ctx, width, height, time, rng, seed);
+      drawGold(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'fluid':
-      drawFluid(ctx, width, height, time, rng, seed);
+      drawFluid(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     case 'equalizer':
       drawEqualizer(ctx, width, height, time, rng, seed, skipSolidBg);
@@ -324,7 +324,8 @@ function drawCyberpunk(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
   // Theme parameters driven by seed
   const paletteType = Math.floor(rng() * 5);
@@ -375,13 +376,15 @@ function drawCyberpunk(
     secondaryGrid = 'rgba(236, 72, 153, 0.4)';
   }
 
-  // Draw Background
-  const bg = ctx.createLinearGradient(0, 0, 0, h);
-  bg.addColorStop(0, bgGrad1);
-  bg.addColorStop(0.5, bgGrad2);
-  bg.addColorStop(1, bgGrad3);
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
+  // Draw Background if not skipping solid base
+  if (!skipSolidBg) {
+    const bg = ctx.createLinearGradient(0, 0, 0, h);
+    bg.addColorStop(0, bgGrad1);
+    bg.addColorStop(0.5, bgGrad2);
+    bg.addColorStop(1, bgGrad3);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   // Moving Speed Offset
   const rawSpeed = t * (0.6 + rng() * 0.8);
@@ -645,7 +648,8 @@ function drawNature(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
   // Soft, non-toxic, atmospheric color palettes
   const natureTheme = Math.floor(rng() * 5);
@@ -696,12 +700,14 @@ function drawNature(
   }
 
   // Draw smooth background gradient
-  const bg = ctx.createLinearGradient(0, 0, w, h);
-  bg.addColorStop(0, bgGrad1);
-  bg.addColorStop(0.5, bgGrad2);
-  bg.addColorStop(1, bgGrad3);
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
+  if (!skipSolidBg) {
+    const bg = ctx.createLinearGradient(0, 0, w, h);
+    bg.addColorStop(0, bgGrad1);
+    bg.addColorStop(0.5, bgGrad2);
+    bg.addColorStop(1, bgGrad3);
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   // Flowing Aurora Waves
   ctx.save();
@@ -796,15 +802,18 @@ function drawGold(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
   // Rich golden dark brown gradient
-  const bg = ctx.createRadialGradient(w * 0.5, h * 0.4, w * 0.1, w * 0.5, h * 0.5, w * 0.8);
-  bg.addColorStop(0, '#451a03');
-  bg.addColorStop(0.5, '#1e1005');
-  bg.addColorStop(1, '#090502');
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, w, h);
+  if (!skipSolidBg) {
+    const bg = ctx.createRadialGradient(w * 0.5, h * 0.4, w * 0.1, w * 0.5, h * 0.5, w * 0.8);
+    bg.addColorStop(0, '#451a03');
+    bg.addColorStop(0.5, '#1e1005');
+    bg.addColorStop(1, '#090502');
+    ctx.fillStyle = bg;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   // Soft Gold Bokeh Circles
   const bokehCount = 22;
@@ -853,7 +862,8 @@ function drawFluid(
   h: number,
   t: number,
   rng: () => number,
-  seed: number
+  seed: number,
+  skipSolidBg: boolean = false
 ) {
   // Rich diverse color palettes for fluid & background
   const fluidTheme = Math.floor(rng() * 5);
@@ -909,8 +919,10 @@ function drawFluid(
   }
 
   // Fill background
-  ctx.fillStyle = bgBase;
-  ctx.fillRect(0, 0, w, h);
+  if (!skipSolidBg) {
+    ctx.fillStyle = bgBase;
+    ctx.fillRect(0, 0, w, h);
+  }
 
   // Fluid Lava Blobs with extreme size variation (from micro droplets to gigantic sweeping ambient auras)
   const blobCount = 6 + Math.floor(rng() * 4);

@@ -288,8 +288,8 @@ export function renderCanvasFrame({
     segments.length
   );
 
-  // 4. Draw Darkening Overlay
-  if (state.bgOverlayOpacity > 0) {
+  // 4. Draw Darkening Overlay (only when mediaOverlayTheme is not active and no custom media without explicit darkening)
+  if (state.bgOverlayOpacity > 0 && !state.mediaOverlayTheme && !bgMediaElement) {
     ctx.fillStyle = `rgba(0, 0, 0, ${state.bgOverlayOpacity})`;
     ctx.fillRect(0, 0, width, height);
   }
@@ -1047,19 +1047,21 @@ function drawPresetOrOverlayBackground(
     ctx.restore();
   } else if (preset.id === 'cosmic-dark') {
     // Cosmic space gradient with twinkling stars
-    const grad = ctx.createRadialGradient(
-      width / 2,
-      height / 2,
-      50,
-      width / 2,
-      height / 2,
-      Math.max(width, height)
-    );
-    grad.addColorStop(0, '#1e1b4b');
-    grad.addColorStop(0.5, '#0f172a');
-    grad.addColorStop(1, '#030712');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, width, height);
+    if (!skipSolidBg) {
+      const grad = ctx.createRadialGradient(
+        width / 2,
+        height / 2,
+        50,
+        width / 2,
+        height / 2,
+        Math.max(width, height)
+      );
+      grad.addColorStop(0, '#1e1b4b');
+      grad.addColorStop(0.5, '#0f172a');
+      grad.addColorStop(1, '#030712');
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, width, height);
+    }
 
     // Subtle star field
     ctx.fillStyle = '#ffffff';
