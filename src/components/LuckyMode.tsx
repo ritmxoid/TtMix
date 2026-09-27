@@ -168,6 +168,7 @@ export function generate4Variations(
 
     const varState: VideoProjectState = {
       ...baseState,
+      textBgEnabled: false,
       rawText: activeText,
       authorText: activeAuthor,
       textMode,
@@ -469,19 +470,27 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
 
   // Set default Matrix quote if empty or initial expert placeholder
   useEffect(() => {
-    if (isExpertDefault) {
-      onUpdateBaseState({
-        rawText: defaultMatrixText,
-        authorText: defaultMatrixAuthor,
-      });
-      setVariations((prev) =>
-        prev.map((v) => ({
-          ...v,
-          rawText: defaultMatrixText,
-          authorText: defaultMatrixAuthor,
-        }))
-      );
-    }
+    onUpdateBaseState({
+      textBgEnabled: false,
+      ...(isExpertDefault
+        ? {
+            rawText: defaultMatrixText,
+            authorText: defaultMatrixAuthor,
+          }
+        : {}),
+    });
+    setVariations((prev) =>
+      prev.map((v) => ({
+        ...v,
+        textBgEnabled: false,
+        ...(isExpertDefault
+          ? {
+              rawText: defaultMatrixText,
+              authorText: defaultMatrixAuthor,
+            }
+          : {}),
+      }))
+    );
   }, [defaultMatrixText, defaultMatrixAuthor, isExpertDefault, onUpdateBaseState]);
 
   const [variations, setVariations] = useState<VideoProjectState[]>(() =>
@@ -491,6 +500,27 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
   const [isTextInputOpen, setIsTextInputOpen] = useState<boolean>(false);
   const [isRocketConfirmOpen, setIsRocketConfirmOpen] = useState<boolean>(false);
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
+
+  const gridPointerStartRef = useRef<{ x: number; y: number; time: number }>({ x: 0, y: 0, time: 0 });
+
+  const handleGridPointerDown = (e: React.PointerEvent) => {
+    if (e.button !== 0 && e.pointerType === 'mouse') return;
+    const target = e.target as HTMLElement | null;
+    if (target && target.closest('button, input, textarea, [role="button"]')) return;
+    gridPointerStartRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
+  };
+
+  const handleGridPointerUp = (e: React.PointerEvent) => {
+    if (gridPointerStartRef.current.time === 0) return;
+    const deltaX = e.clientX - gridPointerStartRef.current.x;
+    const deltaY = e.clientY - gridPointerStartRef.current.y;
+    gridPointerStartRef.current.time = 0;
+
+    // Swipe Right gesture (left to right) to return to main landing page
+    if (deltaX > 40 && deltaX > Math.abs(deltaY) * 1.1) {
+      onReturnToLanding();
+    }
+  };
 
   const handleGenerateNew = useCallback(() => {
     setIsGenerating(true);
@@ -565,82 +595,14 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
           onOpenRocketConfirm={() => setIsRocketConfirmOpen(true)}
         />
       ) : (
-        /* GRID SUBMODE: 4 VARIATIONS */
-        <div className="relative z-10 flex-1 flex flex-col max-w-5xl mx-auto w-full p-3 sm:p-6">
-          {/* Header Bar */}
-          <header className="flex items-center justify-between gap-2 py-2 mb-4 border-b border-white/10 pb-3">
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={onReturnToLanding}
-                className="p-2 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-white/10 transition-all cursor-pointer"
-                title={t('backToStart', 'На главный экран')}
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-
-              <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-black text-transparent bg-clip-text bg-gradient-to-r from-purple-300 via-white to-cyan-300">
-                  TtMix
-                </h1>
-                <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/20 border border-cyan-500/40 text-cyan-300 text-[11px] font-extrabold uppercase tracking-wide flex items-center gap-1 shadow-sm">
-                  <Sparkles className="w-3 h-3 text-cyan-300" />
-                  <span>{t('luckyModeBtn', 'Мне повезёт!')}</span>
-                </span>
-              </div>
-            </div>
-
-            {/* Upload File Button */}
-            {onOpenUploadModal && (
-              <button
-                type="button"
-                onClick={onOpenUploadModal}
-                className="px-3.5 py-1.5 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 border border-purple-500/40 text-purple-200 text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5 shadow-md active:scale-95"
-                title={t('uploadVideoPhoto', 'Загрузить видео, фото или аудио')}
-              >
-                <Upload className="w-3.5 h-3.5 text-purple-300" />
-                <span className="hidden xs:inline">{t('uploadMediaBtn', 'Загрузить файл')}</span>
-              </button>
-            )}
-          </header>
-
-          {/* Banner Button: YOUR TEXT */}
-          <div
-            onClick={() => setIsTextInputOpen(true)}
-            className="group relative w-full mb-5 p-3.5 sm:p-5 rounded-2xl bg-zinc-900/90 hover:bg-zinc-850 border-2 border-purple-500/40 hover:border-purple-400 shadow-xl backdrop-blur-xl transition-all cursor-pointer flex items-center justify-between gap-3 overflow-hidden"
-          >
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="w-10 h-10 rounded-xl bg-purple-600/20 border border-purple-500/40 text-purple-300 flex items-center justify-center shrink-0 shadow-inner group-hover:scale-105 transition-transform">
-                <Type className="w-5 h-5" />
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-1.5 text-[11px] font-extrabold uppercase text-purple-300 tracking-wider">
-                  <span>{t('yourTextBanner', 'ВАШ ТЕКСТ')}</span>
-                  <span className="text-[10px] text-zinc-400 font-normal lowercase">
-                    ({t('clickToEdit', 'нажмите для ввода с клавиатуры')})
-                  </span>
-                </div>
-                <p className="text-xs sm:text-sm font-semibold text-white truncate max-w-md mt-0.5">
-                  "{currentActiveText}"
-                </p>
-                {currentActiveAuthor && (
-                  <p className="text-[11px] text-purple-300/80 truncate">
-                    — {currentActiveAuthor}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              className="px-3.5 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-bold shrink-0 shadow-md shadow-purple-600/30 transition-transform group-hover:scale-105"
-            >
-              {t('edit', 'Изменить')}
-            </button>
-          </div>
-
-          {/* 2x2 Grid of Variations */}
-          <div className="grid grid-cols-2 gap-3 sm:gap-5 flex-1 mb-6">
+        /* GRID SUBMODE: 4 VARIATIONS WITHOUT HEADER (Swipe Right returns to start page) */
+        <div
+          onPointerDown={handleGridPointerDown}
+          onPointerUp={handleGridPointerUp}
+          className="relative z-10 flex-1 flex flex-col min-h-screen max-w-5xl mx-auto w-full p-2 sm:p-4 pb-24 touch-pan-y"
+        >
+          {/* 2x2 Grid of 4 Variations */}
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 items-center my-auto pt-4 sm:pt-6">
             {variations.map((varState, idx) => (
               <LuckyCard
                 key={idx}
@@ -652,17 +614,42 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
             ))}
           </div>
 
-          {/* Bottom Center Round Button: GENERATE NEW ✨ */}
-          <div className="sticky bottom-4 inset-x-0 flex justify-center items-center z-20 pb-[env(safe-area-inset-bottom,0px)]">
-            <button
-              type="button"
-              onClick={handleGenerateNew}
-              disabled={isGenerating}
-              className="px-6 py-3.5 rounded-full bg-gradient-to-r from-cyan-500 via-purple-600 to-rose-500 hover:from-cyan-400 hover:to-rose-400 text-white font-black text-sm sm:text-base tracking-wide uppercase shadow-2xl shadow-cyan-500/40 border-2 border-white/20 transition-all duration-300 hover:scale-105 active:scale-95 flex items-center gap-2.5 cursor-pointer disabled:opacity-50"
-            >
-              <Sparkles className={`w-5 h-5 text-white ${isGenerating ? 'animate-spin' : 'animate-bounce'}`} />
-              <span>{t('generateMoreBtn', 'Сгенерировать еще (✨)')}</span>
-            </button>
+          {/* Unified Transparent Round Bottom Action Bar */}
+          <div className="fixed bottom-4 sm:bottom-6 inset-x-0 z-30 flex justify-center items-center px-3 pb-[env(safe-area-inset-bottom,0px)] pointer-events-none">
+            <div className="pointer-events-auto flex items-center gap-3 sm:gap-4 bg-black/60 backdrop-blur-2xl border border-white/15 p-2 rounded-full shadow-2xl">
+              {/* 1. Round Button: [Т] Text Input */}
+              <button
+                type="button"
+                onClick={() => setIsTextInputOpen(true)}
+                className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-purple-600/30 backdrop-blur-xl border border-purple-400/30 text-purple-200 font-black text-lg sm:text-xl flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
+                title={t('editTextInputTitle', 'Ввод текста')}
+              >
+                Т
+              </button>
+
+              {/* 2. Center Round Button: [Mix] Generator of New Quartets */}
+              <button
+                type="button"
+                onClick={handleGenerateNew}
+                disabled={isGenerating}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/40 hover:bg-cyan-500/30 backdrop-blur-xl border-2 border-cyan-400/50 text-cyan-200 font-black text-sm sm:text-base flex items-center justify-center shadow-2xl shadow-cyan-500/30 transition-all cursor-pointer active:scale-95 disabled:opacity-50 shrink-0 group"
+                title={t('generateMoreBtn', 'Генератор новых квартетов')}
+              >
+                <Sparkles className={`w-5 h-5 sm:w-6 sm:h-6 text-cyan-300 ${isGenerating ? 'animate-spin' : 'group-hover:rotate-12 transition-transform'}`} />
+              </button>
+
+              {/* 3. Round Button: [Upload] User Media Files */}
+              {onOpenUploadModal && (
+                <button
+                  type="button"
+                  onClick={onOpenUploadModal}
+                  className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-cyan-600/30 backdrop-blur-xl border border-cyan-400/30 text-cyan-200 flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
+                  title={t('uploadVideoPhoto', 'Загрузить медиафайлы')}
+                >
+                  <Upload className="w-5 h-5 sm:w-6 sm:h-6 text-cyan-300" />
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

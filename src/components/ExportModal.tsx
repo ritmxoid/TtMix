@@ -7,12 +7,14 @@ interface ExportModalProps {
   progress: ExportProgress;
   onClose: () => void;
   onRestart: () => void;
+  rawText?: string;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
   progress,
   onClose,
   onRestart,
+  rawText,
 }) => {
   const { t } = useLanguage();
 
@@ -22,7 +24,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
   const handleDownload = () => {
     if (!progress.downloadUrl && !progress.fileBlob) return;
-    const filename = `animated-text-video-${Date.now()}.${progress.fileExtension || 'mp4'}`;
+    const rawT = (rawText || '').trim();
+    const cleanText = rawT
+      .replace(/[^\w\u0400-\u04FF\s]/gi, '')
+      .trim()
+      .replace(/\s+/g, '_')
+      .slice(0, 32);
+    const textSnippet = cleanText || 'Quote';
+    const ext = progress.fileExtension || 'mp4';
+    const filename = `TtMix_Video+${textSnippet}.${ext}`;
     const url = progress.fileBlob ? URL.createObjectURL(progress.fileBlob) : (progress.downloadUrl || '');
     if (!url) return;
 

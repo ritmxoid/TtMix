@@ -778,10 +778,17 @@ export default function App() {
           fileExtension: result.fileExtension || 'mp4',
         });
         // Automatically trigger file download
+        const rawT = (projectState.rawText || '').trim();
+        const cleanText = rawT
+          .replace(/[^\w\u0400-\u04FF\s]/gi, '')
+          .trim()
+          .replace(/\s+/g, '_')
+          .slice(0, 32);
+        const textSnippet = cleanText || 'Quote';
         const ext = result.fileExtension || 'mp4';
         const a = document.createElement('a');
         a.href = result.downloadUrl;
-        a.download = `TexTic-${Date.now()}.${ext}`;
+        a.download = `TtMix_Video+${textSnippet}.${ext}`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1071,6 +1078,7 @@ export default function App() {
       {/* Export Modal */}
       <ExportModal
         progress={exportProgress}
+        rawText={projectState.rawText}
         onClose={() =>
           setExportProgress((p) => ({ ...p, downloadUrl: null, error: null }))
         }

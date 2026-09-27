@@ -111,6 +111,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   // Gesture state: Drag text 2D (adjust textPositionX and textPositionY) & Long-press for Font Size popup
   const [isDraggingText, setIsDraggingText] = useState(false);
   const [showFontSizePopup, setShowFontSizePopup] = useState(false);
+  const [showVolumePopover, setShowVolumePopover] = useState(false);
   const [isTextColorPickerOpen, setIsTextColorPickerOpen] = useState(false);
   const [popupOffset, setPopupOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const popupOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -191,9 +192,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     if (target && target.closest('button, input, select, textarea, [data-dock="true"], [role="button"]')) {
       return;
     }
-    // If font size popup is currently open, clicking anywhere on stage dismisses it cleanly
-    if (showFontSizePopup) {
+    // If font size popup or volume popover is open, clicking anywhere on stage dismisses it cleanly
+    if (showFontSizePopup || showVolumePopover) {
       setShowFontSizePopup(false);
+      setShowVolumePopover(false);
       return;
     }
 
@@ -272,10 +274,12 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       clearTimeout(fontSizeLongPressTimerRef.current);
       fontSizeLongPressTimerRef.current = null;
     }
+
+    const hadDrag = dragStartYRef.current !== 0;
+
     if (isDraggingText) {
       setIsDraggingText(false);
     }
-    const hadDrag = dragStartYRef.current !== 0;
     dragStartXRef.current = 0;
     dragStartYRef.current = 0;
 
@@ -1018,7 +1022,16 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   const handleSaveRecordedVideo = (e: React.MouseEvent) => {
     e.stopPropagation();
     const durSec = targetCycleDurationRef.current || effectiveDuration;
-    const filename = `animator-quote-${Math.round(durSec)}s-${Date.now()}.webm`;
+
+    // Create sanitized text snippet from state.rawText for filename TtMix_Video+Text
+    const rawT = (state.rawText || '').trim();
+    const cleanText = rawT
+      .replace(/[^\w\u0400-\u04FF\s]/gi, '') // keep alphanumeric, spaces, Cyrillic
+      .trim()
+      .replace(/\s+/g, '_')
+      .slice(0, 32);
+    const textSnippet = cleanText || 'Quote';
+    const filename = `TtMix_Video+${textSnippet}.webm`;
 
     const blob = recordedBlobRef.current;
     if (!blob || blob.size === 0) {
@@ -1294,10 +1307,16 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         onPointerUp={handleStagePointerUp}
         onPointerCancel={handleStagePointerUp}
         onClick={(e) => e.stopPropagation()}
-        className="w-full h-full flex items-center justify-center overflow-hidden p-1 sm:p-4 pt-12 pb-16 sm:pt-14 sm:pb-20 select-none touch-none relative"
+        className={`w-full h-full flex items-center justify-center overflow-hidden select-none touch-none relative ${
+          isLuckyMode
+            ? 'p-0 pt-0 pb-0'
+            : 'p-1 sm:p-4 pt-12 pb-16 sm:pt-14 sm:pb-20'
+        }`}
       >
         <div
-          className="relative flex items-center justify-center max-h-full max-w-full"
+          className={`relative flex items-center justify-center ${
+            isLuckyMode ? 'w-full h-full' : 'max-h-full max-w-full'
+          }`}
           style={{
             aspectRatio: `${dimensions.width} / ${dimensions.height}`,
           }}
@@ -1306,7 +1325,11 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             ref={canvasRef}
             width={dimensions.width}
             height={dimensions.height}
-            className="w-full h-full max-h-full max-w-full object-contain shadow-2xl rounded-none sm:rounded-lg cursor-pointer transition-transform"
+            className={`w-full h-full object-contain cursor-pointer transition-transform ${
+              isLuckyMode
+                ? 'rounded-none max-w-full max-h-full'
+                : 'max-h-full max-w-full shadow-2xl rounded-none sm:rounded-lg'
+            }`}
           />
         </div>
       </div>
@@ -1326,216 +1349,280 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           data-dock="true"
           onPointerDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          className={`absolute bottom-4 sm:bottom-6 inset-x-0 flex justify-center items-center gap-2 sm:gap-4 z-30 transition-all duration-300 px-3 sm:px-6 pb-[env(safe-area-inset-bottom,0px)] ${
+          className={`absolute bottom-4 sm:bottom-6 inset-x-0 flex flex-col items-center justify-center gap-3 z-30 transition-all duration-300 px-3 sm:px-6 pb-[env(safe-area-inset-bottom,0px)] ${
             hideControls ? 'opacity-0 translate-y-full pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
           }`}
         >
-          {/* 1. Round Button: TEXT (T) */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onOpenTextInput) onOpenTextInput();
-            }}
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-xl border border-white/25 text-purple-300 font-black text-lg sm:text-xl flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
-            title={t('text', 'ТЕКСТ')}
-          >
-            Т
-          </button>
-
-          {/* 2. Round Button: ROCKET (Rocket to Expert Mode) */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onOpenRocketConfirm) onOpenRocketConfirm();
-            }}
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-rose-950/80 hover:bg-rose-900/90 backdrop-blur-xl border border-rose-500/50 text-rose-300 flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
-            title={t('transferToExpertBtn', 'Перенести в Эксперт')}
-          >
-            <Rocket className="w-5 h-5 text-rose-300" />
-          </button>
-
-          {/* 3. Center Round Button: RECORD / DOWNLOAD */}
-          {recordedVideoUrl && !isRecordingScreen && !isProcessingVideo ? (
-            <button
-              type="button"
-              onClick={handleSaveRecordedVideo}
-              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-teal-500 hover:bg-teal-400 text-white flex items-center justify-center shadow-2xl shadow-teal-500/50 transition-all cursor-pointer active:scale-95 animate-bounce shrink-0 border-2 border-white/30"
-              title={t('downloadWebm', 'Скачать видео WebM')}
-            >
-              <Download className="w-6 h-6 text-white stroke-[2.5]" />
-            </button>
-          ) : isProcessingVideo ? (
-            <button
-              type="button"
-              disabled
-              className="w-13 h-13 sm:w-14 sm:h-14 rounded-full bg-zinc-800 text-zinc-400 border border-zinc-700/60 flex items-center justify-center cursor-not-allowed opacity-80 shrink-0"
-            >
-              <Sparkles className="w-6 h-6 text-purple-400 animate-spin" />
-            </button>
-          ) : (
+          <div className="pointer-events-auto flex items-center gap-2 sm:gap-3 bg-black/60 backdrop-blur-2xl border border-white/15 p-2 rounded-full shadow-2xl">
+            {/* 1. Round Button: TEXT (T) */}
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
-                toggleLiveScreenRecord();
+                if (onOpenTextInput) onOpenTextInput();
               }}
-              className={`w-13 h-13 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 border-2 shadow-2xl ${
-                isRecordingScreen
-                  ? 'bg-rose-600 text-white animate-pulse border-rose-300 shadow-rose-600/60'
-                  : 'bg-rose-600 hover:bg-rose-500 text-white border-white/30 shadow-rose-950/60'
-              }`}
-              title={isRecordingScreen ? t('stopRecording', 'Остановить запись') : t('captureScreen', 'Захват видео')}
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-purple-600/30 backdrop-blur-xl border border-purple-400/30 text-purple-200 font-black text-lg sm:text-xl flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
+              title={t('text', 'ТЕКСТ')}
             >
-              {isRecordingScreen ? (
-                <Square className="w-5 h-5 fill-white text-white" />
-              ) : (
-                <Video className="w-6 h-6 text-white" />
-              )}
+              Т
             </button>
-          )}
 
-          {/* 4. Round Button: NOTES / MELODY (Tap: Remix, Long Press: Mute) */}
-          <button
-            type="button"
-            onPointerDown={(e) => {
-              e.stopPropagation();
-              isNoteLongPressRef.current = false;
-              if (noteLongPressTimerRef.current) {
-                clearTimeout(noteLongPressTimerRef.current);
-              }
-              noteLongPressTimerRef.current = window.setTimeout(() => {
-                isNoteLongPressRef.current = true;
-                const nextEnabled = !state.audio.enabled;
-                onChange({ audio: { ...state.audio, enabled: nextEnabled } });
-                if (!nextEnabled) {
-                  audioMixer.stop();
-                }
-                if (typeof navigator !== 'undefined' && navigator.vibrate) {
-                  try {
-                    navigator.vibrate(50);
-                  } catch {}
-                }
-                setSoundNotice(
-                  nextEnabled
-                    ? t('soundUnmutedToast', 'Звук включен 🔔')
-                    : t('soundMutedToast', 'Звук отключен 🔕')
-                );
-                setTimeout(() => setSoundNotice(null), 3000);
-              }, 600);
-            }}
-            onPointerUp={(e) => {
-              e.stopPropagation();
-              if (noteLongPressTimerRef.current) {
-                clearTimeout(noteLongPressTimerRef.current);
-                noteLongPressTimerRef.current = null;
-              }
-            }}
-            onPointerCancel={(e) => {
-              e.stopPropagation();
-              if (noteLongPressTimerRef.current) {
-                clearTimeout(noteLongPressTimerRef.current);
-                noteLongPressTimerRef.current = null;
-              }
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (noteLongPressTimerRef.current) {
-                clearTimeout(noteLongPressTimerRef.current);
-                noteLongPressTimerRef.current = null;
-              }
-              if (isNoteLongPressRef.current) {
-                isNoteLongPressRef.current = false;
-                return;
-              }
-              // If sound was disabled, enable it and start playing
-              if (!state.audio.enabled) {
-                onChange({ audio: { ...state.audio, enabled: true } });
-                setSoundNotice(t('soundUnmutedToast', 'Звук включен 🔔'));
-                setTimeout(() => setSoundNotice(null), 3000);
-                return;
-              }
-              // User uploaded file cannot be procedurally remixed
-              if (state.audio.sourceType === 'file') {
-                setSoundNotice('👤 Используется ваш аудиофайл');
-                setTimeout(() => setSoundNotice(null), 3000);
-                return;
-              }
-              // Cycle to the next procedural music preset from MUSIC_PRESETS
-              const presetIds = MUSIC_PRESETS.map((p) => p.id);
-              const curIdx = presetIds.indexOf(state.audio.presetId);
-              const nextPresetId = presetIds[(curIdx + 1) % presetIds.length];
-              const nextSeed = Math.floor(Math.random() * 999999) + 1;
-              const presetInfo = MUSIC_PRESETS.find((p) => p.id === nextPresetId);
+            {/* 2. Round Button: ROCKET (Rocket to Expert Mode) */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenRocketConfirm) onOpenRocketConfirm();
+              }}
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-rose-600/30 backdrop-blur-xl border border-rose-400/30 text-rose-300 flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
+              title={t('transferToExpertBtn', 'Перенести в Эксперт')}
+            >
+              <Rocket className="w-5 h-5 text-rose-300" />
+            </button>
 
-              // Stop previous audio immediately before starting the new track
-              audioMixer.stop();
-
-              onChange({
-                audio: {
-                  ...state.audio,
-                  enabled: true,
-                  sourceType: 'generator',
-                  presetId: nextPresetId,
-                  seed: nextSeed,
-                  volume: (state.audio.volume ?? 0.7) > 0 ? state.audio.volume : 0.7,
-                },
-              });
-
-              setSoundNotice(`🎵 ${presetInfo ? `${presetInfo.emoji} ${presetInfo.name}` : 'Новая мелодия'}`);
-              setTimeout(() => setSoundNotice(null), 3000);
-            }}
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              const nextEnabled = !state.audio.enabled;
-              onChange({ audio: { ...state.audio, enabled: nextEnabled } });
-              if (!nextEnabled) {
-                audioMixer.stop();
-              }
-              setSoundNotice(
-                nextEnabled
-                  ? t('soundUnmutedToast', 'Звук включен 🔔')
-                  : t('soundMutedToast', 'Звук отключен 🔕')
-              );
-              setTimeout(() => setSoundNotice(null), 3000);
-            }}
-            className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-xl border flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0 relative ${
-              !state.audio.enabled
-                ? 'bg-zinc-900/80 border-zinc-700 text-zinc-500'
-                : state.audio.sourceType === 'file'
-                ? 'bg-cyan-950/80 hover:bg-cyan-900 border-cyan-500/50 text-cyan-300'
-                : 'bg-purple-950/80 hover:bg-purple-900 border-purple-500/50 text-purple-300'
-            }`}
-            title={state.audio.enabled ? t('remixMelodyBtn', 'Сменить мелодию (долгий клик: выключить звук)') : t('soundMutedToast', 'Звук отключен')}
-          >
-            {state.audio.enabled ? (
-              state.audio.sourceType === 'file' ? (
-                <div className="flex items-center justify-center relative">
-                  <Music className="w-5 h-5 text-cyan-300" />
-                  <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />
-                </div>
-              ) : (
-                <Music className="w-5 h-5 text-purple-300 animate-pulse" />
-              )
+            {/* 3. Center Round Button: RECORD / DOWNLOAD */}
+            {recordedVideoUrl && !isRecordingScreen && !isProcessingVideo ? (
+              <button
+                type="button"
+                onClick={handleSaveRecordedVideo}
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-teal-500/80 hover:bg-teal-400 text-white flex items-center justify-center shadow-2xl shadow-teal-500/50 transition-all cursor-pointer active:scale-95 animate-bounce shrink-0 border-2 border-white/30"
+                title={t('downloadWebm', 'Скачать видео WebM')}
+              >
+                <Download className="w-6 h-6 text-white stroke-[2.5]" />
+              </button>
+            ) : isProcessingVideo ? (
+              <button
+                type="button"
+                disabled
+                className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-black/40 border border-zinc-700/60 flex items-center justify-center cursor-not-allowed opacity-80 shrink-0"
+              >
+                <Sparkles className="w-6 h-6 text-purple-400 animate-spin" />
+              </button>
             ) : (
-              <VolumeX className="w-5 h-5 text-zinc-500" />
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLiveScreenRecord();
+                }}
+                className={`w-12 h-12 sm:w-14 sm:h-14 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 border-2 shadow-2xl ${
+                  isRecordingScreen
+                    ? 'bg-rose-600/80 text-white animate-pulse border-rose-300 shadow-rose-600/60'
+                    : 'bg-black/40 hover:bg-rose-600/40 text-white border-rose-500/50 shadow-rose-950/60'
+                }`}
+                title={isRecordingScreen ? t('stopRecording', 'Остановить запись') : t('captureScreen', 'Захват видео')}
+              >
+                {isRecordingScreen ? (
+                  <Square className="w-5 h-5 fill-white text-white" />
+                ) : (
+                  <Video className="w-6 h-6 text-rose-400" />
+                )}
+              </button>
             )}
-          </button>
 
-          {/* 5. Round Button: BACK ARROW */}
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              if (onBackToLuckyGrid) onBackToLuckyGrid();
-            }}
-            className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/80 hover:bg-black/95 backdrop-blur-xl border border-white/25 text-white flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
-            title={t('backToVariants', 'Назад к вариантам')}
-          >
-            <ArrowLeft className="w-5 h-5 text-zinc-200" />
-          </button>
+            {/* 4. Round Button: NOTES / MELODY (Tap: Remix / Close volume, Long Press: Vertical Volume Slider Popout) */}
+            <div className="relative">
+              {/* Vertical Volume Slider Popout */}
+              {showVolumePopover && (
+                <div
+                  onPointerDown={(e) => e.stopPropagation()}
+                  onPointerUp={(e) => e.stopPropagation()}
+                  onTouchStart={(e) => e.stopPropagation()}
+                  onTouchEnd={(e) => e.stopPropagation()}
+                  onClick={(e) => e.stopPropagation()}
+                  className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-50 bg-black/85 backdrop-blur-2xl border border-white/20 p-2.5 rounded-3xl shadow-2xl flex flex-col items-center gap-2 animate-fade-in text-white pointer-events-auto"
+                >
+                  {/* Top Volume % Indicator */}
+                  <span className="text-[10px] font-black font-mono text-purple-200 select-none">
+                    {!state.audio.enabled ? '0%' : `${Math.round((state.audio.volume ?? 0.7) * 100)}%`}
+                  </span>
+
+                  {/* Vertical Range Input Slider */}
+                  <div className="py-1 flex items-center justify-center">
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={!state.audio.enabled ? 0 : Math.round((state.audio.volume ?? 0.7) * 100)}
+                      onChange={(e) => {
+                        const rawVal = parseInt(e.target.value, 10);
+                        const val = rawVal / 100;
+                        const isEnabled = rawVal > 0;
+                        audioMixer.setVolume(val);
+                        if (!isEnabled) {
+                          audioMixer.stop();
+                        }
+                        onChange({
+                          audio: {
+                            ...state.audio,
+                            volume: val,
+                            musicVolume: val,
+                            enabled: isEnabled,
+                          },
+                        });
+                      }}
+                      style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
+                      className="h-28 w-2 sm:w-2.5 accent-purple-400 bg-zinc-800/80 rounded-lg cursor-pointer"
+                    />
+                  </div>
+
+                  {/* Bottom Mute Icon */}
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const nextEnabled = !state.audio.enabled;
+                      if (!nextEnabled) {
+                        audioMixer.setVolume(0);
+                        audioMixer.stop();
+                      } else {
+                        const newVol = (state.audio.volume ?? 0) > 0 ? state.audio.volume : 0.7;
+                        audioMixer.setVolume(newVol);
+                      }
+                      onChange({
+                        audio: {
+                          ...state.audio,
+                          enabled: nextEnabled,
+                        },
+                      });
+                    }}
+                    className="p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
+                    title={state.audio.enabled ? 'Mute' : 'Unmute'}
+                  >
+                    <VolumeX className={`w-3.5 h-3.5 ${!state.audio.enabled ? 'text-rose-400' : 'text-zinc-400'}`} />
+                  </button>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  isNoteLongPressRef.current = false;
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                  }
+                  noteLongPressTimerRef.current = window.setTimeout(() => {
+                    isNoteLongPressRef.current = true;
+                    setShowVolumePopover(true);
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      try {
+                        navigator.vibrate(50);
+                      } catch {}
+                    }
+                  }, 350);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                }}
+                onPointerCancel={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                  if (isNoteLongPressRef.current) {
+                    setTimeout(() => {
+                      isNoteLongPressRef.current = false;
+                    }, 200);
+                    return;
+                  }
+                  // Short click toggles popover off if open
+                  if (showVolumePopover) {
+                    setShowVolumePopover(false);
+                    return;
+                  }
+                  // If sound was disabled, enable it and start playing
+                  if (!state.audio.enabled) {
+                    onChange({ audio: { ...state.audio, enabled: true, volume: (state.audio.volume ?? 0) > 0 ? state.audio.volume : 0.7 } });
+                    setSoundNotice(t('soundUnmutedToast', 'Звук включен 🔔'));
+                    setTimeout(() => setSoundNotice(null), 3000);
+                    return;
+                  }
+                  // User uploaded file cannot be procedurally remixed
+                  if (state.audio.sourceType === 'file') {
+                    setSoundNotice('👤 Используется ваш аудиофайл');
+                    setTimeout(() => setSoundNotice(null), 3000);
+                    return;
+                  }
+                  // Cycle to the next procedural music preset from MUSIC_PRESETS
+                  const presetIds = MUSIC_PRESETS.map((p) => p.id);
+                  const curIdx = presetIds.indexOf(state.audio.presetId);
+                  const nextPresetId = presetIds[(curIdx + 1) % presetIds.length];
+                  const nextSeed = Math.floor(Math.random() * 999999) + 1;
+                  const presetInfo = MUSIC_PRESETS.find((p) => p.id === nextPresetId);
+
+                  // Stop previous audio immediately before starting the new track
+                  audioMixer.stop();
+
+                  onChange({
+                    audio: {
+                      ...state.audio,
+                      enabled: true,
+                      sourceType: 'generator',
+                      presetId: nextPresetId,
+                      seed: nextSeed,
+                      volume: (state.audio.volume ?? 0.7) > 0 ? state.audio.volume : 0.7,
+                    },
+                  });
+
+                  setSoundNotice(`🎵 ${presetInfo ? `${presetInfo.emoji} ${presetInfo.name}` : 'Новая мелодия'}`);
+                  setTimeout(() => setSoundNotice(null), 3000);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  isNoteLongPressRef.current = true;
+                  setShowVolumePopover(true);
+                }}
+                className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-xl border flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0 relative ${
+                  !state.audio.enabled
+                    ? 'bg-black/40 border-zinc-700/60 text-zinc-500'
+                    : state.audio.sourceType === 'file'
+                    ? 'bg-black/40 hover:bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
+                    : 'bg-black/40 hover:bg-purple-900/40 border-purple-500/50 text-purple-300'
+                }`}
+                title={state.audio.enabled ? t('remixMelodyBtn', 'Сменить мелодию (долгий клик: регулятор громкости)') : t('soundMutedToast', 'Звук отключен (долгий клик: регулятор громкости)')}
+              >
+                {state.audio.enabled ? (
+                  state.audio.sourceType === 'file' ? (
+                    <div className="flex items-center justify-center relative">
+                      <Music className="w-5 h-5 text-cyan-300" />
+                      <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />
+                    </div>
+                  ) : (
+                    <Music className="w-5 h-5 text-purple-300 animate-pulse" />
+                  )
+                ) : (
+                  <VolumeX className="w-5 h-5 text-zinc-500" />
+                )}
+              </button>
+            </div>
+
+            {/* 5. Round Button: BACK ARROW */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onBackToLuckyGrid) onBackToLuckyGrid();
+              }}
+              className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-white/20 backdrop-blur-xl border border-white/20 text-white flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
+              title={t('backToVariants', 'Назад к вариантам')}
+            >
+              <ArrowLeft className="w-5 h-5 text-zinc-200" />
+            </button>
+          </div>
         </div>
       ) : (
         <div
