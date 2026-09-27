@@ -342,14 +342,6 @@ function drawBackground(
         console.warn('Unable to draw background frame:', err);
       }
 
-      // Dynamic color tint overlay (e.g. from Lucky Mode Eye variations)
-      if (state.mediaColorTint) {
-        ctx.save();
-        ctx.fillStyle = state.mediaColorTint;
-        ctx.fillRect(0, 0, width, height);
-        ctx.restore();
-      }
-
       // If mediaOverlayTheme is set, overlay the animated floating theme WITHOUT its solid background!
       if (state.mediaOverlayTheme) {
         drawPresetOrOverlayBackground(
@@ -583,12 +575,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = qGrad;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = qGrad;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     // Сетка парящих знаков
@@ -643,12 +629,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = exGrad;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = exGrad;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     const count = 26;
@@ -700,12 +680,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = kissGrad;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = kissGrad;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     const count = 22;
@@ -746,12 +720,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = moneyGrad;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = moneyGrad;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     const count = 28;
@@ -887,12 +855,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = heartBg;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = heartBg;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     // Отрисовка поднимающихся сердец
@@ -941,12 +903,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = skyGrad;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = skyGrad;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     const balloonColors = ['#f43f5e', '#38bdf8', '#a855f7', '#fbbf24', '#34d399', '#f97316'];
@@ -1019,12 +975,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = nightGrad;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = nightGrad;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     ctx.save();
@@ -1132,12 +1082,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = laughterBg;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = laughterBg;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     const laughEmojis = ['😂', '🤣', '😆', '😹', '😜', '😂', '🤣'];
@@ -1185,12 +1129,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = autumnBg;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = autumnBg;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     const leafIcons = ['🍁', '🍂', '🍃'];
@@ -1231,12 +1169,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = winterBg;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = winterBg;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     const count = 48;
@@ -1293,12 +1225,6 @@ function drawPresetOrOverlayBackground(
     if (!skipSolidBg) {
       ctx.fillStyle = musicBg;
       ctx.fillRect(0, 0, width, height);
-    } else if (!state.mediaColorTint) {
-      ctx.save();
-      ctx.globalAlpha = 0.16;
-      ctx.fillStyle = musicBg;
-      ctx.fillRect(0, 0, width, height);
-      ctx.restore();
     }
 
     // Волновые звуковые линии

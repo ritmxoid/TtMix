@@ -255,9 +255,6 @@ export function generate4Variations(
     const chosenOverlayTheme = hasCustomMediaBg && isEyeMode
       ? shuffledOverlays[i % shuffledOverlays.length]
       : null;
-    const chosenColorTint = hasCustomMediaBg && isEyeMode
-      ? EYE_MODE_COLOR_TINTS[Math.floor(Math.random() * EYE_MODE_COLOR_TINTS.length)]
-      : null;
 
     const varState: VideoProjectState = {
       ...baseState,
@@ -272,7 +269,7 @@ export function generate4Variations(
       bgMediaUrl: hasCustomMediaBg ? baseState.bgMediaUrl : null,
       bgMediaType: hasCustomMediaBg ? baseState.bgMediaType : null,
       mediaOverlayTheme: chosenOverlayTheme,
-      mediaColorTint: chosenColorTint,
+      mediaColorTint: null,
       proceduralMood: randomMood,
       proceduralSeed: Math.floor(Math.random() * 999999) + 1,
       fontFamily: randomFont.family,
