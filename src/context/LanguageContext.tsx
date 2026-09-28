@@ -114,7 +114,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     deleteFile: 'Удалить файл',
     active: 'Активен',
     enable: 'Включить',
-    maxUploadSizeDesc: 'Рекомендуемый размер видео — до 150 МБ',
+    maxUploadSizeDesc: 'Рекомендуемый размер видео — до 1 ГБ',
     gradientThemes: 'Градиентные и анимированные темы:',
     colorThemes: 'Цветовые и анимированные темы:',
     paperColor: 'Цвет листа:',
@@ -257,12 +257,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     uploadModalSub: 'MP4, WebM, MOV • JPG, PNG • MP3, WAV',
     fileSizeReminder: 'Напоминание по размеру файла:',
     recommendedSize: 'Рекомендуемый размер видео —',
-    max35Mb: 'не более 150 МБ',
+    max35Mb: 'не более 1 ГБ',
     smoothPlaybackDesc: 'Это обеспечивает максимальную плавность воспроизведения и стабильный захват ролика.',
     videoFormats: 'Форматы видео:',
     photoFormats: 'Форматы фото:',
     currentBg: 'Текущий фон:',
-    selectFileBtn: 'Выбрать файл (до 150 МБ)',
+    selectFileBtn: 'Выбрать файл (до 1 ГБ)',
     exportModalTitle: 'Экспорт ролика',
     exportingDesc: 'Генерация готового видеофайла...',
 
@@ -600,7 +600,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep16_title: 'Всё готово к творчеству! 🚀',
     tourStep16_desc:
       'Теперь вы знаете все секреты и возможности TtMix! Создавайте эффектные вирусные видео с динамичным текстом за считанные секунды прямо сейчас.',
-    luckyTourStep_6: 'Отправь вариант на глубокое редактирование если ты уже эксперт!',
+    luckyTourStep_6: 'Отправь вариант на глубокое редактирование если ты уже эксперт',
   },
 
   en: {
@@ -680,7 +680,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     deleteFile: 'Delete file',
     active: 'Active',
     enable: 'Enable',
-    maxUploadSizeDesc: 'Recommended video size — up to 150 MB',
+    maxUploadSizeDesc: 'Recommended video size — up to 1 GB',
     gradientThemes: 'Gradient & Animated Themes:',
     colorThemes: 'Color & Animated Themes:',
     paperColor: 'Sheet Color:',
@@ -836,12 +836,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     uploadModalSub: 'MP4, WebM, MOV • JPG, PNG • MP3, WAV',
     fileSizeReminder: 'File size reminder:',
     recommendedSize: 'Recommended video size —',
-    max35Mb: 'max 150 MB',
+    max35Mb: 'max 1 GB',
     smoothPlaybackDesc: 'Ensures smooth playback and reliable video export.',
     videoFormats: 'Video formats:',
     photoFormats: 'Photo formats:',
     currentBg: 'Current background:',
-    selectFileBtn: 'Choose file (up to 150 MB)',
+    selectFileBtn: 'Choose file (up to 1 GB)',
     exportModalTitle: 'Export Video',
     exportingDesc: 'Generating final video file...',
 
@@ -1165,7 +1165,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep16_title: 'Ready to Create! 🚀',
     tourStep16_desc:
       'You now know all secrets and features of TtMix! Create high-impact viral videos with dynamic text in seconds right now.',
-    luckyTourStep_6: 'Send variation to deep editing if you are already an expert!',
+    luckyTourStep_6: 'Send variation to deep editing if you are already an expert',
   },
 
   es: {
@@ -1245,7 +1245,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     deleteFile: 'Eliminar archivo',
     active: 'Activo',
     enable: 'Activar',
-    maxUploadSizeDesc: 'Tamaño de video recomendado — hasta 150 MB',
+    maxUploadSizeDesc: 'Tamaño de video recomendado — hasta 1 GB',
     gradientThemes: 'Temas de degradado y animados:',
     colorThemes: 'Temas de color y animados:',
     paperColor: 'Color de la hoja:',
@@ -1388,12 +1388,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     uploadModalSub: 'Fondo personalizado para tu cita',
     fileSizeReminder: 'Recordatorio de tamaño de archivo:',
     recommendedSize: 'Tamaño de video recomendado —',
-    max35Mb: 'máximo 150 MB',
+    max35Mb: 'máximo 1 GB',
     smoothPlaybackDesc: 'Garantiza una reproducción fluida y una exportación estable.',
     videoFormats: 'Formatos de video:',
     photoFormats: 'Formatos de foto:',
     currentBg: 'Fondo actual:',
-    selectFileBtn: 'Seleccionar archivo (hasta 150 MB)',
+    selectFileBtn: 'Seleccionar archivo (hasta 1 GB)',
     exportModalTitle: 'Exportar video',
     exportingDesc: 'Generando archivo de video final...',
 
@@ -1722,7 +1722,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep16_title: '¡Todo Listo para Crear! 🚀',
     tourStep16_desc:
       '¡Ahora conoces todos los secretos y posibilidades de TtMix! Crea increíbles videos virales con texto dinámico en cuestión de segundos ahora mismo.',
-    luckyTourStep_6: '¡Envía la variante a edición profunda si ya eres un experto!',
+    luckyTourStep_6: 'Envía la variante a edición profunda si ya eres un experto',
   },
 
   de: {
@@ -1802,7 +1802,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     deleteFile: 'Datei löschen',
     active: 'Aktiv',
     enable: 'Aktivieren',
-    maxUploadSizeDesc: 'Empfohlene Videogröße — bis zu 150 MB',
+    maxUploadSizeDesc: 'Empfohlene Videogröße — bis zu 1 GB',
     gradientThemes: 'Farbverlauf & Animierte Themes:',
     colorThemes: 'Farb- & Animierte Themes:',
     paperColor: 'Papierfarbe:',
@@ -1945,12 +1945,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     uploadModalSub: 'Benutzerdefinierter Hintergrund für Ihr Video',
     fileSizeReminder: 'Hinweis zur Dateigröße:',
     recommendedSize: 'Empfohlene Videogröße —',
-    max35Mb: 'max. 150 MB',
+    max35Mb: 'max. 1 GB',
     smoothPlaybackDesc: 'Sorgt für flüssige Wiedergabe und zuverlässigen Video-Export.',
     videoFormats: 'Videoformate:',
     photoFormats: 'Fotoformate:',
     currentBg: 'Aktueller Hintergrund:',
-    selectFileBtn: 'Datei auswählen (bis zu 150 MB)',
+    selectFileBtn: 'Datei auswählen (bis zu 1 GB)',
     exportModalTitle: 'Video exportieren',
     exportingDesc: 'Videodatei wird erstellt...',
 
@@ -2279,7 +2279,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep16_title: 'Bereit zum Kreieren! 🚀',
     tourStep16_desc:
       'Sie kennen nun alle Geheimnisse und Funktionen von TtMix! Erstellen Sie jetzt in Sekundenschnelle beeindruckende virale Videos mit dynamischem Text.',
-    luckyTourStep_6: 'Sende die Variante zur tiefen Bearbeitung, wenn du bereits ein Experte bist!',
+    luckyTourStep_6: 'Sende die Variante zur tiefen Bearbeitung, wenn du bereits ein Experte bist',
   },
 
   fr: {
@@ -2359,7 +2359,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     deleteFile: 'Supprimer le fichier',
     active: 'Actif',
     enable: 'Activer',
-    maxUploadSizeDesc: 'Taille vidéo recommandée — jusqu\'à 150 Mo',
+    maxUploadSizeDesc: 'Taille de vidéo recommandée — jusqu\'à 1 Go',
     gradientThemes: 'Thèmes dégradés et animés :',
     colorThemes: 'Thèmes de couleurs et animés :',
     paperColor: 'Couleur de la feuille :',
@@ -2502,12 +2502,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     uploadModalSub: 'Arrière-plan personnalisé pour votre clip',
     fileSizeReminder: 'Rappel de taille de fichier :',
     recommendedSize: 'Taille vidéo recommandée —',
-    max35Mb: 'max 150 Mo',
+    max35Mb: 'max 1 Go',
     smoothPlaybackDesc: 'Assure une lecture fluide et une exportation fiable.',
     videoFormats: 'Formats vidéo :',
     photoFormats: 'Formats photo :',
     currentBg: 'Arrière-plan actuel :',
-    selectFileBtn: 'Sélectionner un fichier (jusqu\'à 150 Mo)',
+    selectFileBtn: 'Sélectionner un fichier (jusqu\'à 1 Go)',
     exportModalTitle: 'Exporter la vidéo',
     exportingDesc: 'Génération du fichier vidéo final...',
 
@@ -2836,7 +2836,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep16_title: 'Prêt à Créer ! 🚀',
     tourStep16_desc:
       'Vous connaissez maintenant tous les secrets et fonctionnalités de TtMix ! Créez d\'incroyables vidéos virales avec du texte dynamique dès maintenant.',
-    luckyTourStep_6: 'Envoyez la variante vers l\'édition profonde si vous êtes déjà un expert !',
+    luckyTourStep_6: 'Envoyez la variante vers l\'édition profonde si vous êtes déjà un expert',
   },
 
   zh: {
@@ -2916,7 +2916,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     deleteFile: '删除文件',
     active: '已激活',
     enable: '启用',
-    maxUploadSizeDesc: '推荐视频大小 — 不超过 150 MB',
+    maxUploadSizeDesc: '推荐视频大小 — 不超过 1 GB',
     gradientThemes: '渐变与动态主题：',
     colorThemes: '色彩与动态主题：',
     paperColor: '纸张颜色：',
@@ -3059,12 +3059,12 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     uploadModalSub: '名言短视频的自定义背景',
     fileSizeReminder: '文件大小提醒：',
     recommendedSize: '推荐视频大小 —',
-    max35Mb: '不超过 150 MB',
+    max35Mb: '不超过 1 GB',
     smoothPlaybackDesc: '确保流畅播放与稳定的视频导出。',
     videoFormats: '视频格式：',
     photoFormats: '照片格式：',
     currentBg: '当前背景：',
-    selectFileBtn: '选择文件（最大 150 MB）',
+    selectFileBtn: '选择文件（最大 1 GB）',
     exportModalTitle: '导出视频',
     exportingDesc: '正在生成最终视频文件...',
 
@@ -3391,7 +3391,7 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep16_title: '一切准备就绪，开启创作！ 🚀',
     tourStep16_desc:
       '现在您已了解 TtMix 的所有秘诀与功能！立即在几秒钟内制作出带动态文字的爆款视频吧。',
-    luckyTourStep_6: '如果你已经是专家，请将该版本发送进行深度编辑！',
+    luckyTourStep_6: '如果你已经是专家，请将该版本发送进行深度编辑',
   },
 };
 

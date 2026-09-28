@@ -65,7 +65,7 @@ const TOUR_STEPS: StepConfig[] = [
   {
     step: 6,
     targetSelector: '[data-tour="fullscreen-btn-rocket"]',
-    text: 'Отправь вариант на глубокое редактирование если ты уже эксперт!',
+    text: 'Отправь вариант на глубокое редактирование если ты уже эксперт',
     view: 'fullscreen',
   },
   {

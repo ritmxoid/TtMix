@@ -115,7 +115,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                 {t('uploadVideoPhoto', 'Свой видеоролик или фото')}
               </span>
               <span className="text-[10px] text-zinc-400 block">
-                {t('maxUploadSizeDesc', 'Рекомендуемый размер видео — до 35 МБ')}
+                {t('maxUploadSizeDesc', 'Рекомендуемый размер видео — до 1 ГБ')}
               </span>
             </div>
           </div>

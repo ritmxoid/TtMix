@@ -1,4 +1,5 @@
 import React, { useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Upload,
   Film,
@@ -67,7 +68,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     onClose();
   };
 
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[200000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
@@ -199,6 +200,7 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

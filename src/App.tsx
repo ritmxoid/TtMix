@@ -271,6 +271,7 @@ export default function App() {
             ...prev.audio,
             enabled: true,
             sourceType: 'file',
+            fileAudioEnabled: true,
             audioUrl: blobUrl,
             audioFileName: file.name,
             audioDuration: dur,

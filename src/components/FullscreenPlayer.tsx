@@ -1592,12 +1592,6 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                     setTimeout(() => setSoundNotice(null), 3000);
                     return;
                   }
-                  // User uploaded file cannot be procedurally remixed
-                  if (state.audio.sourceType === 'file') {
-                    setSoundNotice('👤 Используется ваш аудиофайл');
-                    setTimeout(() => setSoundNotice(null), 3000);
-                    return;
-                  }
                   // Cycle to the next procedural music preset from MUSIC_PRESETS
                   const presetIds = MUSIC_PRESETS.map((p) => p.id);
                   const curIdx = presetIds.indexOf(state.audio.presetId);
