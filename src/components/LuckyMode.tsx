@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Sparkles, Sliders, ArrowLeft, Type, Wand2, RefreshCw, Eye, Check, Upload, Rocket, X, AlertTriangle } from 'lucide-react';
+import { Sparkles, Sliders, ArrowLeft, Type, Wand2, RefreshCw, Eye, Check, Upload, Rocket, X, AlertTriangle, RotateCcw } from 'lucide-react';
 import { VideoProjectState, ProceduralMoodStyle } from '../types';
 import { FONT_OPTIONS, BACKGROUND_PRESETS, LOCALIZED_DEFAULT_TEXTS } from '../data/presets';
 import { MUSIC_PRESETS } from '../utils/audioGenerator';
@@ -8,6 +8,7 @@ import { renderCanvasFrame, particleEngine } from '../utils/canvasRenderer';
 import { splitTextIntoSegments } from '../utils/textSplitter';
 import { FullscreenPlayer } from './FullscreenPlayer';
 import { LuckyModeTour } from './LuckyModeTour';
+import { ResetConfirmModal } from './ResetConfirmModal';
 import { useLanguage } from '../context/LanguageContext';
 
 interface LuckyModeProps {
@@ -18,6 +19,7 @@ interface LuckyModeProps {
   onReturnToLanding: () => void;
   bgMediaElement: HTMLImageElement | HTMLVideoElement | null;
   onOpenUploadModal?: () => void;
+  onResetProject?: () => void;
 }
 
 const ANIMATION_STYLES = ['typewriter', 'words', 'fade', 'slide', 'zoom', 'glitch'] as const;
@@ -570,6 +572,7 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
   onReturnToLanding,
   bgMediaElement,
   onOpenUploadModal,
+  onResetProject,
 }) => {
   const { t } = useLanguage();
 
@@ -629,6 +632,15 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
   const mixHoldIntervalRef = useRef<number | null>(null);
   const isMixLongPressTriggeredRef = useRef<boolean>(false);
   const [eyeModeNotice, setEyeModeNotice] = useState<string | null>(null);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
+
+  const handleResetAllInLucky = () => {
+    if (onResetProject) {
+      onResetProject();
+    }
+    setEyeModeNotice(t('projectResetNotice', 'Проект сброшен к начальному состоянию 🔄'));
+    setTimeout(() => setEyeModeNotice(null), 3000);
+  };
 
   const hasUserMedia = Boolean(
     ((baseState.bgType === 'video' || baseState.bgType === 'image') && baseState.bgMediaUrl) ||
@@ -949,6 +961,20 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
             ))}
           </div>
 
+          {/* Reset Button (scrolls along with variations at bottom left below cards, compact & frameless) */}
+          <div className="flex items-center justify-start pt-2 pb-2 px-1">
+            <button
+              type="button"
+              onClick={() => setIsResetConfirmOpen(true)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 text-xs font-medium backdrop-blur-md transition-all cursor-pointer active:scale-95 group shrink-0"
+              title={t('resetProject', 'Сбросить всё к начальным настройкам')}
+              aria-label={t('resetProject', 'Сбросить всё к начальным настройкам')}
+            >
+              <RotateCcw className="w-3.5 h-3.5 group-hover:-rotate-90 transition-transform duration-300 text-rose-400/90" />
+              <span>{t('reset', 'Сброс')}</span>
+            </button>
+          </div>
+
           {/* Unified Transparent Round Bottom Action Bar */}
           <div className="fixed bottom-4 sm:bottom-6 inset-x-0 z-30 flex justify-center items-center px-3 pb-[env(safe-area-inset-bottom,0px)] pointer-events-none">
             <div className="pointer-events-auto flex items-center gap-3 sm:gap-4 bg-black/60 backdrop-blur-2xl border border-white/15 p-2 rounded-full shadow-2xl">
@@ -1122,6 +1148,16 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
           </div>,
           document.body
         )}
+
+      {/* Reset Confirmation Modal */}
+      <ResetConfirmModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        onConfirm={() => {
+          handleResetAllInLucky();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
+      />
     </div>
   );
 };

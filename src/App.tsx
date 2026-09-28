@@ -13,6 +13,7 @@ import { EffectsSection } from './components/EffectsSection';
 import { SpeedSection } from './components/SpeedSection';
 import { ExportModal } from './components/ExportModal';
 import { UploadModal } from './components/UploadModal';
+import { ResetConfirmModal } from './components/ResetConfirmModal';
 import { InteractiveTour } from './components/InteractiveTour';
 import { StartLanding } from './components/StartLanding';
 import { LuckyMode } from './components/LuckyMode';
@@ -149,6 +150,7 @@ export default function App() {
   const [isFullscreenOpen, setIsFullscreenOpen] = useState<boolean>(false);
   const [isTourForceOpen, setIsTourForceOpen] = useState<boolean>(false);
   const [isHelpTourActive, setIsHelpTourActive] = useState<boolean>(false);
+  const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
   const [fileName, setFileName] = useState<string | null>(() => {
     const saved = loadProjectState();
     return saved?.savedBgFileName || null;
@@ -898,6 +900,7 @@ export default function App() {
           onReturnToLanding={() => setAppMode('start')}
           bgMediaElement={bgMediaElement}
           onOpenUploadModal={() => setIsUploadModalOpen(true)}
+          onResetProject={() => setIsResetConfirmOpen(true)}
         />
         <UploadModal
           isOpen={isUploadModalOpen}
@@ -919,7 +922,7 @@ export default function App() {
           onFileUpload={handleFileUpload}
           fileName={activeBgFileName}
           onClearFile={handleClearBackgroundMedia}
-          onResetProject={handleResetAll}
+          onResetProject={() => setIsResetConfirmOpen(true)}
           onOpenUploadModal={() => setIsUploadModalOpen(true)}
           onOpenTour={() => setIsTourForceOpen(true)}
           onSwitchToLucky={() => setAppMode('lucky')}
@@ -1147,6 +1150,16 @@ export default function App() {
           zIndex: -1,
         }}
         aria-hidden="true"
+      />
+
+      {/* Global Reset Confirmation Modal */}
+      <ResetConfirmModal
+        isOpen={isResetConfirmOpen}
+        onClose={() => setIsResetConfirmOpen(false)}
+        onConfirm={() => {
+          handleResetAll();
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }}
       />
     </div>
   );
