@@ -182,6 +182,7 @@ export const MultiTrackVolumePopover: React.FC<MultiTrackVolumePopoverProps> = (
                   onChange({
                     audio: {
                       ...state.audio,
+                      enabled: false,
                       volume: 0,
                       musicVolume: 0,
                     },

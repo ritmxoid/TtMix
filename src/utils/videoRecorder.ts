@@ -4,7 +4,7 @@ import { safeFixWebm } from './safeWebmFix';
 import { VideoProjectState } from '../types';
 import { getDimensionsForAspect, particleEngine, renderCanvasFrame } from './canvasRenderer';
 import { splitTextIntoSegments } from './textSplitter';
-import { audioMixer, mixAudioBuffers } from './audioMixer';
+import { audioMixer, mixAudioBuffers, prepareDualAudioTrack } from './audioMixer';
 
 export interface ExportProgress {
   isExporting: boolean;
@@ -1051,71 +1051,27 @@ export async function exportVideo({
     }
   }
 
-  // Pre-decode audio tracks for dual-layer audio mixing
-  let bgVideoAudioBuffer: AudioBuffer | null = null;
-  const isVideoAudioActive =
-    (state.bgType === 'video' || state.bgMediaType === 'video') &&
-    !!state.bgMediaUrl &&
-    state.audio.videoAudioEnabled !== false &&
-    (state.audio.videoVolume ?? 0.8) > 0;
+  // Pre-prepare AudioBuffer with complete multi-track support (video original sound + synth music + custom audio file)
+  onProgress({
+    isExporting: true,
+    progress: 3,
+    statusText: 'Подготовка и сведение аудиодорожек...',
+    downloadUrl: null,
+    fileBlob: null,
+    fileExtension: targetFormat,
+    error: null,
+  });
 
-  if (isVideoAudioActive && state.bgMediaUrl) {
-    try {
-      onProgress({
-        isExporting: true,
-        progress: 3,
-        statusText: 'Извлечение звука из видеофона...',
-        downloadUrl: null,
-        fileBlob: null,
-        fileExtension: targetFormat,
-        error: null,
-      });
-      bgVideoAudioBuffer = await audioMixer.prepareBackgroundVideoAudioBuffer(state.bgMediaUrl);
-    } catch (err) {
-      console.warn('Could not extract background video audio:', err);
-    }
-  }
-
-  let musicAudioBuffer: AudioBuffer | null = null;
-  const isMusicActive =
-    state.audio.enabled &&
-    (state.audio.sourceType === 'generator' || state.audio.sourceType === 'file' || Boolean(state.audio.audioUrl)) &&
-    (state.audio.volume ?? 0.7) > 0;
-
-  if (isMusicActive) {
-    try {
-      musicAudioBuffer = await audioMixer.prepareAudioBuffer(state.audio, safeTotalDuration);
-    } catch (err) {
-      console.warn('Could not prepare music audio buffer:', err);
-    }
-  }
-
-  // Final audio buffer composition with simultaneous dual-track mixing
   let audioBuffer: AudioBuffer | null = null;
-  const videoVolume = state.audio.videoVolume ?? 0.8;
-  const musicVolume = state.audio.volume ?? 0.7;
-
-  if (bgVideoAudioBuffer && musicAudioBuffer) {
-    // Both Video Audio (voice) and Background Music are active: mix them together!
-    audioBuffer = await mixAudioBuffers(
-      bgVideoAudioBuffer,
-      videoVolume,
-      musicAudioBuffer,
-      musicVolume,
+  try {
+    audioBuffer = await prepareDualAudioTrack(
+      state.audio,
+      state.bgMediaUrl,
+      Boolean((state.bgType === 'video' || state.bgMediaType === 'video') && state.bgMediaUrl),
       safeTotalDuration
     );
-  } else if (bgVideoAudioBuffer) {
-    // Only original video audio
-    audioBuffer = await mixAudioBuffers(
-      bgVideoAudioBuffer,
-      videoVolume,
-      null,
-      0,
-      safeTotalDuration
-    );
-  } else if (musicAudioBuffer) {
-    // Only music soundtrack
-    audioBuffer = musicAudioBuffer;
+  } catch (err) {
+    console.warn('Could not prepare dual audio track for export:', err);
   }
 
   const hasWebCodecs =

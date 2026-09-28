@@ -806,20 +806,29 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       return;
     }
 
+    const synthVol =
+      typeof state.audio.musicVolume === 'number'
+        ? state.audio.musicVolume
+        : typeof state.audio.volume === 'number'
+        ? state.audio.volume
+        : 0.7;
+    const fileVol =
+      typeof state.audio.fileVolume === 'number'
+        ? state.audio.fileVolume
+        : 0.8;
+    const isSynthActive = state.audio.enabled && synthVol > 0;
+    const isFileActive =
+      Boolean(state.audio.audioUrl) &&
+      state.audio.fileAudioEnabled !== false &&
+      fileVol > 0;
+
     const isAudioActive =
       isPlaying &&
       !isMuted &&
-      state.audio.enabled &&
-      (state.audio.volume ?? 0.7) > 0 &&
-      (state.audio.sourceType === 'generator' ||
-        state.audio.sourceType === 'file' ||
-        Boolean(state.audio.audioUrl));
+      (isSynthActive || isFileActive);
 
     if (isAudioActive) {
-      // Avoid restarting or resetting audio if already actively playing (especially across tour steps)
-      if (!audioMixer.getIsPlaying()) {
-        audioMixer.play(state.audio, totalDuration, Math.max(0, currentTimeRef.current || 0), state.bgMediaUrl || undefined);
-      }
+      audioMixer.play(state.audio, totalDuration, Math.max(0, currentTimeRef.current || 0), state.bgMediaUrl || undefined);
     } else {
       if (!isTourActive) {
         audioMixer.stop();
@@ -843,6 +852,9 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     state.audio.seed,
     state.audio.audioUrl,
     state.audio.volume,
+    state.audio.musicVolume,
+    state.audio.fileVolume,
+    state.audio.fileAudioEnabled,
     state.audio.loop,
     state.bgMediaUrl,
     totalDuration,
@@ -968,14 +980,23 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             bgMediaElement.muted = isMuted;
             bgMediaElement.play().catch(() => {});
           }
-          if (
-            !isMuted &&
-            (state.audio.volume ?? 0) > 0 &&
-            state.audio.enabled &&
-            (state.audio.sourceType === 'generator' ||
-              state.audio.sourceType === 'file' ||
-              Boolean(state.audio.audioUrl))
-          ) {
+          const synthVol =
+            typeof state.audio.musicVolume === 'number'
+              ? state.audio.musicVolume
+              : typeof state.audio.volume === 'number'
+              ? state.audio.volume
+              : 0.7;
+          const fileVol =
+            typeof state.audio.fileVolume === 'number'
+              ? state.audio.fileVolume
+              : 0.8;
+          const isSynthActive = state.audio.enabled && synthVol > 0;
+          const isFileActive =
+            Boolean(state.audio.audioUrl) &&
+            state.audio.fileAudioEnabled !== false &&
+            fileVol > 0;
+
+          if (!isMuted && (isSynthActive || isFileActive)) {
             audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
           }
         } else if (bgMediaElement instanceof HTMLVideoElement) {
@@ -1042,15 +1063,23 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       bgMediaElement.currentTime = 0;
       bgMediaElement.muted = isMuted;
     }
-    if (
-      isPlaying &&
-      !isMuted &&
-      (state.audio.volume ?? 0) > 0 &&
-      state.audio.enabled &&
-      (state.audio.sourceType === 'generator' ||
-        state.audio.sourceType === 'file' ||
-        Boolean(state.audio.audioUrl))
-    ) {
+    const synthVol =
+      typeof state.audio.musicVolume === 'number'
+        ? state.audio.musicVolume
+        : typeof state.audio.volume === 'number'
+        ? state.audio.volume
+        : 0.7;
+    const fileVol =
+      typeof state.audio.fileVolume === 'number'
+        ? state.audio.fileVolume
+        : 0.8;
+    const isSynthActive = state.audio.enabled && synthVol > 0;
+    const isFileActive =
+      Boolean(state.audio.audioUrl) &&
+      state.audio.fileAudioEnabled !== false &&
+      fileVol > 0;
+
+    if (isPlaying && !isMuted && (isSynthActive || isFileActive)) {
       audioMixer.play(state.audio, totalDuration, 0, state.bgMediaUrl || undefined);
     }
     drawFrame(0);
@@ -2012,7 +2041,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                         setShowMusicVolumePopover(true);
                       }}
                       className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group relative ${
-                        !state.audio.enabled
+                        !state.audio.enabled && !Boolean(state.audio.audioUrl)
                           ? 'bg-zinc-950/70 hover:bg-zinc-900/90 text-zinc-500 border border-zinc-500/20'
                           : (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file')
                           ? 'bg-cyan-950/70 hover:bg-cyan-900/90 text-cyan-300 hover:text-cyan-100 border border-cyan-500/40 hover:border-cyan-400'
@@ -2021,7 +2050,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                       title={t('regenerateMusic', 'Сгенерировать другую музыку (долгий клик: регулятор громкости)')}
                       aria-label={t('regenerateMusic', 'Сгенерировать другую музыку (долгий клик: регулятор громкости)')}
                     >
-                      {state.audio.enabled && (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
+                      {(Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
                         <div className="flex items-center justify-center relative">
                           <Music className="w-4 h-4 text-cyan-300 transition-transform group-hover:scale-110" />
                           <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />

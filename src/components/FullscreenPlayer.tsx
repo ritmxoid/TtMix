@@ -587,14 +587,28 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       return;
     }
 
-    if (
+    const synthVol =
+      typeof state.audio.musicVolume === 'number'
+        ? state.audio.musicVolume
+        : typeof state.audio.volume === 'number'
+        ? state.audio.volume
+        : 0.7;
+    const fileVol =
+      typeof state.audio.fileVolume === 'number'
+        ? state.audio.fileVolume
+        : 0.8;
+    const isSynthActive = state.audio.enabled && synthVol > 0;
+    const isFileActive =
+      Boolean(state.audio.audioUrl) &&
+      state.audio.fileAudioEnabled !== false &&
+      fileVol > 0;
+
+    const isAudioActive =
       isPlaying &&
       !isMuted &&
-      state.audio.enabled &&
-      state.audio.sourceType !== 'none' &&
-      state.audio.sourceType !== 'video' &&
-      (state.audio.volume ?? 0.7) > 0
-    ) {
+      (isSynthActive || isFileActive);
+
+    if (isAudioActive) {
       audioMixer.play(state.audio, effectiveDuration, Math.max(0, currentTimeRef.current || 0), state.bgMediaUrl || undefined);
     } else {
       audioMixer.stop();
@@ -617,6 +631,9 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     state.audio.seed,
     state.audio.audioUrl,
     state.audio.volume,
+    state.audio.musicVolume,
+    state.audio.fileVolume,
+    state.audio.fileAudioEnabled,
     effectiveDuration,
   ]);
 
@@ -719,7 +736,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       bgMediaElement.currentTime = 0;
       bgMediaElement.play().catch(() => {});
     }
-    if (!isTourActive && !isMuted && (state.audio.volume ?? 0) > 0 && state.audio.enabled && state.audio.sourceType !== 'none') {
+    const synthVolInit = typeof state.audio.musicVolume === 'number' ? state.audio.musicVolume : (state.audio.volume ?? 0.7);
+    const fileVolInit = typeof state.audio.fileVolume === 'number' ? state.audio.fileVolume : 0.8;
+    const hasMixerAudioInit = (state.audio.enabled && synthVolInit > 0) || (Boolean(state.audio.audioUrl) && state.audio.fileAudioEnabled !== false && fileVolInit > 0);
+    if (!isTourActive && !isMuted && hasMixerAudioInit) {
       audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
     }
 
@@ -750,7 +770,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               bgMediaElement.currentTime = 0;
               bgMediaElement.play().catch(() => {});
             }
-            if (!isTourActive && !isMuted && (state.audio.volume ?? 0) > 0 && state.audio.enabled && state.audio.sourceType !== 'none') {
+            const synthVolLoop1 = typeof state.audio.musicVolume === 'number' ? state.audio.musicVolume : (state.audio.volume ?? 0.7);
+            const fileVolLoop1 = typeof state.audio.fileVolume === 'number' ? state.audio.fileVolume : 0.8;
+            const hasMixerAudioLoop1 = (state.audio.enabled && synthVolLoop1 > 0) || (Boolean(state.audio.audioUrl) && state.audio.fileAudioEnabled !== false && fileVolLoop1 > 0);
+            if (!isTourActive && !isMuted && hasMixerAudioLoop1) {
               audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
             }
           } else {
@@ -769,7 +792,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               bgMediaElement.currentTime = 0;
               bgMediaElement.play().catch(() => {});
             }
-            if (!isTourActive && !isMuted && (state.audio.volume ?? 0) > 0 && state.audio.enabled && state.audio.sourceType !== 'none') {
+            const synthVolLoop2 = typeof state.audio.musicVolume === 'number' ? state.audio.musicVolume : (state.audio.volume ?? 0.7);
+            const fileVolLoop2 = typeof state.audio.fileVolume === 'number' ? state.audio.fileVolume : 0.8;
+            const hasMixerAudioLoop2 = (state.audio.enabled && synthVolLoop2 > 0) || (Boolean(state.audio.audioUrl) && state.audio.fileAudioEnabled !== false && fileVolLoop2 > 0);
+            if (!isTourActive && !isMuted && hasMixerAudioLoop2) {
               audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
             }
           }
@@ -1136,7 +1162,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       bgMediaElement.currentTime = 0;
       bgMediaElement.play().catch(() => {});
     }
-    if (state.audio.enabled && state.audio.sourceType !== 'none') {
+    const synthVol = typeof state.audio.musicVolume === 'number' ? state.audio.musicVolume : (state.audio.volume ?? 0.7);
+    const fileVol = typeof state.audio.fileVolume === 'number' ? state.audio.fileVolume : 0.8;
+    const hasMixerAudio = (state.audio.enabled && synthVol > 0) || (Boolean(state.audio.audioUrl) && state.audio.fileAudioEnabled !== false && fileVol > 0);
+    if (hasMixerAudio) {
       audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
     }
     drawFrame(0);
@@ -1153,7 +1182,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       if (bgMediaElement instanceof HTMLVideoElement) {
         bgMediaElement.play().catch(() => {});
       }
-      if (state.audio.enabled && state.audio.sourceType !== 'none') {
+      const synthVol = typeof state.audio.musicVolume === 'number' ? state.audio.musicVolume : (state.audio.volume ?? 0.7);
+      const fileVol = typeof state.audio.fileVolume === 'number' ? state.audio.fileVolume : 0.8;
+      const hasMixerAudio = (state.audio.enabled && synthVol > 0) || (Boolean(state.audio.audioUrl) && state.audio.fileAudioEnabled !== false && fileVol > 0);
+      if (hasMixerAudio) {
         audioMixer.play(state.audio, effectiveDuration, currentTimeRef.current, state.bgMediaUrl || undefined);
       }
     } else {
@@ -1173,8 +1205,13 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     }
     if (nextMute) {
       audioMixer.stop();
-    } else if (isPlaying && state.audio.enabled && state.audio.sourceType !== 'none') {
-      audioMixer.play(state.audio, effectiveDuration, currentTimeRef.current, state.bgMediaUrl || undefined);
+    } else {
+      const synthVol = typeof state.audio.musicVolume === 'number' ? state.audio.musicVolume : (state.audio.volume ?? 0.7);
+      const fileVol = typeof state.audio.fileVolume === 'number' ? state.audio.fileVolume : 0.8;
+      const hasMixerAudio = (state.audio.enabled && synthVol > 0) || (Boolean(state.audio.audioUrl) && state.audio.fileAudioEnabled !== false && fileVol > 0);
+      if (isPlaying && hasMixerAudio) {
+        audioMixer.play(state.audio, effectiveDuration, currentTimeRef.current, state.bgMediaUrl || undefined);
+      }
     }
   };
 
@@ -1585,9 +1622,9 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                     setShowVolumePopover(false);
                     return;
                   }
-                  // If sound was disabled, enable it and start playing
-                  if (!state.audio.enabled) {
-                    onChange({ audio: { ...state.audio, enabled: true, volume: (state.audio.volume ?? 0) > 0 ? state.audio.volume : 0.7 } });
+                  // If sound was disabled and no custom audio, enable it and start playing
+                  if (!state.audio.enabled && !Boolean(state.audio.audioUrl)) {
+                    onChange({ audio: { ...state.audio, enabled: true, volume: (state.audio.volume ?? 0) > 0 ? state.audio.volume : 0.7, musicVolume: (state.audio.musicVolume ?? 0) > 0 ? state.audio.musicVolume : 0.7 } });
                     setSoundNotice(t('soundUnmutedToast', 'Звук включен 🔔'));
                     setTimeout(() => setSoundNotice(null), 3000);
                     return;
@@ -1632,23 +1669,21 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                   setShowVolumePopover(true);
                 }}
                 className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-xl border flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0 relative ${
-                  !state.audio.enabled
+                  !state.audio.enabled && !Boolean(state.audio.audioUrl)
                     ? 'bg-black/40 border-zinc-700/60 text-zinc-500'
                     : (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file')
                     ? 'bg-black/40 hover:bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
                     : 'bg-black/40 hover:bg-purple-900/40 border-purple-500/50 text-purple-300'
                 }`}
-                title={state.audio.enabled ? t('remixMelodyBtn', 'Сменить мелодию (долгий клик: регулятор громкости)') : t('soundMutedToast', 'Звук отключен (долгий клик: регулятор громкости)')}
+                title={state.audio.enabled || Boolean(state.audio.audioUrl) ? t('remixMelodyBtn', 'Сменить мелодию (долгий клик: регулятор громкости)') : t('soundMutedToast', 'Звук отключен (долгий клик: регулятор громкости)')}
               >
-                {state.audio.enabled ? (
-                  (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
-                    <div className="flex items-center justify-center relative">
-                      <Music className="w-5 h-5 text-cyan-300" />
-                      <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />
-                    </div>
-                  ) : (
-                    <Music className="w-5 h-5 text-purple-300 animate-pulse" />
-                  )
+                {(Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
+                  <div className="flex items-center justify-center relative">
+                    <Music className="w-5 h-5 text-cyan-300" />
+                    <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />
+                  </div>
+                ) : state.audio.enabled ? (
+                  <Music className="w-5 h-5 text-purple-300 animate-pulse" />
                 ) : (
                   <VolumeX className="w-5 h-5 text-zinc-500" />
                 )}

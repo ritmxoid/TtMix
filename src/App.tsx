@@ -18,6 +18,7 @@ import { StartLanding } from './components/StartLanding';
 import { LuckyMode } from './components/LuckyMode';
 import { SAMPLE_TEXTS, getDefaultSampleText, LOCALIZED_DEFAULT_TEXTS } from './data/presets';
 import { VideoProjectState } from './types';
+import { BUILD_TIMESTAMP } from './buildTimestamp';
 import { ExportProgress, exportVideo } from './utils/videoRecorder';
 import { splitTextIntoSegments } from './utils/textSplitter';
 import { audioMixer } from './utils/audioMixer';
@@ -1056,7 +1057,7 @@ export default function App() {
           </div>
 
           {/* TtMix Description Card */}
-          <div className="bg-[#16161D]/85 border border-white/10 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/25 text-center space-y-2.5 mb-6">
+          <div className="bg-[#16161D]/85 border border-white/10 rounded-2xl p-4 sm:p-5 shadow-lg shadow-black/25 text-center space-y-2.5 mb-6 relative">
             <div className="flex items-center justify-center gap-2">
               <img
                 src="./favicon.svg"
@@ -1078,6 +1079,13 @@ export default function App() {
                 ...by RitmXoid
               </span>
             </div>
+          </div>
+
+          {/* Timestamp at the very bottom left of the tools ribbon */}
+          <div className="text-left px-1 -mt-4 pb-2">
+            <span className="text-[10px] font-mono text-zinc-500/80 select-none tracking-wider" title="Время последней сборки (Истанбул)">
+              {BUILD_TIMESTAMP}
+            </span>
           </div>
         </div>
       </main>
