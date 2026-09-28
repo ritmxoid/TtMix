@@ -112,7 +112,7 @@ class AudioMixer {
     this.resume();
 
     // If custom uploaded audio
-    if (audioState.sourceType === 'file' && audioState.audioUrl) {
+    if ((audioState.sourceType === 'file' || Boolean(audioState.audioUrl)) && audioState.audioUrl) {
       if (this.cachedBuffer && this.cachedAudioUrl === audioState.audioUrl) {
         return this.cachedBuffer;
       }
@@ -583,7 +583,6 @@ export async function prepareDualAudioTrack(
 
   const isSynthActive =
     audioState.enabled &&
-    (audioState.sourceType === 'generator' || (audioState.sourceType !== 'file' && !audioState.audioUrl)) &&
     synthVol > 0;
 
   const fileVol = typeof audioState.fileVolume === 'number'
@@ -593,8 +592,7 @@ export async function prepareDualAudioTrack(
   const isFileActive =
     Boolean(audioState.audioUrl) &&
     audioState.fileAudioEnabled !== false &&
-    fileVol > 0 &&
-    (audioState.sourceType === 'file' || audioState.fileAudioEnabled === true);
+    fileVol > 0;
 
   let videoBuffer: AudioBuffer | null = null;
   if (isVideoAudioActive && bgMediaUrl) {

@@ -812,7 +812,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       state.audio.enabled &&
       (state.audio.volume ?? 0.7) > 0 &&
       (state.audio.sourceType === 'generator' ||
-        (state.audio.sourceType === 'file' && Boolean(state.audio.audioUrl)));
+        state.audio.sourceType === 'file' ||
+        Boolean(state.audio.audioUrl));
 
     if (isAudioActive) {
       // Avoid restarting or resetting audio if already actively playing (especially across tour steps)
@@ -972,7 +973,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             (state.audio.volume ?? 0) > 0 &&
             state.audio.enabled &&
             (state.audio.sourceType === 'generator' ||
-              (state.audio.sourceType === 'file' && Boolean(state.audio.audioUrl)))
+              state.audio.sourceType === 'file' ||
+              Boolean(state.audio.audioUrl))
           ) {
             audioMixer.play(state.audio, effectiveDuration, 0, state.bgMediaUrl || undefined);
           }
@@ -1046,7 +1048,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       (state.audio.volume ?? 0) > 0 &&
       state.audio.enabled &&
       (state.audio.sourceType === 'generator' ||
-        (state.audio.sourceType === 'file' && Boolean(state.audio.audioUrl)))
+        state.audio.sourceType === 'file' ||
+        Boolean(state.audio.audioUrl))
     ) {
       audioMixer.play(state.audio, totalDuration, 0, state.bgMediaUrl || undefined);
     }
@@ -1204,7 +1207,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     const newAudioConfig = {
       ...state.audio,
       enabled: true,
-      sourceType: 'generator' as const,
+      sourceType: state.audio.audioUrl ? (state.audio.sourceType || 'file') : ('generator' as const),
       presetId,
       seed: newSeed,
     };
@@ -2007,14 +2010,14 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                       className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group relative ${
                         !state.audio.enabled
                           ? 'bg-zinc-950/70 hover:bg-zinc-900/90 text-zinc-500 border border-zinc-500/20'
-                          : state.audio.sourceType === 'file'
+                          : (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file')
                           ? 'bg-cyan-950/70 hover:bg-cyan-900/90 text-cyan-300 hover:text-cyan-100 border border-cyan-500/40 hover:border-cyan-400'
                           : 'bg-indigo-950/70 hover:bg-indigo-900/90 text-indigo-300 hover:text-indigo-100 border border-indigo-500/40 hover:border-indigo-400'
                       }`}
                       title={t('regenerateMusic', 'Сгенерировать другую музыку (долгий клик: регулятор громкости)')}
                       aria-label={t('regenerateMusic', 'Сгенерировать другую музыку (долгий клик: регулятор громкости)')}
                     >
-                      {state.audio.enabled && state.audio.sourceType === 'file' ? (
+                      {state.audio.enabled && (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
                         <div className="flex items-center justify-center relative">
                           <Music className="w-4 h-4 text-cyan-300 transition-transform group-hover:scale-110" />
                           <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />

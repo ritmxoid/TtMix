@@ -1602,16 +1602,22 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                   // Stop previous audio immediately before starting the new track
                   audioMixer.stop();
 
+                  const nextAudioConfig = {
+                    ...state.audio,
+                    enabled: true,
+                    sourceType: state.audio.audioUrl ? (state.audio.sourceType || 'file') : ('generator' as const),
+                    presetId: nextPresetId,
+                    seed: nextSeed,
+                    volume: (state.audio.volume ?? 0.7) > 0 ? state.audio.volume : 0.7,
+                  };
+
                   onChange({
-                    audio: {
-                      ...state.audio,
-                      enabled: true,
-                      sourceType: 'generator',
-                      presetId: nextPresetId,
-                      seed: nextSeed,
-                      volume: (state.audio.volume ?? 0.7) > 0 ? state.audio.volume : 0.7,
-                    },
+                    audio: nextAudioConfig,
                   });
+
+                  if (isPlaying && !isMuted) {
+                    audioMixer.play(nextAudioConfig, effectiveDuration, Math.max(0, currentTimeRef.current || 0), state.bgMediaUrl || undefined);
+                  }
 
                   setSoundNotice(`🎵 ${presetInfo ? `${presetInfo.emoji} ${presetInfo.name}` : 'Новая мелодия'}`);
                   setTimeout(() => setSoundNotice(null), 3000);
@@ -1625,14 +1631,14 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 className={`w-11 h-11 sm:w-12 sm:h-12 rounded-full backdrop-blur-xl border flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0 relative ${
                   !state.audio.enabled
                     ? 'bg-black/40 border-zinc-700/60 text-zinc-500'
-                    : state.audio.sourceType === 'file'
+                    : (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file')
                     ? 'bg-black/40 hover:bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
                     : 'bg-black/40 hover:bg-purple-900/40 border-purple-500/50 text-purple-300'
                 }`}
                 title={state.audio.enabled ? t('remixMelodyBtn', 'Сменить мелодию (долгий клик: регулятор громкости)') : t('soundMutedToast', 'Звук отключен (долгий клик: регулятор громкости)')}
               >
                 {state.audio.enabled ? (
-                  state.audio.sourceType === 'file' ? (
+                  (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
                     <div className="flex items-center justify-center relative">
                       <Music className="w-5 h-5 text-cyan-300" />
                       <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />

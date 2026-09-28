@@ -162,7 +162,9 @@ export function generate4Variations(
   const hasCustomMediaBg =
     (baseState.bgType === 'video' || baseState.bgType === 'image') && Boolean(baseState.bgMediaUrl);
   const hasCustomAudio =
-    baseState.audio?.sourceType === 'file' && Boolean(baseState.audio.audioUrl);
+    (baseState.audio?.sourceType === 'file' || Boolean(baseState.audio?.audioUrl)) &&
+    baseState.audio?.fileAudioEnabled !== false &&
+    Boolean(baseState.audio?.audioUrl);
 
   const activeText = overrideText ?? baseState.rawText;
   const activeAuthor = overrideAuthor ?? baseState.authorText;
@@ -243,7 +245,19 @@ export function generate4Variations(
     };
 
     const audioConfig = hasCustomAudio
-      ? { ...baseState.audio }
+      ? {
+          ...baseState.audio,
+          enabled: true,
+          sourceType: baseState.audio?.sourceType || 'file',
+          audioUrl: baseState.audio.audioUrl,
+          audioFileName: baseState.audio.audioFileName,
+          audioDuration: baseState.audio.audioDuration,
+          fileAudioEnabled: true,
+          fileVolume: baseState.audio.fileVolume ?? 0.8,
+          presetId: randomMusic.id,
+          seed: Math.floor(Math.random() * 999999) + 1,
+          volume: baseState.audio.volume ?? 0.7,
+        }
       : {
           enabled: true,
           sourceType: 'generator' as const,
@@ -649,8 +663,79 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
       const activeT = rawT || defaultMatrixText;
       const activeA = (selectedVariation ? selectedVariation.authorText : baseState.authorText) || defaultMatrixAuthor;
       setVariations(generate4Variations(baseState, activeT, activeA, isEyeMode));
+      if (selectedVariation) {
+        setSelectedVariation((prev) =>
+          prev
+            ? {
+                ...prev,
+                bgType: baseState.bgType,
+                bgMediaUrl: baseState.bgMediaUrl,
+                bgMediaType: baseState.bgMediaType,
+              }
+            : null
+        );
+      }
     }
   }, [baseState.bgMediaUrl, baseState.bgType, isEyeMode, defaultMatrixText, defaultMatrixAuthor, selectedVariation, baseState]);
+
+  // When user uploads custom audio, update all variations and selectedVariation immediately
+  const prevAudioUrlRef = useRef<string | null>(baseState.audio?.audioUrl || null);
+  useEffect(() => {
+    const currentAudioUrl = baseState.audio?.audioUrl || null;
+    if (currentAudioUrl && currentAudioUrl !== prevAudioUrlRef.current) {
+      prevAudioUrlRef.current = currentAudioUrl;
+
+      // Show toast notification in Lucky Mode
+      setEyeModeNotice(
+        `🎵 ${t('customAudioLoadedNotice', 'Ваш аудиофайл успешно загружен:')} ${baseState.audio?.audioFileName || 'Аудио'}`
+      );
+      setTimeout(() => setEyeModeNotice(null), 4000);
+
+      // Propagate uploaded audio to all 4 variations
+      setVariations((prev) =>
+        prev.map((v) => ({
+          ...v,
+          audio: {
+            ...v.audio,
+            ...baseState.audio,
+            enabled: true,
+            sourceType: baseState.audio?.sourceType || 'file',
+            fileAudioEnabled: true,
+            audioUrl: currentAudioUrl,
+            audioFileName: baseState.audio?.audioFileName,
+            audioDuration: baseState.audio?.audioDuration,
+            volume: (baseState.audio?.volume ?? 0.7) > 0 ? (baseState.audio?.volume ?? 0.7) : 0.7,
+            fileVolume: (baseState.audio?.fileVolume ?? 0.8) > 0 ? (baseState.audio?.fileVolume ?? 0.8) : 0.8,
+          },
+        }))
+      );
+
+      // If a variation is currently open in FullscreenPlayer, update it too
+      if (selectedVariation) {
+        setSelectedVariation((prev) =>
+          prev
+            ? {
+                ...prev,
+                audio: {
+                  ...prev.audio,
+                  ...baseState.audio,
+                  enabled: true,
+                  sourceType: baseState.audio?.sourceType || 'file',
+                  fileAudioEnabled: true,
+                  audioUrl: currentAudioUrl,
+                  audioFileName: baseState.audio?.audioFileName,
+                  audioDuration: baseState.audio?.audioDuration,
+                  volume: (baseState.audio?.volume ?? 0.7) > 0 ? (baseState.audio?.volume ?? 0.7) : 0.7,
+                  fileVolume: (baseState.audio?.fileVolume ?? 0.8) > 0 ? (baseState.audio?.fileVolume ?? 0.8) : 0.8,
+                },
+              }
+            : null
+        );
+      }
+    } else if (!currentAudioUrl && prevAudioUrlRef.current) {
+      prevAudioUrlRef.current = null;
+    }
+  }, [baseState.audio, selectedVariation, t]);
   const [isTourOpen, setIsTourOpen] = useState<boolean>(() => {
     try {
       return localStorage.getItem('lucky_mode_help_never_show') !== 'true';

@@ -1079,7 +1079,7 @@ export async function exportVideo({
   let musicAudioBuffer: AudioBuffer | null = null;
   const isMusicActive =
     state.audio.enabled &&
-    (state.audio.sourceType === 'generator' || state.audio.sourceType === 'file') &&
+    (state.audio.sourceType === 'generator' || state.audio.sourceType === 'file' || Boolean(state.audio.audioUrl)) &&
     (state.audio.volume ?? 0.7) > 0;
 
   if (isMusicActive) {
