@@ -257,6 +257,7 @@ export function generate4Variations(
           presetId: randomMusic.id,
           seed: Math.floor(Math.random() * 999999) + 1,
           volume: baseState.audio.volume ?? 0.7,
+          musicVolume: baseState.audio.musicVolume ?? baseState.audio.volume ?? 0.7,
         }
       : {
           enabled: true,
@@ -266,6 +267,8 @@ export function generate4Variations(
           presetId: randomMusic.id,
           seed: Math.floor(Math.random() * 999999) + 1,
           volume: 0.7,
+          musicVolume: 0.7,
+          fileVolume: 0.8,
           loop: true,
           audioDuration: 30,
         };
@@ -704,7 +707,8 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
             audioUrl: currentAudioUrl,
             audioFileName: baseState.audio?.audioFileName,
             audioDuration: baseState.audio?.audioDuration,
-            volume: (baseState.audio?.volume ?? 0.7) > 0 ? (baseState.audio?.volume ?? 0.7) : 0.7,
+            volume: (baseState.audio?.volume ?? v.audio.volume ?? 0.7) > 0 ? (baseState.audio?.volume ?? v.audio.volume ?? 0.7) : 0.7,
+            musicVolume: (baseState.audio?.musicVolume ?? v.audio.musicVolume ?? 0.7) > 0 ? (baseState.audio?.musicVolume ?? v.audio.musicVolume ?? 0.7) : 0.7,
             fileVolume: (baseState.audio?.fileVolume ?? 0.8) > 0 ? (baseState.audio?.fileVolume ?? 0.8) : 0.8,
           },
         }))
@@ -725,7 +729,8 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
                   audioUrl: currentAudioUrl,
                   audioFileName: baseState.audio?.audioFileName,
                   audioDuration: baseState.audio?.audioDuration,
-                  volume: (baseState.audio?.volume ?? 0.7) > 0 ? (baseState.audio?.volume ?? 0.7) : 0.7,
+                  volume: (baseState.audio?.volume ?? prev.audio.volume ?? 0.7) > 0 ? (baseState.audio?.volume ?? prev.audio.volume ?? 0.7) : 0.7,
+                  musicVolume: (baseState.audio?.musicVolume ?? prev.audio.musicVolume ?? 0.7) > 0 ? (baseState.audio?.musicVolume ?? prev.audio.musicVolume ?? 0.7) : 0.7,
                   fileVolume: (baseState.audio?.fileVolume ?? 0.8) > 0 ? (baseState.audio?.fileVolume ?? 0.8) : 0.8,
                 },
               }

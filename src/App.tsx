@@ -275,7 +275,9 @@ export default function App() {
             audioUrl: blobUrl,
             audioFileName: file.name,
             audioDuration: dur,
-            volume: (prev.audio.volume ?? 0.8) > 0 ? (prev.audio.volume ?? 0.8) : 0.8,
+            fileVolume: prev.audio.fileVolume ?? 0.8,
+            musicVolume: prev.audio.musicVolume ?? 0.7,
+            volume: prev.audio.volume ?? 0.7,
             loop: prev.audio.loop ?? true,
           },
         }));

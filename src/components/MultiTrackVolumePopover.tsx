@@ -47,7 +47,7 @@ export const MultiTrackVolumePopover: React.FC<MultiTrackVolumePopoverProps> = (
 
   // 2. Video Background Original Sound Track
   const hasVideoTrack = Boolean(
-    (state.bgType === 'video' || state.bgMediaType === 'video') &&
+    (state.bgType === 'video' || state.bgMediaType === 'video' || bgMediaElement instanceof HTMLVideoElement) &&
       (Boolean(state.bgMediaUrl) || Boolean(bgMediaElement))
   );
   const videoVolume = state.audio.videoVolume ?? 0.8;
@@ -178,10 +178,12 @@ export const MultiTrackVolumePopover: React.FC<MultiTrackVolumePopoverProps> = (
                     },
                   });
                 } else {
+                  audioMixer.setVolume(0);
                   onChange({
                     audio: {
                       ...state.audio,
-                      enabled: false,
+                      volume: 0,
+                      musicVolume: 0,
                     },
                   });
                 }
@@ -231,6 +233,10 @@ export const MultiTrackVolumePopover: React.FC<MultiTrackVolumePopoverProps> = (
                   onChange={(e) => {
                     const rawVal = parseInt(e.target.value, 10);
                     const val = rawVal / 100;
+                    if (bgMediaElement instanceof HTMLVideoElement) {
+                      bgMediaElement.volume = val;
+                      bgMediaElement.muted = val === 0 || isMuted;
+                    }
                     onChange({
                       audio: {
                         ...state.audio,
@@ -251,6 +257,10 @@ export const MultiTrackVolumePopover: React.FC<MultiTrackVolumePopoverProps> = (
                 onClick={() => {
                   if (isVideoMuted) {
                     const restored = videoVolume > 0 ? videoVolume : 0.8;
+                    if (bgMediaElement instanceof HTMLVideoElement) {
+                      bgMediaElement.volume = restored;
+                      bgMediaElement.muted = isMuted;
+                    }
                     onChange({
                       audio: {
                         ...state.audio,
@@ -259,6 +269,9 @@ export const MultiTrackVolumePopover: React.FC<MultiTrackVolumePopoverProps> = (
                       },
                     });
                   } else {
+                    if (bgMediaElement instanceof HTMLVideoElement) {
+                      bgMediaElement.muted = true;
+                    }
                     onChange({
                       audio: {
                         ...state.audio,
@@ -343,6 +356,7 @@ export const MultiTrackVolumePopover: React.FC<MultiTrackVolumePopoverProps> = (
                       },
                     });
                   } else {
+                    audioMixer.setFileVolume(0);
                     onChange({
                       audio: {
                         ...state.audio,

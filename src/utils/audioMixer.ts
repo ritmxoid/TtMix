@@ -22,17 +22,21 @@ function decodeAudioDataSafely(ctx: AudioContext, buffer: ArrayBuffer): Promise<
 
 class AudioMixer {
   private audioCtx: AudioContext | null = null;
-  private currentSourceNode: AudioBufferSourceNode | null = null;
-  private gainNode: GainNode | null = null;
+  private synthSourceNode: AudioBufferSourceNode | null = null;
+  private synthGainNode: GainNode | null = null;
+  private fileSourceNode: AudioBufferSourceNode | null = null;
+  private fileGainNode: GainNode | null = null;
   private recordDestination: MediaStreamAudioDestinationNode | null = null;
-  private cachedBuffer: AudioBuffer | null = null;
+
+  private cachedSynthBuffer: AudioBuffer | null = null;
   private cachedPresetId: string | null = null;
   private cachedSeed: number | undefined = undefined;
+
+  private cachedFileBuffer: AudioBuffer | null = null;
   private cachedAudioUrl: string | null = null;
+
   private isPlaying = false;
   private isMuted = false;
-  private startTime = 0;
-  private pausedOffset = 0;
   private volumeMultiplier = 1.0;
   private currentBaseVolume = 0.7;
   private currentFileVolume = 0.8;
@@ -104,17 +108,16 @@ class AudioMixer {
     totalDuration: number,
     bgVideoUrl?: string
   ): Promise<AudioBuffer | null> {
-    if (!audioState.enabled || audioState.sourceType === 'none') {
-      this.cachedBuffer = null;
+    if (audioState.sourceType === 'none') {
       return null;
     }
 
     this.resume();
 
-    // If custom uploaded audio
-    if ((audioState.sourceType === 'file' || Boolean(audioState.audioUrl)) && audioState.audioUrl) {
-      if (this.cachedBuffer && this.cachedAudioUrl === audioState.audioUrl) {
-        return this.cachedBuffer;
+    // 1. If custom uploaded audio
+    if (audioState.sourceType === 'file' && audioState.audioUrl) {
+      if (this.cachedFileBuffer && this.cachedAudioUrl === audioState.audioUrl) {
+        return this.cachedFileBuffer;
       }
       if (this.inFlightAudioPromise && this.inFlightAudioUrl === audioState.audioUrl) {
         return this.inFlightAudioPromise;
@@ -130,7 +133,7 @@ class AudioMixer {
           const arrayBuffer = await response.arrayBuffer();
           const ctx = this.getContext();
           const decoded = await decodeAudioDataSafely(ctx, arrayBuffer);
-          this.cachedBuffer = decoded;
+          this.cachedFileBuffer = decoded;
           this.cachedAudioUrl = audioState.audioUrl;
           return decoded;
         } catch (err) {
@@ -145,39 +148,39 @@ class AudioMixer {
       return this.inFlightAudioPromise;
     }
 
-    // If video sound source, decode audio from video background URL
+    // 2. If video sound source, decode audio from video background URL
     if (audioState.sourceType === 'video') {
       const targetUrl = audioState.audioUrl || bgVideoUrl;
       if (targetUrl) {
         const decoded = await this.prepareBackgroundVideoAudioBuffer(targetUrl);
         if (decoded) {
-          this.cachedBuffer = decoded;
-          this.cachedAudioUrl = targetUrl;
+          this.cachedVideoBuffer = decoded;
+          this.cachedVideoUrl = targetUrl;
           return decoded;
         }
       }
-      this.cachedBuffer = null;
       return null;
     }
 
-    // If procedural generator preset
+    // 3. If procedural generator preset
     if (audioState.sourceType === 'generator') {
       const currentSeed = audioState.seed ?? 1337;
+      const presetId = audioState.presetId || 'lofi-chill';
       if (
-        this.cachedBuffer &&
-        this.cachedPresetId === audioState.presetId &&
+        this.cachedSynthBuffer &&
+        this.cachedPresetId === presetId &&
         this.cachedSeed === currentSeed
       ) {
-        return this.cachedBuffer;
+        return this.cachedSynthBuffer;
       }
       try {
         const buffer = await generateProceduralTrack(
-          audioState.presetId,
+          presetId,
           Math.max(10, totalDuration + 2),
           currentSeed
         );
-        this.cachedBuffer = buffer;
-        this.cachedPresetId = audioState.presetId;
+        this.cachedSynthBuffer = buffer;
+        this.cachedPresetId = presetId;
         this.cachedSeed = currentSeed;
         return buffer;
       } catch (err) {
@@ -187,24 +190,6 @@ class AudioMixer {
     }
 
     return null;
-  }
-
-  private fileAudioElement: HTMLAudioElement | null = null;
-
-  private ensureFileAudioElement(): HTMLAudioElement {
-    if (!this.fileAudioElement) {
-      let el = document.getElementById('typemixer-audio-el') as HTMLAudioElement | null;
-      if (!el) {
-        el = document.createElement('audio');
-        el.id = 'typemixer-audio-el';
-        el.preload = 'auto';
-        el.setAttribute('playsinline', '');
-        el.setAttribute('webkit-playsinline', '');
-        document.body.appendChild(el);
-      }
-      this.fileAudioElement = el;
-    }
-    return this.fileAudioElement;
   }
 
   /**
@@ -229,7 +214,7 @@ class AudioMixer {
 
     const fileVolume = typeof audioState.fileVolume === 'number'
       ? audioState.fileVolume
-      : (audioState.sourceType === 'file' ? synthVolume : 0.8);
+      : 0.8;
 
     const isSynthActive =
       audioState.enabled &&
@@ -245,121 +230,156 @@ class AudioMixer {
       return;
     }
 
-    // 1. Handle user-uploaded audio file (HTMLAudioElement)
-    if (isFileActive && audioState.audioUrl) {
-      const safeFileVol = Math.max(0.001, Math.min(1, fileVolume * this.volumeMultiplier));
-      const audioEl = this.ensureFileAudioElement();
-      audioEl.volume = safeFileVol;
-      audioEl.loop = audioState.loop ?? true;
-
-      const isCurrentSrc = audioEl.src === audioState.audioUrl;
-      if (!isCurrentSrc) {
-        audioEl.src = audioState.audioUrl;
-        audioEl.load();
-      }
-
-      const dur = audioEl.duration || audioState.audioDuration || totalDuration;
-      const nonNegativeOffset = Number.isFinite(offsetSeconds) ? Math.max(0, offsetSeconds) : 0;
-      if (Number.isFinite(dur) && dur > 0) {
-        const safeOffset = nonNegativeOffset % dur;
-        if (Math.abs(audioEl.currentTime - safeOffset) > 0.3) {
-          try {
-            audioEl.currentTime = Math.max(0, safeOffset);
-          } catch {}
-        }
-      }
-
-      if (audioEl.paused) {
-        const playPromise = audioEl.play();
-        if (playPromise !== undefined) {
-          playPromise.catch(() => {});
-        }
-      }
-    } else {
-      if (this.fileAudioElement && !this.fileAudioElement.paused) {
-        try {
-          this.fileAudioElement.pause();
-        } catch {}
-      }
+    const ctx = this.getContext();
+    if (ctx.state === 'suspended') {
+      try {
+        await ctx.resume();
+      } catch {}
     }
 
-    // 2. Handle procedural synth music (Web Audio Buffer)
+    // 1. Handle procedural synth music (Web Audio Buffer)
     if (isSynthActive) {
-      const rawVolume = Number.isFinite(synthVolume) ? Math.max(0.01, Math.min(1, synthVolume)) : 0.7;
-      this.currentBaseVolume = rawVolume;
-      const safeVolume = Math.max(0.001, Math.min(1, rawVolume * this.volumeMultiplier));
+      const rawSynthVol = Number.isFinite(synthVolume) ? Math.max(0.01, Math.min(1, synthVolume)) : 0.7;
+      this.currentBaseVolume = rawSynthVol;
+      const safeSynthVol = Math.max(0.0001, Math.min(1, rawSynthVol * this.volumeMultiplier));
 
-      const synthConfig = { ...audioState, sourceType: 'generator' as const };
-      const buffer = await this.prepareAudioBuffer(synthConfig, totalDuration, bgVideoUrl);
-      if (buffer) {
-        if (this.currentSourceNode) {
+      const synthConfig: AudioState = {
+        ...audioState,
+        sourceType: 'generator',
+        audioUrl: null,
+        volume: rawSynthVol,
+        musicVolume: rawSynthVol,
+      };
+
+      const synthBuffer = await this.prepareAudioBuffer(synthConfig, totalDuration, bgVideoUrl);
+      if (synthBuffer) {
+        if (this.synthSourceNode) {
           try {
-            this.currentSourceNode.stop();
-            this.currentSourceNode.disconnect();
+            this.synthSourceNode.stop();
+            this.synthSourceNode.disconnect();
           } catch {}
-          this.currentSourceNode = null;
+          this.synthSourceNode = null;
         }
 
-        const ctx = this.getContext();
-        if (ctx.state === 'suspended') {
-          try {
-            await ctx.resume();
-          } catch {}
-        }
-        this.gainNode = ctx.createGain();
-        this.gainNode.gain.setValueAtTime(safeVolume, ctx.currentTime);
-        this.gainNode.connect(ctx.destination);
-        if (this.recordDestination) {
-          try {
-            this.gainNode.connect(this.recordDestination);
-          } catch (err) {
-            console.warn('Error connecting gain to recordDestination:', err);
+        if (!this.synthGainNode) {
+          this.synthGainNode = ctx.createGain();
+          this.synthGainNode.connect(ctx.destination);
+          if (this.recordDestination) {
+            try {
+              this.synthGainNode.connect(this.recordDestination);
+            } catch {}
           }
         }
+        this.synthGainNode.gain.setValueAtTime(safeSynthVol, ctx.currentTime);
 
-        this.currentSourceNode = ctx.createBufferSource();
-        this.currentSourceNode.buffer = buffer;
-        this.currentSourceNode.loop = audioState.loop;
-        this.currentSourceNode.connect(this.gainNode);
+        this.synthSourceNode = ctx.createBufferSource();
+        this.synthSourceNode.buffer = synthBuffer;
+        this.synthSourceNode.loop = audioState.loop ?? true;
+        this.synthSourceNode.connect(this.synthGainNode);
 
         const nonNegativeOffset = Number.isFinite(offsetSeconds) ? Math.max(0, offsetSeconds) : 0;
-        const safeOffset = buffer.duration > 0 ? nonNegativeOffset % buffer.duration : 0;
-        const clampedOffset = Math.max(0, Math.min(Math.max(0, buffer.duration - 0.001), safeOffset));
+        const safeOffset = synthBuffer.duration > 0 ? nonNegativeOffset % synthBuffer.duration : 0;
+        const clampedOffset = Math.max(0, Math.min(Math.max(0, synthBuffer.duration - 0.001), safeOffset));
 
         try {
-          this.currentSourceNode.start(0, clampedOffset);
+          this.synthSourceNode.start(0, clampedOffset);
         } catch (err) {
-          console.warn('AudioBufferSourceNode start failed:', err);
+          console.warn('Synth BufferSourceNode start failed:', err);
         }
-        this.startTime = ctx.currentTime - clampedOffset;
       }
     } else {
-      if (this.currentSourceNode) {
+      if (this.synthSourceNode) {
         try {
-          this.currentSourceNode.stop();
-          this.currentSourceNode.disconnect();
+          this.synthSourceNode.stop();
+          this.synthSourceNode.disconnect();
         } catch {}
-        this.currentSourceNode = null;
+        this.synthSourceNode = null;
       }
     }
 
-    this.isPlaying = isFileActive || isSynthActive;
+    // 2. Handle user-uploaded audio file (Web Audio Buffer)
+    if (isFileActive && audioState.audioUrl) {
+      const rawFileVol = Number.isFinite(fileVolume) ? Math.max(0.01, Math.min(1, fileVolume)) : 0.8;
+      this.currentFileVolume = rawFileVol;
+      const safeFileVol = Math.max(0.0001, Math.min(1, rawFileVol * this.volumeMultiplier));
+
+      const fileConfig: AudioState = {
+        ...audioState,
+        sourceType: 'file',
+        audioUrl: audioState.audioUrl,
+        fileVolume: rawFileVol,
+      };
+
+      const fileBuffer = await this.prepareAudioBuffer(fileConfig, totalDuration, bgVideoUrl);
+      if (fileBuffer) {
+        if (this.fileSourceNode) {
+          try {
+            this.fileSourceNode.stop();
+            this.fileSourceNode.disconnect();
+          } catch {}
+          this.fileSourceNode = null;
+        }
+
+        if (!this.fileGainNode) {
+          this.fileGainNode = ctx.createGain();
+          this.fileGainNode.connect(ctx.destination);
+          if (this.recordDestination) {
+            try {
+              this.fileGainNode.connect(this.recordDestination);
+            } catch {}
+          }
+        }
+        this.fileGainNode.gain.setValueAtTime(safeFileVol, ctx.currentTime);
+
+        this.fileSourceNode = ctx.createBufferSource();
+        this.fileSourceNode.buffer = fileBuffer;
+        this.fileSourceNode.loop = audioState.loop ?? true;
+        this.fileSourceNode.connect(this.fileGainNode);
+
+        const dur = fileBuffer.duration || audioState.audioDuration || totalDuration;
+        const nonNegativeOffset = Number.isFinite(offsetSeconds) ? Math.max(0, offsetSeconds) : 0;
+        const safeOffset = dur > 0 ? nonNegativeOffset % dur : 0;
+        const clampedOffset = Math.max(0, Math.min(Math.max(0, dur - 0.001), safeOffset));
+
+        try {
+          this.fileSourceNode.start(0, clampedOffset);
+        } catch (err) {
+          console.warn('File BufferSourceNode start failed:', err);
+        }
+      }
+    } else {
+      if (this.fileSourceNode) {
+        try {
+          this.fileSourceNode.stop();
+          this.fileSourceNode.disconnect();
+        } catch {}
+        this.fileSourceNode = null;
+      }
+    }
+
+    this.isPlaying = isSynthActive || isFileActive;
   }
 
   /**
    * Attach/detach a MediaStreamAudioDestinationNode for live video capture recording
    */
   public setRecordingDestination(dest: MediaStreamAudioDestinationNode | null) {
-    if (this.recordDestination && this.gainNode) {
-      try {
-        this.gainNode.disconnect(this.recordDestination);
-      } catch {}
+    if (this.recordDestination) {
+      if (this.synthGainNode) {
+        try { this.synthGainNode.disconnect(this.recordDestination); } catch {}
+      }
+      if (this.fileGainNode) {
+        try { this.fileGainNode.disconnect(this.recordDestination); } catch {}
+      }
     }
     this.recordDestination = dest;
-    if (this.recordDestination && this.gainNode) {
-      try {
-        this.gainNode.connect(this.recordDestination);
-      } catch {}
+    if (this.recordDestination) {
+      if (this.synthGainNode) {
+        try { this.synthGainNode.connect(this.recordDestination); } catch {}
+      }
+      if (this.fileGainNode) {
+        try { this.fileGainNode.connect(this.recordDestination); } catch {}
+      }
     }
   }
 
@@ -372,16 +392,11 @@ class AudioMixer {
    */
   public clearCache() {
     this.stop();
-    if (this.fileAudioElement) {
-      try {
-        this.fileAudioElement.pause();
-        this.fileAudioElement.src = '';
-      } catch {}
-    }
-    this.cachedBuffer = null;
-    this.cachedAudioUrl = null;
+    this.cachedSynthBuffer = null;
     this.cachedPresetId = null;
     this.cachedSeed = undefined;
+    this.cachedFileBuffer = null;
+    this.cachedAudioUrl = null;
     this.cachedVideoBuffer = null;
     this.cachedVideoUrl = null;
   }
@@ -390,26 +405,38 @@ class AudioMixer {
    * Stop preview audio
    */
   public stop() {
-    if (this.fileAudioElement && !this.fileAudioElement.paused) {
+    if (this.synthSourceNode) {
       try {
-        this.fileAudioElement.pause();
-      } catch {}
-    }
-    if (this.currentSourceNode) {
-      try {
-        this.currentSourceNode.stop();
-        this.currentSourceNode.disconnect();
+        this.synthSourceNode.stop();
+        this.synthSourceNode.disconnect();
       } catch {
         // already stopped
       }
-      this.currentSourceNode = null;
+      this.synthSourceNode = null;
     }
-    if (this.gainNode) {
+    if (this.synthGainNode) {
       try {
-        this.gainNode.disconnect();
+        this.synthGainNode.disconnect();
       } catch {}
-      this.gainNode = null;
+      this.synthGainNode = null;
     }
+
+    if (this.fileSourceNode) {
+      try {
+        this.fileSourceNode.stop();
+        this.fileSourceNode.disconnect();
+      } catch {
+        // already stopped
+      }
+      this.fileSourceNode = null;
+    }
+    if (this.fileGainNode) {
+      try {
+        this.fileGainNode.disconnect();
+      } catch {}
+      this.fileGainNode = null;
+    }
+
     this.isPlaying = false;
   }
 
@@ -419,8 +446,8 @@ class AudioMixer {
   public setVolume(volume: number) {
     this.currentBaseVolume = Math.max(0, Math.min(1, volume));
     const effectiveVol = Math.max(0, Math.min(1, this.currentBaseVolume * this.volumeMultiplier));
-    if (this.gainNode && this.audioCtx) {
-      this.gainNode.gain.setValueAtTime(effectiveVol, this.audioCtx.currentTime);
+    if (this.synthGainNode && this.audioCtx) {
+      this.synthGainNode.gain.setValueAtTime(effectiveVol, this.audioCtx.currentTime);
     }
   }
 
@@ -430,8 +457,8 @@ class AudioMixer {
   public setFileVolume(volume: number) {
     this.currentFileVolume = Math.max(0, Math.min(1, volume));
     const effectiveVol = Math.max(0, Math.min(1, this.currentFileVolume * this.volumeMultiplier));
-    if (this.fileAudioElement) {
-      this.fileAudioElement.volume = effectiveVol;
+    if (this.fileGainNode && this.audioCtx) {
+      this.fileGainNode.gain.setValueAtTime(effectiveVol, this.audioCtx.currentTime);
     }
   }
 
@@ -441,12 +468,12 @@ class AudioMixer {
   public setVolumeMultiplier(multiplier: number) {
     this.volumeMultiplier = Math.max(0, Math.min(1, multiplier));
     const effectiveSynthVol = Math.max(0, Math.min(1, this.currentBaseVolume * this.volumeMultiplier));
-    if (this.gainNode && this.audioCtx) {
-      this.gainNode.gain.setValueAtTime(effectiveSynthVol, this.audioCtx.currentTime);
+    if (this.synthGainNode && this.audioCtx) {
+      this.synthGainNode.gain.setValueAtTime(effectiveSynthVol, this.audioCtx.currentTime);
     }
     const effectiveFileVol = Math.max(0, Math.min(1, this.currentFileVolume * this.volumeMultiplier));
-    if (this.fileAudioElement) {
-      this.fileAudioElement.volume = effectiveFileVol;
+    if (this.fileGainNode && this.audioCtx) {
+      this.fileGainNode.gain.setValueAtTime(effectiveFileVol, this.audioCtx.currentTime);
     }
   }
 
@@ -587,7 +614,7 @@ export async function prepareDualAudioTrack(
 
   const fileVol = typeof audioState.fileVolume === 'number'
     ? audioState.fileVolume
-    : (audioState.sourceType === 'file' ? synthVol : 0.8);
+    : 0.8;
 
   const isFileActive =
     Boolean(audioState.audioUrl) &&
@@ -607,7 +634,7 @@ export async function prepareDualAudioTrack(
   if (isSynthActive) {
     try {
       synthBuffer = await audioMixer.prepareAudioBuffer(
-        { ...audioState, sourceType: 'generator' },
+        { ...audioState, sourceType: 'generator', audioUrl: null },
         durationSeconds,
         bgMediaUrl || undefined
       );

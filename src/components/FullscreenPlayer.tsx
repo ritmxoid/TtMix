@@ -1609,6 +1609,9 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                     presetId: nextPresetId,
                     seed: nextSeed,
                     volume: (state.audio.volume ?? 0.7) > 0 ? state.audio.volume : 0.7,
+                    musicVolume: (state.audio.musicVolume ?? state.audio.volume ?? 0.7) > 0 ? (state.audio.musicVolume ?? state.audio.volume ?? 0.7) : 0.7,
+                    fileVolume: state.audio.fileVolume ?? 0.8,
+                    fileAudioEnabled: state.audio.fileAudioEnabled ?? true,
                   };
 
                   onChange({

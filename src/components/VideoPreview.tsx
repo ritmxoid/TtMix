@@ -1210,6 +1210,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       sourceType: state.audio.audioUrl ? (state.audio.sourceType || 'file') : ('generator' as const),
       presetId,
       seed: newSeed,
+      volume: (state.audio.volume ?? 0.7) > 0 ? state.audio.volume : 0.7,
+      musicVolume: (state.audio.musicVolume ?? state.audio.volume ?? 0.7) > 0 ? (state.audio.musicVolume ?? state.audio.volume ?? 0.7) : 0.7,
+      fileVolume: state.audio.fileVolume ?? 0.8,
+      fileAudioEnabled: state.audio.fileAudioEnabled ?? true,
     };
     onChange({
       audio: newAudioConfig,
