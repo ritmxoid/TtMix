@@ -946,10 +946,10 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
         <div
           onPointerDown={handleGridPointerDown}
           onPointerUp={handleGridPointerUp}
-          className="relative z-10 flex-1 flex flex-col min-h-screen max-w-5xl mx-auto w-full p-2 sm:p-4 pb-24 touch-pan-y"
+          className="relative z-10 flex-1 flex flex-col max-w-5xl mx-auto w-full p-2 sm:p-3 pb-20 touch-pan-y"
         >
           {/* 2x2 Grid of 4 Variations */}
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 items-center my-auto pt-8 sm:pt-10">
+          <div className="grid grid-cols-2 gap-2 sm:gap-4 flex-1 items-center my-auto pt-2 sm:pt-3">
             {variations.map((varState, idx) => (
               <LuckyCard
                 key={idx}
@@ -961,17 +961,16 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
             ))}
           </div>
 
-          {/* Reset Button (scrolls along with variations at bottom left below cards, compact & frameless) */}
+          {/* Reset Button (scrolls along with variations at bottom left below cards, compact red icon without text) */}
           <div className="flex items-center justify-start pt-2 pb-2 px-1">
             <button
               type="button"
               onClick={() => setIsResetConfirmOpen(true)}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 hover:bg-rose-950/60 text-zinc-400 hover:text-rose-300 text-xs font-medium backdrop-blur-md transition-all cursor-pointer active:scale-95 group shrink-0"
+              className="inline-flex items-center justify-center p-2 rounded-full hover:bg-rose-950/40 text-rose-500 hover:text-rose-400 transition-all cursor-pointer active:scale-95 group shrink-0"
               title={t('resetProject', 'Сбросить всё к начальным настройкам')}
               aria-label={t('resetProject', 'Сбросить всё к начальным настройкам')}
             >
-              <RotateCcw className="w-3.5 h-3.5 group-hover:-rotate-90 transition-transform duration-300 text-rose-400/90" />
-              <span>{t('reset', 'Сброс')}</span>
+              <RotateCcw className="w-4 h-4 group-hover:-rotate-90 transition-transform duration-300 text-rose-500" />
             </button>
           </div>
 
