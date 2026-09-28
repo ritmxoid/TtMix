@@ -5,6 +5,9 @@ import {
   Image as ImageIcon,
   X,
   HardDrive,
+  Camera,
+  Video,
+  Mic,
 } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -23,6 +26,9 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 }) => {
   const { t } = useLanguage();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const videoCaptureInputRef = useRef<HTMLInputElement>(null);
+  const micInputRef = useRef<HTMLInputElement>(null);
 
   if (!isOpen) return null;
 
@@ -30,6 +36,27 @@ export const UploadModal: React.FC<UploadModalProps> = ({
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
       fileInputRef.current.click();
+    }
+  };
+
+  const handleCameraClick = () => {
+    if (cameraInputRef.current) {
+      cameraInputRef.current.value = '';
+      cameraInputRef.current.click();
+    }
+  };
+
+  const handleVideoCaptureClick = () => {
+    if (videoCaptureInputRef.current) {
+      videoCaptureInputRef.current.value = '';
+      videoCaptureInputRef.current.click();
+    }
+  };
+
+  const handleMicClick = () => {
+    if (micInputRef.current) {
+      micInputRef.current.value = '';
+      micInputRef.current.click();
     }
   };
 
@@ -42,18 +69,42 @@ export const UploadModal: React.FC<UploadModalProps> = ({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
+      className="fixed inset-0 z-[200000] flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200"
       onClick={onClose}
     >
       <div
         className="bg-[#16161D] border border-white/15 rounded-2xl w-full max-w-sm p-4 shadow-2xl shadow-purple-950/40 text-zinc-100 relative space-y-3.5"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Hidden File Input */}
+        {/* Hidden Inputs */}
         <input
           ref={fileInputRef}
           type="file"
           accept="video/*,image/*,audio/*,.mp4,.webm,.mov,.m4v,.mkv,.jpg,.jpeg,.png,.webp,.mp3,.wav,.ogg,.m4a,.aac,.flac"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <input
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="user"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <input
+          ref={videoCaptureInputRef}
+          type="file"
+          accept="video/*"
+          capture="user"
+          className="hidden"
+          onChange={handleFileChange}
+        />
+        <input
+          ref={micInputRef}
+          type="file"
+          accept="audio/*"
+          capture="microphone"
           className="hidden"
           onChange={handleFileChange}
         />
@@ -92,14 +143,50 @@ export const UploadModal: React.FC<UploadModalProps> = ({
           </div>
         )}
 
+        {/* Quick Hardware Capture Block */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider px-1">Быстрый захват:</span>
+          <div className="grid grid-cols-3 gap-2 bg-black/20 border border-white/5 rounded-xl p-1.5">
+            {/* Camera Button */}
+            <button
+              type="button"
+              onClick={handleCameraClick}
+              className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-400/50 text-purple-300 hover:text-white transition-all cursor-pointer group active:scale-95"
+            >
+              <Camera className="w-4 h-4 text-purple-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-extrabold text-center leading-tight">Сделать фото</span>
+            </button>
+
+            {/* Video Capture Button */}
+            <button
+              type="button"
+              onClick={handleVideoCaptureClick}
+              className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 hover:border-rose-400/50 text-rose-300 hover:text-white transition-all cursor-pointer group active:scale-95"
+            >
+              <Video className="w-4 h-4 text-rose-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-extrabold text-center leading-tight">Снять видео</span>
+            </button>
+
+            {/* Microphone Button */}
+            <button
+              type="button"
+              onClick={handleMicClick}
+              className="flex flex-col items-center justify-center gap-1.5 p-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 border border-indigo-500/20 hover:border-indigo-400/50 text-indigo-300 hover:text-white transition-all cursor-pointer group active:scale-95"
+            >
+              <Mic className="w-4 h-4 text-indigo-400 group-hover:scale-110 transition-transform" />
+              <span className="text-[9px] font-extrabold text-center leading-tight">Записать звук</span>
+            </button>
+          </div>
+        </div>
+
         {/* Modal Actions */}
-        <div className="flex items-center gap-2 pt-1 border-t border-white/10">
+        <div className="flex items-center gap-2 pt-2.5 border-t border-white/10">
           <button
             type="button"
             onClick={handleSelectClick}
             className="flex-1 py-2 px-3 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-purple-600/30 transition-all cursor-pointer hover:scale-[1.01] active:scale-98"
           >
-            <Upload className="w-4 h-4" />
+            <Upload className="w-3.5 h-3.5" />
             <span>{t('selectFileBtn', 'Выбрать файл')}</span>
           </button>
 

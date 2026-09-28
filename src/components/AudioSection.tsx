@@ -47,6 +47,7 @@ export const AudioSection: React.FC<AudioSectionProps> = ({
 
   const isMusicEnabled = state.audio.enabled;
   const musicVolume = state.audio.volume ?? 0.7;
+  const fileVolume = state.audio.fileVolume ?? 0.8;
 
   // Toggle Video Audio Track
   const handleToggleVideoAudio = (enabled: boolean) => {
@@ -92,6 +93,18 @@ export const AudioSection: React.FC<AudioSectionProps> = ({
       audio: {
         ...state.audio,
         volume: vol,
+      },
+    });
+  };
+
+  // Change File Volume
+  const handleChangeFileVolume = (vol: number) => {
+    audioMixer.setFileVolume(vol);
+    onChange({
+      audio: {
+        ...state.audio,
+        fileVolume: vol,
+        fileAudioEnabled: vol > 0 ? true : state.audio.fileAudioEnabled,
       },
     });
   };
@@ -519,7 +532,7 @@ export const AudioSection: React.FC<AudioSectionProps> = ({
                   <div className="bg-black/30 border border-white/10 rounded-xl p-2.5 space-y-1">
                     <div className="flex items-center justify-between text-xs">
                       <span className="text-zinc-300 font-semibold flex items-center gap-1.5 text-[11px]">
-                        {musicVolume === 0 ? (
+                        {fileVolume === 0 ? (
                           <VolumeX className="w-3.5 h-3.5 text-zinc-500" />
                         ) : (
                           <Volume2 className="w-3.5 h-3.5 text-purple-400" />
@@ -527,7 +540,7 @@ export const AudioSection: React.FC<AudioSectionProps> = ({
                         {t('audioFileVolume', 'Громкость аудиофайла:')}
                       </span>
                       <span className="text-purple-400 font-bold text-xs">
-                        {Math.round(musicVolume * 100)}%
+                        {Math.round(fileVolume * 100)}%
                       </span>
                     </div>
                     <input
@@ -535,8 +548,8 @@ export const AudioSection: React.FC<AudioSectionProps> = ({
                       min="0"
                       max="1"
                       step="0.05"
-                      value={musicVolume}
-                      onChange={(e) => handleChangeMusicVolume(parseFloat(e.target.value))}
+                      value={fileVolume}
+                      onChange={(e) => handleChangeFileVolume(parseFloat(e.target.value))}
                       className="w-full accent-purple-500 cursor-pointer"
                     />
                   </div>

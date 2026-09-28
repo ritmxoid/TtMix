@@ -67,9 +67,11 @@ export interface AudioState {
   musicVolume?: number; // 0 to 1 (Music volume alias)
   loop: boolean;
   audioDuration: number;
-  // Dual-layer audio controls for video background sound
+  // Dual & Triple-layer audio controls
   videoAudioEnabled?: boolean; // When true, background video audio track is active
   videoVolume?: number; // 0 to 1 (Video original voice/sound volume)
+  fileAudioEnabled?: boolean; // When true, user-uploaded audio track is active
+  fileVolume?: number; // 0 to 1 (User uploaded audio file / voice volume)
 }
 
 export type ProceduralMoodStyle =

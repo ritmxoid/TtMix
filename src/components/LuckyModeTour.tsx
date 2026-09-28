@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { X, ArrowRight, ArrowLeft, Check, Sparkles } from 'lucide-react';
 import { audioMixer } from '../utils/audioMixer';
+import { useLanguage } from '../context/LanguageContext';
 
 interface LuckyModeTourProps {
   isOpen: boolean;
@@ -64,7 +65,7 @@ const TOUR_STEPS: StepConfig[] = [
   {
     step: 6,
     targetSelector: '[data-tour="fullscreen-btn-rocket"]',
-    text: 'Отправь вариант\nна глубокое редактирование!',
+    text: 'Отправь вариант на глубокое редактирование если ты уже эксперт!',
     view: 'fullscreen',
   },
   {
@@ -160,13 +161,17 @@ export const LuckyModeTour: React.FC<LuckyModeTourProps> = ({
     }
   }, [isOpen]);
 
+  const { t } = useLanguage();
+
   // Step 3 (or steps with secondaryText): Smoothly cycle between primary and secondary message
   const [subTextIdx, setSubTextIdx] = useState<number>(0);
   const [isSubTextFading, setIsSubTextFading] = useState<boolean>(false);
-  const displayedText =
+  const rawText =
     subTextIdx === 1 && currentStep.secondaryText
       ? currentStep.secondaryText
       : currentStep.text;
+  const translationKey = `luckyTourStep_${currentStepIdx}${subTextIdx === 1 && currentStep.secondaryText ? '_sub' : ''}`;
+  const displayedText = t(translationKey, rawText);
 
   useEffect(() => {
     setSubTextIdx(0);

@@ -955,6 +955,7 @@ export default function App() {
             onNavigateToTool={handleNavigateToTool}
             onOpenTour={() => setIsTourForceOpen(true)}
             isTourActive={isHelpTourActive}
+            onOpenUploadModal={() => setIsUploadModalOpen(true)}
           />
         </div>
 

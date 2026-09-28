@@ -56,6 +56,7 @@ import { FullscreenPlayer } from './FullscreenPlayer';
 import { ColorPickerModal } from './ColorPickerModal';
 import { TextEditPopup } from './TextEditPopup';
 import { BlinkingEyeIcon, EYE_MODE_OVERLAY_THEMES } from './LuckyMode';
+import { MultiTrackVolumePopover } from './MultiTrackVolumePopover';
 import { useLanguage } from '../context/LanguageContext';
 import {
   trackApplyPreset,
@@ -141,6 +142,7 @@ interface VideoPreviewProps {
   onNavigateToTool?: (toolNumber: number) => void;
   onOpenTour?: () => void;
   isTourActive?: boolean;
+  onOpenUploadModal?: () => void;
 }
 
 export const VideoPreview: React.FC<VideoPreviewProps> = ({
@@ -164,6 +166,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   onNavigateToTool,
   onOpenTour,
   isTourActive = false,
+  onOpenUploadModal,
 }) => {
   const { t } = useLanguage();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -1838,110 +1841,6 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                   >
                     <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
                   </button>
-
-                  {/* 3. Sound / Volume with Long-Tap Slider Popup */}
-                  <div className="relative shrink-0">
-                    <button
-                      onTouchStart={handleSoundTouchStart}
-                      onTouchEnd={handleSoundTouchEnd}
-                      onTouchCancel={handleSoundTouchEnd}
-                      onMouseDown={handleSoundTouchStart}
-                      onMouseUp={handleSoundTouchEnd}
-                      onMouseLeave={handleSoundTouchEnd}
-                      onClick={handleSoundClick}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        setIsVolumePopupOpen(true);
-                      }}
-                      className={`w-8 h-8 sm:w-9 sm:h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 border ${
-                        isEffectivelyMuted
-                          ? 'bg-rose-950/50 text-rose-400 border-rose-500/30'
-                          : 'bg-white/10 hover:bg-white/20 text-emerald-400 border-white/10'
-                      }`}
-                      title={
-                        isEffectivelyMuted
-                          ? t('unmute', 'Включить звук (долгий тап для громкости)')
-                          : t('mute', 'Выключить звук (долгий тап для громкости)')
-                      }
-                      aria-label={t('soundControl', 'Звук')}
-                    >
-                      {isEffectivelyMuted ? (
-                        <VolumeX className="w-4 h-4 text-rose-400" />
-                      ) : (
-                        <Volume2 className="w-4 h-4 text-emerald-400" />
-                      )}
-                    </button>
-
-                    {/* Clean Centered Minimalist Volume Slider (Speaker Icon + Slider ONLY) */}
-                    {isVolumePopupOpen && (
-                      <>
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => setIsVolumePopupOpen(false)}
-                        />
-                        <div className="absolute bottom-11 sm:bottom-12 left-1/2 -translate-x-1/2 w-44 sm:w-48 px-3 py-2 rounded-xl bg-[#161622]/95 backdrop-blur-xl border border-white/20 shadow-2xl z-50 flex items-center gap-2.5 animate-in fade-in zoom-in-95 duration-150">
-                          {/* Speaker Icon */}
-                          <button
-                            onClick={() => {
-                              if (isEffectivelyMuted) {
-                                setIsMuted(false);
-                                if ((state.audio.volume ?? 0) === 0) {
-                                  audioMixer.setVolume(0.5);
-                                  onChange({
-                                    audio: {
-                                      ...state.audio,
-                                      volume: 0.5,
-                                      enabled: true,
-                                    },
-                                  });
-                                }
-                              } else {
-                                setIsMuted(true);
-                              }
-                            }}
-                            className={`shrink-0 cursor-pointer p-0.5 hover:scale-105 transition-transform ${
-                              isEffectivelyMuted
-                                ? 'text-rose-400'
-                                : 'text-emerald-400 hover:text-emerald-300'
-                            }`}
-                            title={isEffectivelyMuted ? t('unmute', 'Включить звук') : t('mute', 'Выключить звук')}
-                          >
-                            {isEffectivelyMuted ? (
-                              <VolumeX className="w-4 h-4 text-rose-400" />
-                            ) : (
-                              <Volume2 className="w-4 h-4 text-emerald-400" />
-                            )}
-                          </button>
-
-                          {/* Minimal Slider */}
-                          <input
-                            type="range"
-                            min="0"
-                            max="1"
-                            step="0.05"
-                            value={isMuted ? 0 : (state.audio.volume ?? 0)}
-                            onChange={(e) => {
-                              const vol = parseFloat(e.target.value);
-                              if (vol === 0) {
-                                setIsMuted(true);
-                              } else if (isMuted) {
-                                setIsMuted(false);
-                              }
-                              audioMixer.setVolume(vol);
-                              onChange({
-                                audio: {
-                                  ...state.audio,
-                                  volume: vol,
-                                  enabled: vol > 0,
-                                },
-                              });
-                            }}
-                            className="w-full accent-purple-500 bg-zinc-800 h-2 rounded-lg cursor-pointer"
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
                 </div>
 
                 {/* Subtle Divider */}
@@ -2030,85 +1929,17 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                     </button>
                   </div>
 
-                  {/* 5. Quick Regenerate Procedural Music (Tap: Remix, Long Press: Vertical Volume Slider Popout) */}
+                  {/* 5. Quick Regenerate Procedural Music (Tap: Remix, Long Press: Multi-Track Volume Popover) */}
                   <div className="relative" data-tour="preview-btn-music">
-                    {/* Vertical Volume Slider Popout */}
+                    {/* Multi-Track Dynamic Volume Popover */}
                     {showMusicVolumePopover && (
-                      <div
-                        onPointerDown={(e) => e.stopPropagation()}
-                        onPointerUp={(e) => e.stopPropagation()}
-                        onTouchStart={(e) => e.stopPropagation()}
-                        onTouchEnd={(e) => e.stopPropagation()}
-                        onClick={(e) => e.stopPropagation()}
-                        className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-50 bg-black/90 backdrop-blur-2xl border border-white/20 p-2.5 rounded-3xl shadow-2xl flex flex-col items-center gap-2 animate-fade-in text-white pointer-events-auto select-none"
-                      >
-                        {/* Top Volume % Indicator */}
-                        <span className="text-[10px] font-black font-mono text-purple-200 select-none">
-                          {!state.audio.enabled || isMuted ? '0%' : `${Math.round((state.audio.volume ?? 0.7) * 100)}%`}
-                        </span>
-
-                        {/* Vertical Range Input Slider */}
-                        <div className="py-1 flex items-center justify-center">
-                          <input
-                            type="range"
-                            min={0}
-                            max={100}
-                            value={!state.audio.enabled || isMuted ? 0 : Math.round((state.audio.volume ?? 0.7) * 100)}
-                            onChange={(e) => {
-                              const rawVal = parseInt(e.target.value, 10);
-                              const val = rawVal / 100;
-                              const isEnabled = rawVal > 0;
-                              if (val > 0 && isMuted) {
-                                setIsMuted(false);
-                              } else if (val === 0) {
-                                setIsMuted(true);
-                              }
-                              audioMixer.setVolume(val);
-                              if (!isEnabled) {
-                                audioMixer.stop();
-                              }
-                              onChange({
-                                audio: {
-                                  ...state.audio,
-                                  volume: val,
-                                  musicVolume: val,
-                                  enabled: isEnabled,
-                                },
-                              });
-                            }}
-                            style={{ writingMode: 'vertical-lr', direction: 'rtl' }}
-                            className="h-28 w-2 sm:w-2.5 accent-purple-400 bg-zinc-800/80 rounded-lg cursor-pointer"
-                          />
-                        </div>
-
-                        {/* Bottom Mute Icon */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            const nextMuted = !isMuted && state.audio.enabled && (state.audio.volume ?? 0) > 0;
-                            if (nextMuted) {
-                              setIsMuted(true);
-                              audioMixer.setVolume(0);
-                            } else {
-                              setIsMuted(false);
-                              const newVol = (state.audio.volume ?? 0) > 0 ? state.audio.volume : 0.7;
-                              audioMixer.setVolume(newVol);
-                              onChange({
-                                audio: {
-                                  ...state.audio,
-                                  enabled: true,
-                                  volume: newVol,
-                                },
-                              });
-                            }
-                          }}
-                          className="p-1 rounded-full hover:bg-white/10 transition-colors cursor-pointer"
-                          title={isMuted || !state.audio.enabled ? 'Unmute' : 'Mute'}
-                        >
-                          <VolumeX className={`w-3.5 h-3.5 ${isMuted || !state.audio.enabled ? 'text-rose-400' : 'text-zinc-400'}`} />
-                        </button>
-                      </div>
+                      <MultiTrackVolumePopover
+                        state={state}
+                        onChange={onChange}
+                        onClose={() => setShowMusicVolumePopover(false)}
+                        isMuted={isMuted}
+                        bgMediaElement={bgMediaElement}
+                      />
                     )}
 
                     <button
@@ -2203,6 +2034,23 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                   aria-label={t('templatesPanelTitle', 'Каталог шаблонов')}
                 >
                   <FolderHeart className="w-4 h-4 text-purple-300 group-hover:scale-110" />
+                </button>
+
+                {/* Upload Button */}
+                <button
+                  type="button"
+                  data-tour="upload-btn"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onOpenUploadModal) {
+                      onOpenUploadModal();
+                    }
+                  }}
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-purple-900/60 hover:bg-purple-800/80 text-purple-200 hover:text-white border border-purple-500/50 hover:border-purple-400 flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0 group"
+                  title={t('uploadVideoPhoto', 'Загрузить видео / фото')}
+                  aria-label={t('uploadVideoPhoto', 'Загрузить видео / фото')}
+                >
+                  <Upload className="w-4 h-4 text-purple-300 group-hover:scale-110" />
                 </button>
 
                 {/* Subtle Divider */}

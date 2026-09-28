@@ -180,7 +180,7 @@ export const InteractiveTour: React.FC<InteractiveTourProps> = ({
         'Кнопка сброса проекта возвращает все настройки и текст к исходному базовому состоянию в один клик.',
       placement: 'bottom',
     },
-    // 9. Workspace: Upload Media (header)
+    // 9. Workspace: Upload Media (dock)
     {
       id: 'upload-btn',
       selector: '[data-tour="upload-btn"]',
@@ -188,8 +188,8 @@ export const InteractiveTour: React.FC<InteractiveTourProps> = ({
       defaultTitle: 'Загрузка своего видео и фото',
       descKey: 'tourStep9_desc',
       defaultDesc:
-        'Загружайте собственные видеоклипы, фотографии или аудиозаписи для наложения анимированного текста.',
-      placement: 'bottom',
+        'Загружайте собственные видеоклипы, фотографии или аудиозаписи для наложения анимированного текста. Вы можете загрузить фото/видео для визуального фона, а затем голос/музыку для аудиофона.',
+      placement: 'top',
     },
     // 10. Workspace: Help & Language Switcher in ONE tab (header right)
     {
