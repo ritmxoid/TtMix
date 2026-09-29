@@ -1,5 +1,22 @@
 import React from 'react';
-import { Terminal, MoveUp, ZoomIn, Eye, Sparkles, Zap } from 'lucide-react';
+import {
+  Terminal,
+  MoveUp,
+  ZoomIn,
+  Eye,
+  Sparkles,
+  Zap,
+  Disc,
+  Compass,
+  Layers,
+  Flame,
+  Waves,
+  RotateCcw,
+  Minimize2,
+  ArrowDownToLine,
+  Focus,
+  Wand2,
+} from 'lucide-react';
 import { AnimationStyle, VideoProjectState } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -51,10 +68,70 @@ export const AnimationStyleSection: React.FC<AnimationStyleSectionProps> = ({
       icon: <ZoomIn className="w-5 h-5 text-rose-400" />,
     },
     {
+      id: 'fall',
+      title: t('animFall', 'Падение и удар'),
+      desc: t('animFallDesc', 'Обратный зум: падение огромных букв с кинетическим ударом'),
+      icon: <ArrowDownToLine className="w-5 h-5 text-yellow-400" />,
+    },
+    {
+      id: 'blur',
+      title: t('animBlur', 'Фокус из боке'),
+      desc: t('animBlurDesc', 'Размытые светящиеся пятна мгновенно собираются в резкий текст'),
+      icon: <Focus className="w-5 h-5 text-emerald-300" />,
+    },
+    {
+      id: 'swarm',
+      title: t('animSwarm', 'Рой пылинок'),
+      desc: t('animSwarmDesc', 'Вихрь мерцающих светлячков и искр конденсируется в буквы'),
+      icon: <Wand2 className="w-5 h-5 text-amber-300" />,
+    },
+    {
       id: 'glitch',
-      title: t('animGlitch', 'Помехи'),
+      title: t('animGlitch', 'Помехи и ток'),
       desc: t('animGlitchDesc', 'Электрический разряд, дрожание и сбой сигнала'),
       icon: <Zap className="w-5 h-5 text-amber-300" />,
+    },
+    {
+      id: 'bounce',
+      title: t('animBounce', 'DVD-Рикошет'),
+      desc: t('animBounceDesc', 'Полёт по прямым и отскок от границ экрана'),
+      icon: <Disc className="w-5 h-5 text-sky-400" />,
+    },
+    {
+      id: 'curves',
+      title: t('animCurves', 'Полёт по кривым'),
+      desc: t('animCurvesDesc', 'Плавные виражи по гармоническим кривым Лиссажу'),
+      icon: <Compass className="w-5 h-5 text-indigo-400" />,
+    },
+    {
+      id: 'assemble',
+      title: t('animAssemble', 'Магнитная сборка'),
+      desc: t('animAssembleDesc', 'Буквы и слова слетаются из разных сторон экрана'),
+      icon: <Layers className="w-5 h-5 text-fuchsia-400" />,
+    },
+    {
+      id: 'disperse',
+      title: t('animDisperse', 'Взрыв и распад'),
+      desc: t('animDisperseDesc', 'Буквы разлетаются в стороны из целой фразы'),
+      icon: <Minimize2 className="w-5 h-5 text-red-400" />,
+    },
+    {
+      id: 'tumble',
+      title: t('animTumble', 'Кувыркание букв'),
+      desc: t('animTumbleDesc', 'Медленное 3D-вращение и парение букв в невесомости'),
+      icon: <RotateCcw className="w-5 h-5 text-teal-400" />,
+    },
+    {
+      id: 'wave',
+      title: t('animWave', 'Бегущая волна'),
+      desc: t('animWaveDesc', 'Мягкие синусоидальные колебания по символам'),
+      icon: <Waves className="w-5 h-5 text-cyan-300" />,
+    },
+    {
+      id: 'stomp',
+      title: t('animStomp', 'Кинетический штамп'),
+      desc: t('animStompDesc', 'Мощный ударный наплыв с сотрясением кадра'),
+      icon: <Flame className="w-5 h-5 text-orange-400" />,
     },
   ];
 
@@ -69,14 +146,14 @@ export const AnimationStyleSection: React.FC<AnimationStyleSectionProps> = ({
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-h-[128px] sm:max-h-[132px] overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent rounded-xl">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 max-h-[220px] sm:max-h-[240px] overflow-y-auto pr-1.5 scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-transparent rounded-xl">
         {STYLES.map((style) => {
           const isSelected = state.animationStyle === style.id;
           return (
             <button
               key={style.id}
               onClick={() => onChange({ animationStyle: style.id })}
-              className={`p-3.5 rounded-xl border text-left transition-all relative flex flex-col justify-between gap-2 cursor-pointer ${
+              className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between gap-1.5 cursor-pointer ${
                 isSelected
                   ? 'border-purple-400 bg-purple-500/15 ring-2 ring-purple-500/30 shadow-sm scale-[1.02]'
                   : 'border-white/10 bg-[#0F0F12]/60 hover:bg-[#0F0F12] hover:border-zinc-600'

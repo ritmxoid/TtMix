@@ -1,6 +1,30 @@
 export type TextMode = 'word' | 'sentence' | 'full';
 
-export type AnimationStyle = 'typewriter' | 'words' | 'fade' | 'slide' | 'zoom' | 'glitch';
+export type AnimationStyle =
+  | 'typewriter'
+  | 'words'
+  | 'fade'
+  | 'slide'
+  | 'zoom'
+  | 'glitch'
+  | 'bounce'
+  | 'curves'
+  | 'assemble'
+  | 'disperse'
+  | 'tumble'
+  | 'wave'
+  | 'stomp'
+  | 'fall'
+  | 'blur'
+  | 'swarm';
+
+export type TextColorMode =
+  | 'solid'
+  | 'gradient'
+  | 'letter-rainbow'
+  | 'word-rainbow'
+  | 'letter-random'
+  | 'word-random';
 
 export interface ExtraEffects {
   glow: boolean;
@@ -108,6 +132,9 @@ export interface VideoProjectState {
   fontFamily: string;
   fontSize: number; // in pt/px base
   textColor: string;
+  textColorMode?: TextColorMode; // 'solid' | 'gradient' | 'letter-rainbow' | 'word-rainbow'
+  textGradientColors?: [string, string]; // e.g. ['#f43f5e', '#38bdf8']
+  textGradientAngle?: number; // 0, 45, 90, 135, etc.
   strokeEnabled: boolean;
   strokeColor: string;
   strokeWidth: number;

@@ -22,7 +22,24 @@ interface LuckyModeProps {
   onResetProject?: () => void;
 }
 
-const ANIMATION_STYLES = ['typewriter', 'words', 'fade', 'slide', 'zoom', 'glitch'] as const;
+const ANIMATION_STYLES = [
+  'typewriter',
+  'words',
+  'fade',
+  'slide',
+  'zoom',
+  'fall',
+  'blur',
+  'swarm',
+  'glitch',
+  'bounce',
+  'curves',
+  'assemble',
+  'disperse',
+  'tumble',
+  'wave',
+  'stomp',
+] as const;
 const PROCEDURAL_MOODS: ProceduralMoodStyle[] = [
   'cosmic',
   'cyberpunk',
@@ -234,7 +251,47 @@ export function generate4Variations(
     const strokeWidth = 2 + Math.floor(Math.random() * 5);
     const strokeColor = '#000000';
 
-    // 12. Completely independent effect profile
+    // 12. Text Coloring Mode: Solid, Angle Linear Gradient, Letter Rainbow, Word Rainbow, Letter Random, Word Random
+    const colorModeRoll = Math.random();
+    let textColorMode:
+      | 'solid'
+      | 'gradient'
+      | 'letter-rainbow'
+      | 'word-rainbow'
+      | 'letter-random'
+      | 'word-random' = 'solid';
+    let textGradientColors: [string, string] | undefined = undefined;
+    let textGradientAngle: number | undefined = undefined;
+
+    const GRADIENT_PAIRS: [string, string][] = [
+      ['#f43f5e', '#38bdf8'], // Rose to Sky Blue
+      ['#facc15', '#ec4899'], // Gold to Neon Pink
+      ['#06b6d4', '#10b981'], // Cyan to Emerald
+      ['#a855f7', '#fb923c'], // Purple to Warm Amber
+      ['#38bdf8', '#c084fc'], // Sky to Cyber Lavender
+      ['#4ade80', '#facc15'], // Green to Bright Yellow
+      ['#ff007a', '#7928ca'], // Electric Magenta to Violet
+      ['#00f2fe', '#4facfe'], // Ice Cyan to Royal Blue
+    ];
+    const GRADIENT_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
+
+    if (colorModeRoll < 0.16) {
+      textColorMode = 'letter-rainbow';
+    } else if (colorModeRoll < 0.32) {
+      textColorMode = 'letter-random';
+    } else if (colorModeRoll < 0.46) {
+      textColorMode = 'word-rainbow';
+    } else if (colorModeRoll < 0.60) {
+      textColorMode = 'word-random';
+    } else if (colorModeRoll < 0.78) {
+      textColorMode = 'gradient';
+      textGradientColors = GRADIENT_PAIRS[Math.floor(Math.random() * GRADIENT_PAIRS.length)];
+      textGradientAngle = GRADIENT_ANGLES[Math.floor(Math.random() * GRADIENT_ANGLES.length)];
+    } else {
+      textColorMode = 'solid';
+    }
+
+    // 13. Completely independent effect profile
     const baseEffects = EFFECT_ARCHETYPES[Math.floor(Math.random() * EFFECT_ARCHETYPES.length)];
     const selectedEffects = {
       ...baseEffects,
@@ -298,6 +355,9 @@ export function generate4Variations(
       fontFamily: randomFont.family,
       fontSize,
       textColor,
+      textColorMode,
+      textGradientColors,
+      textGradientAngle,
       neonColor,
       isUppercase,
       textAlign,
@@ -690,6 +750,28 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
             : null
         );
       }
+    } else if (!baseState.bgMediaUrl && prevMediaUrlRef.current) {
+      prevMediaUrlRef.current = null;
+      setVariations((prev) =>
+        prev.map((v) => ({
+          ...v,
+          bgType: 'preset',
+          bgMediaUrl: null,
+          bgMediaType: null,
+        }))
+      );
+      if (selectedVariation) {
+        setSelectedVariation((prev) =>
+          prev
+            ? {
+                ...prev,
+                bgType: 'preset',
+                bgMediaUrl: null,
+                bgMediaType: null,
+              }
+            : null
+        );
+      }
     }
   }, [baseState.bgMediaUrl, baseState.bgType, isEyeMode, defaultMatrixText, defaultMatrixAuthor, selectedVariation, baseState]);
 
@@ -751,6 +833,42 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
       }
     } else if (!currentAudioUrl && prevAudioUrlRef.current) {
       prevAudioUrlRef.current = null;
+
+      // Clear custom audio from all 4 variations
+      setVariations((prev) =>
+        prev.map((v) => ({
+          ...v,
+          audio: {
+            ...v.audio,
+            enabled: false,
+            sourceType: 'generator',
+            audioUrl: null,
+            audioFileName: null,
+            audioDuration: 0,
+            fileAudioEnabled: false,
+          },
+        }))
+      );
+
+      // If a variation is open in FullscreenPlayer, update it too
+      if (selectedVariation) {
+        setSelectedVariation((prev) =>
+          prev
+            ? {
+                ...prev,
+                audio: {
+                  ...prev.audio,
+                  enabled: false,
+                  sourceType: 'generator',
+                  audioUrl: null,
+                  audioFileName: null,
+                  audioDuration: 0,
+                  fileAudioEnabled: false,
+                },
+              }
+            : null
+        );
+      }
     }
   }, [baseState.audio, selectedVariation, t]);
   const [isTourOpen, setIsTourOpen] = useState<boolean>(() => {

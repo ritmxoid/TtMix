@@ -682,8 +682,11 @@ export default function App() {
 
   const handleResetAll = async () => {
     handleClearBackgroundMedia();
+    audioMixer.stop();
+    audioMixer.clearCache();
     mediaManager.releaseMedia('audio');
     await clearAllProjectData();
+    localStorage.removeItem('quote_animator_project_state_v2');
     setProjectState({
       ...DEFAULT_STATE,
       rawText: getDefaultSampleText(language),

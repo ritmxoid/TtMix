@@ -91,13 +91,40 @@ export const PresetsLibraryModal: React.FC<PresetsLibraryModalProps> = ({
         bgPresetId: currentState.bgPresetId,
         bgCustomColor: currentState.bgCustomColor,
         proceduralMood: currentState.proceduralMood,
+        proceduralSeed: currentState.proceduralSeed,
+        bgOverlayOpacity: currentState.bgOverlayOpacity,
+        mediaOverlayTheme: currentState.mediaOverlayTheme,
+        mediaColorTint: currentState.mediaColorTint,
         fontFamily: currentState.fontFamily,
+        fontSize: currentState.fontSize,
         textColor: currentState.textColor,
+        textColorMode: currentState.textColorMode,
+        textGradientColors: currentState.textGradientColors,
+        textGradientAngle: currentState.textGradientAngle,
         neonColor: currentState.neonColor,
-        effects: { ...currentState.effects },
+        strokeEnabled: currentState.strokeEnabled,
+        strokeColor: currentState.strokeColor,
+        strokeWidth: currentState.strokeWidth,
+        isUppercase: currentState.isUppercase,
+        textAlign: currentState.textAlign,
+        textPosition: currentState.textPosition,
+        textPositionY: currentState.textPositionY,
+        textPositionX: currentState.textPositionX,
+        textMode: currentState.textMode,
+        textBgEnabled: currentState.textBgEnabled,
+        textBgColor: currentState.textBgColor,
+        textBgOpacity: currentState.textBgOpacity,
+        textBgPadding: currentState.textBgPadding,
+        textBgRadius: currentState.textBgRadius,
+        textMaxWidthPercent: currentState.textMaxWidthPercent,
         animationStyle: currentState.animationStyle,
         speedMultiplier: currentState.speedMultiplier,
+        pauseBetweenSeconds: currentState.pauseBetweenSeconds,
+        syncWithVideo: currentState.syncWithVideo,
+        textLoopMode: currentState.textLoopMode,
+        effects: { ...currentState.effects },
         audio: { ...currentState.audio },
+        aspectRatio: currentState.aspectRatio,
       },
     };
 
@@ -268,7 +295,7 @@ export const PresetsLibraryModal: React.FC<PresetsLibraryModalProps> = ({
               type="file"
               ref={fileInputRef}
               onChange={handleImportJsonFile}
-              accept=".json"
+              accept=".json,application/json,text/plain,application/octet-stream"
               className="hidden"
             />
 

@@ -20,7 +20,7 @@ export const LoadPresetPromptModal: React.FC<LoadPresetPromptModalProps> = ({
   if (!isOpen || !preset) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200 pointer-events-auto">
+    <div className="fixed inset-0 z-[9999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in zoom-in-95 duration-200 pointer-events-auto">
       <div className="relative w-full max-w-sm bg-zinc-950/95 border border-purple-500/50 rounded-3xl shadow-2xl shadow-purple-950/90 p-5 flex flex-col items-center text-center gap-4">
         <button
           type="button"

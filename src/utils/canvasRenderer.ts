@@ -31,6 +31,61 @@ function easeOutBack(t: number): number {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 }
 
+export const RAINBOW_LETTER_PALETTE = [
+  '#f43f5e', // Vivid Rose
+  '#fb923c', // Warm Amber
+  '#facc15', // Bright Gold
+  '#4ade80', // Fresh Emerald
+  '#22d3ee', // Electric Cyan
+  '#38bdf8', // Sky Blue
+  '#818cf8', // Cyber Indigo
+  '#c084fc', // Neon Lavender
+  '#f472b6', // Flamingo Pink
+];
+
+export const CHAOTIC_PALETTES = [
+  // Cyber Neon
+  ['#00f2fe', '#4facfe', '#ff007f', '#7928ca', '#00ff87', '#60efff', '#f72585', '#7209b7', '#4cc9f0'],
+  // Sunset Blaze
+  ['#ff4b1f', '#ff9068', '#f7b733', '#fc4a1a', '#f7797d', '#fbd786', '#ff2a5f', '#f5af19', '#e14fad'],
+  // Tropical Acid
+  ['#f9d423', '#ff4e50', '#00e5ff', '#76ff03', '#ff0055', '#d500f9', '#00b0ff', '#ffeb3b', '#00e676'],
+  // Aurora Borealis
+  ['#00f5d4', '#7b2cbf', '#9d4edd', '#c77dff', '#ff9e00', '#00bbf9', '#fee440', '#52b788', '#38bdf8'],
+  // Fire & Ice
+  ['#ff3b30', '#ff9500', '#34c759', '#007aff', '#5856d6', '#af52de', '#5ac8fa', '#ff2d55', '#ffd60a'],
+];
+
+export function getChaoticColor(index: number, seed: number = 42): string {
+  const palette = CHAOTIC_PALETTES[Math.abs((seed + Math.floor(index / 7)) % CHAOTIC_PALETTES.length)];
+  const pickIdx = Math.abs((index * 7 + seed * 3 + (index % 3) * 5) % palette.length);
+  return palette[pickIdx];
+}
+
+export function createAngleGradient(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  angleDeg: number,
+  color1: string,
+  color2: string
+): CanvasGradient {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const halfDiag = Math.sqrt(w * w + h * h) / 2;
+  const x0 = cx - Math.cos(rad) * halfDiag;
+  const y0 = cy - Math.sin(rad) * halfDiag;
+  const x1 = cx + Math.cos(rad) * halfDiag;
+  const y1 = cy + Math.sin(rad) * halfDiag;
+  const grad = ctx.createLinearGradient(x0, y0, x1, y1);
+  grad.addColorStop(0, color1);
+  grad.addColorStop(1, color2);
+  return grad;
+}
+
 // Particle state for canvas effects
 interface Particle {
   x: number;
@@ -394,8 +449,13 @@ function drawPresetOrOverlayBackground(
     BACKGROUND_PRESETS.find((p) => p.id === presetId) ||
     BACKGROUND_PRESETS[0];
 
-  if (preset.id.startsWith('ai-procedural-')) {
-    const moodStyle = (preset.id.replace('ai-procedural-', '') as ProceduralMoodStyle) || state.proceduralMood || 'cosmic';
+  if (preset.id.startsWith('ai-procedural-') || Boolean(state.proceduralMood && preset.id.includes('procedural'))) {
+    const moodStyle =
+      (preset.id.startsWith('ai-procedural-')
+        ? (preset.id.replace('ai-procedural-', '') as ProceduralMoodStyle)
+        : undefined) ||
+      state.proceduralMood ||
+      'cosmic';
     const seed = state.proceduralSeed || 42;
     drawProceduralMoodBackground(ctx, width, height, time, moodStyle, seed, skipSolidBg);
     return;
@@ -1719,6 +1779,9 @@ function drawTextSegment({
   let alpha = 1;
   let offsetY = 0;
   let scale = 1;
+  let blockShiftX = 0;
+  let blockShiftY = 0;
+  let blockRotate = 0;
 
   switch (state.animationStyle) {
     case 'fade':
@@ -1743,6 +1806,75 @@ function drawTextSegment({
       }
       break;
     }
+    case 'bounce': {
+      // 🏓 DVD-рикошет: блок текста летит по экрану и отскакивает от границ
+      alpha = 1;
+      const margin = 40;
+      const travelSpanX = Math.max(30, canvasWidth - blockWidth - margin * 2);
+      const travelSpanY = Math.max(30, canvasHeight - totalCombinedHeight - margin * 2 - 100);
+      const speedX = 220;
+      const speedY = 160;
+      const cycleX = (currentTime * speedX) % (travelSpanX * 2);
+      const cycleY = (currentTime * speedY) % (travelSpanY * 2);
+      const bouncePosX = margin + (cycleX > travelSpanX ? travelSpanX * 2 - cycleX : cycleX);
+      const bouncePosY = margin + 50 + (cycleY > travelSpanY ? travelSpanY * 2 - cycleY : cycleY);
+      blockShiftX = bouncePosX - blockLeft;
+      blockShiftY = bouncePosY - blockTop;
+      break;
+    }
+    case 'curves': {
+      // 🎢 Полёт по кривым Лиссажу с виражным наклоном
+      alpha = 1;
+      const ampX = Math.min(canvasWidth * 0.34, (canvasWidth - blockWidth) * 0.45);
+      const ampY = Math.min(canvasHeight * 0.24, (canvasHeight - totalCombinedHeight) * 0.4);
+      const cX = Math.sin(currentTime * 1.5) * ampX;
+      const cY = Math.sin(currentTime * 3.0) * ampY;
+      blockShiftX = cX;
+      blockShiftY = cY;
+
+      const vx = Math.cos(currentTime * 1.5) * 1.5 * ampX;
+      const vy = Math.cos(currentTime * 3.0) * 3.0 * ampY;
+      blockRotate = Math.atan2(vy, vx) * 0.08;
+      break;
+    }
+    case 'stomp': {
+      // ⚡ Кинетический штамп / Ударное появление
+      const stompProg = Math.min(1, progress * 2.2);
+      scale = 1 + (1 - easeOutBack(stompProg)) * 2.6;
+      alpha = Math.min(1, stompProg * 3);
+      if (stompProg > 0.35 && stompProg < 0.7) {
+        offsetY = Math.sin(currentTime * 80) * 8 * (1 - (stompProg - 0.35) / 0.35);
+      }
+      break;
+    }
+    case 'fall': {
+      // ⬇️ Обратный зум: падение огромных букв с кинетическим ударом
+      const fallProg = Math.min(1, progress * 1.8);
+      scale = 1 + (1 - easeOutBack(fallProg)) * 3.5;
+      offsetY = -(1 - easeOutCubic(fallProg)) * (canvasHeight * 0.42);
+      alpha = Math.min(1, fallProg * 2.8);
+      break;
+    }
+    case 'blur': {
+      // 🔮 Фокус из размытых светящихся боке-пятен в резкий текст
+      const blurProg = Math.min(1, progress * 1.6);
+      alpha = Math.min(1, blurProg * 2.2);
+      scale = 0.94 + 0.06 * easeOutCubic(blurProg);
+      break;
+    }
+    case 'swarm': {
+      // 🌌 Рой мерцающих светлячков и искр, конденсирующийся в буквы
+      const swarmProg = Math.min(1, progress * 1.5);
+      alpha = Math.min(1, swarmProg * 2.0);
+      scale = 0.88 + 0.12 * easeOutBack(swarmProg);
+      break;
+    }
+    case 'assemble':
+    case 'disperse':
+    case 'tumble':
+    case 'wave':
+      alpha = 1;
+      break;
     case 'words':
       break;
     case 'typewriter':
@@ -1756,9 +1888,10 @@ function drawTextSegment({
   }
 
   // Apply matrix translation & scaling around center of text
-  ctx.translate(canvasWidth / 2, textCenterY + offsetY);
+  ctx.translate(canvasWidth / 2 + blockShiftX, textCenterY + offsetY + blockShiftY);
+  if (blockRotate !== 0) ctx.rotate(blockRotate);
   ctx.scale(scale, scale);
-  ctx.translate(-canvasWidth / 2, -(textCenterY + offsetY));
+  ctx.translate(-canvasWidth / 2 - blockShiftX, -(textCenterY + offsetY + blockShiftY));
 
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
@@ -1773,8 +1906,8 @@ function drawTextSegment({
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha * bgOpacity));
     ctx.fillStyle = bgColor;
 
-    const plateX = blockLeft - bgPadding;
-    const plateY = blockTop - bgPadding;
+    const plateX = blockLeft + blockShiftX - bgPadding;
+    const plateY = blockTop + blockShiftY - bgPadding;
     const plateW = blockWidth + bgPadding * 2;
     const plateH = totalCombinedHeight + bgPadding * 2;
 
@@ -1803,8 +1936,8 @@ function drawTextSegment({
   if (isDraggingText) {
     ctx.save();
     const pad = (state.textBgEnabled ? (state.textBgPadding ?? 20) : 12) + 4;
-    const bx = blockLeft - pad;
-    const by = blockTop - pad;
+    const bx = blockLeft + blockShiftX - pad;
+    const by = blockTop + blockShiftY - pad;
     const bw = blockWidth + pad * 2;
     const bh = totalCombinedHeight + pad * 2;
 
@@ -1889,16 +2022,35 @@ function drawTextSegment({
     }
   }
 
+  const isPerCharAnimation =
+    state.animationStyle === 'assemble' ||
+    state.animationStyle === 'disperse' ||
+    state.animationStyle === 'tumble' ||
+    state.animationStyle === 'wave' ||
+    state.animationStyle === 'fall' ||
+    state.animationStyle === 'blur' ||
+    state.animationStyle === 'swarm';
+
+  const isMultiColorMode =
+    state.textColorMode === 'letter-rainbow' ||
+    state.textColorMode === 'word-rainbow' ||
+    state.textColorMode === 'letter-random' ||
+    state.textColorMode === 'word-random' ||
+    state.textColorMode === 'gradient';
+
+  let globalCharOffset = 0;
+  let globalWordIndex = 0;
+
   // Draw lines of main text
   linesToDraw.forEach((line, index) => {
-    const lineY = startY + index * layout.lineHeight + offsetY;
-    let lineX = blockCenter;
+    const lineY = startY + index * layout.lineHeight + offsetY + blockShiftY;
+    let lineX = blockCenter + blockShiftX;
     if (state.textAlign === 'left') {
-      lineX = blockLeft;
+      lineX = blockLeft + blockShiftX;
     } else if (state.textAlign === 'right') {
-      lineX = blockRight;
+      lineX = blockRight + blockShiftX;
     } else {
-      lineX = blockCenter;
+      lineX = blockCenter + blockShiftX;
     }
 
     // Glitch / Electric Jitter calculations
@@ -1907,19 +2059,14 @@ function drawTextSegment({
     let glitchIntensity = 0;
 
     if (state.animationStyle === 'glitch') {
-      // Entrance surge (higher during initial reveal)
       const entranceSurge = Math.max(0, 1 - progress) * 1.6;
-
-      // Periodic electrical discharge surge every ~1.6 seconds (sparks and buzzes for ~0.24s)
       const cycle = (currentTime * 0.62) % 1;
       const isPeriodicSurge = cycle < 0.15;
       const periodicSurge = isPeriodicSurge
         ? Math.sin((cycle / 0.15) * Math.PI) * 0.95
         : 0;
 
-      // Subtle ongoing ambient micro-vibration
       const ambientBuzz = Math.sin(currentTime * 35 + index * 4) > 0.9 ? 0.35 : 0.08;
-
       glitchIntensity = Math.max(entranceSurge, periodicSurge, ambientBuzz);
 
       if (glitchIntensity > 0.04) {
@@ -1931,18 +2078,38 @@ function drawTextSegment({
 
     const drawLineX = lineX + glitchJitterX;
     const drawLineY = lineY + glitchJitterY;
+    const textMetrics = ctx.measureText(line);
+    const lineWidth = textMetrics.width;
 
-    // Chromatic RGB Aberration (Помехи / Сигнальное расщепление)
+    let lineStartX = drawLineX;
+    if (state.textAlign === 'center') lineStartX = drawLineX - lineWidth / 2;
+    else if (state.textAlign === 'right') lineStartX = drawLineX - lineWidth;
+
+    // Line fill resolution (Gradient or Solid)
+    let lineFillStyle: string | CanvasGradient = state.textColor;
+    if (state.textColorMode === 'gradient') {
+      const c1 = state.textGradientColors?.[0] || state.textColor || '#f43f5e';
+      const c2 = state.textGradientColors?.[1] || state.neonColor || '#38bdf8';
+      const angle = state.textGradientAngle ?? 45;
+      lineFillStyle = createAngleGradient(
+        ctx,
+        lineStartX,
+        drawLineY - layout.fontSize * 0.85,
+        lineWidth,
+        layout.fontSize,
+        angle,
+        c1,
+        c2
+      );
+    }
+
+    // Chromatic RGB Aberration (Помехи)
     if (state.animationStyle === 'glitch' && glitchIntensity > 0.08) {
       const splitDist = Math.max(1.5, glitchIntensity * 5.5);
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.42));
-
-      // Electric Cyan ghost pass
       ctx.fillStyle = '#06b6d4';
       ctx.fillText(line, drawLineX - splitDist, drawLineY - splitDist * 0.35);
-
-      // Electric Magenta ghost pass
       ctx.fillStyle = '#f43f5e';
       ctx.fillText(line, drawLineX + splitDist, drawLineY + splitDist * 0.35);
       ctx.restore();
@@ -1968,7 +2135,7 @@ function drawTextSegment({
     const isLightPreset = state.bgPresetId === 'clean-white' || state.bgPresetId === 'notebook-grid' || state.bgPresetId === 'old-parchment';
     const isLightTextColor = state.textColor.toLowerCase() === '#ffffff' || state.textColor.toLowerCase() === '#fff' || state.textColor.toLowerCase() === '#fefefe';
 
-    if (state.strokeEnabled && !state.effects.neon) {
+    if (state.strokeEnabled && !state.effects.neon && !isPerCharAnimation) {
       ctx.save();
       ctx.strokeStyle = state.strokeColor;
       ctx.lineWidth = state.strokeWidth;
@@ -1976,8 +2143,7 @@ function drawTextSegment({
       ctx.miterLimit = 2;
       ctx.strokeText(line, drawLineX, drawLineY);
       ctx.restore();
-    } else if (isLightPreset && isLightTextColor && !state.effects.neon) {
-      // Soft contrasting dark outline so white text is instantly readable on white paper
+    } else if (isLightPreset && isLightTextColor && !state.effects.neon && !isPerCharAnimation) {
       ctx.save();
       ctx.strokeStyle = 'rgba(15, 23, 42, 0.75)';
       ctx.lineWidth = 3;
@@ -1995,9 +2161,171 @@ function drawTextSegment({
       ctx.shadowBlur = 20;
     }
 
-    // Main text fill
-    ctx.fillStyle = state.textColor;
-    ctx.fillText(line, drawLineX, drawLineY);
+    // Render characters: either detailed per-character transform loop OR single line pass
+    if (isPerCharAnimation || state.textColorMode === 'letter-rainbow' || state.textColorMode === 'word-rainbow') {
+      ctx.save();
+      let runningCharX = 0;
+
+      for (let c = 0; c < line.length; c++) {
+        const char = line[c];
+        if (char === ' ') {
+          globalWordIndex++;
+        }
+        const charWidth = ctx.measureText(char).width;
+        const targetCharCenterX = lineStartX + runningCharX + charWidth / 2;
+        const targetCharY = drawLineY;
+
+        let charOffsetX = 0;
+        let charOffsetY = 0;
+        let charRot = 0;
+        let charScale = 1;
+        let charAlpha = 1;
+
+        const charIdx = globalCharOffset + c;
+
+        // Determine Color for this character
+        let charFill: string | CanvasGradient = lineFillStyle;
+        if (state.textColorMode === 'letter-rainbow') {
+          charFill = RAINBOW_LETTER_PALETTE[charIdx % RAINBOW_LETTER_PALETTE.length];
+        } else if (state.textColorMode === 'word-rainbow') {
+          charFill = RAINBOW_LETTER_PALETTE[globalWordIndex % RAINBOW_LETTER_PALETTE.length];
+        } else if (state.textColorMode === 'letter-random') {
+          charFill = getChaoticColor(charIdx, state.proceduralSeed || 42);
+        } else if (state.textColorMode === 'word-random') {
+          charFill = getChaoticColor(globalWordIndex, (state.proceduralSeed || 42) + 7);
+        }
+
+        if (state.animationStyle === 'assemble') {
+          // 🧩 Магнитная сборка: буквы летят с краев экрана в центр
+          const seed = charIdx * 37 + index * 59;
+          const startAngle = ((seed % 360) * Math.PI) / 180;
+          const startDist = Math.max(canvasWidth, canvasHeight) * (0.6 + (seed % 40) * 0.01);
+          const startXOff = Math.cos(startAngle) * startDist;
+          const startYOff = Math.sin(startAngle) * startDist;
+          const startSpin = (((seed % 80) / 40) - 1) * Math.PI * 3;
+
+          const charDelay = (c / Math.max(1, line.length)) * 0.35;
+          const charProg = Math.max(0, Math.min(1, (progress - charDelay) / 0.65));
+          const ease = easeOutBack(charProg);
+          const easeRot = easeOutCubic(charProg);
+
+          charOffsetX = startXOff * (1 - ease);
+          charOffsetY = startYOff * (1 - ease);
+          charRot = startSpin * (1 - easeRot);
+          charAlpha = Math.min(1, charProg * 3);
+        } else if (state.animationStyle === 'disperse') {
+          // 💥 Разлёт / Распад букв с медленным кувырканием
+          const disperseProg = Math.max(0, (progress - 0.45) / 0.55);
+          if (disperseProg > 0) {
+            const ease = easeOutCubic(disperseProg);
+            const seed = charIdx * 43 + index * 67;
+            const angle = ((seed % 360) * Math.PI) / 180;
+            const dist = ease * (canvasWidth * 0.75 + (seed % 100));
+            charOffsetX = Math.cos(angle) * dist;
+            charOffsetY = Math.sin(angle) * dist + ease * 140;
+            charRot = ease * (((seed % 12) - 6) * 1.2);
+            charAlpha = Math.max(0, 1 - ease * 1.2);
+          }
+        } else if (state.animationStyle === 'tumble') {
+          // 🌪️ Невесомость и кувыркание букв
+          const charSeed = charIdx * 0.85;
+          charOffsetY = Math.sin(currentTime * 3.2 + charSeed) * (layout.fontSize * 0.18);
+          charOffsetX = Math.cos(currentTime * 2.0 + charSeed) * (layout.fontSize * 0.08);
+          charRot = Math.sin(currentTime * 2.5 + charSeed) * 0.22;
+          charScale = 1 + Math.sin(currentTime * 2.8 + charSeed) * 0.08;
+        } else if (state.animationStyle === 'wave') {
+          // 🌊 Бегущая волна по буквам
+          charOffsetY = Math.sin(currentTime * 6.5 + charIdx * 0.45) * (layout.fontSize * 0.26);
+          charRot = Math.cos(currentTime * 6.5 + charIdx * 0.45) * 0.08;
+        } else if (state.animationStyle === 'fall') {
+          // ⬇️ Обратный зум: падение огромных букв с кинетическим ударом
+          const charDelay = (c / Math.max(1, line.length)) * 0.35;
+          const charProg = Math.max(0, Math.min(1, (progress - charDelay) / 0.65));
+          const fallEase = easeOutBack(charProg);
+          charScale = 1 + (1 - fallEase) * 2.8;
+          charOffsetY = -(1 - easeOutCubic(charProg)) * (layout.fontSize * 2.2);
+          charAlpha = Math.min(1, charProg * 3.0);
+        } else if (state.animationStyle === 'blur') {
+          // 🔮 Фокус из размытых светящихся боке-пятен в резкий текст
+          const charDelay = (c / Math.max(1, line.length)) * 0.3;
+          const charProg = Math.max(0, Math.min(1, (progress - charDelay) / 0.7));
+          const blurAmt = 1 - easeOutCubic(charProg);
+          charScale = 1 + blurAmt * 0.35;
+          charAlpha = 0.2 + (1 - blurAmt) * 0.8;
+          if (blurAmt > 0.05) {
+            ctx.save();
+            ctx.shadowColor = (charFill as string) || state.textColor;
+            ctx.shadowBlur = blurAmt * 35;
+            ctx.fillStyle = (charFill as string) || state.textColor;
+            ctx.globalAlpha = blurAmt * 0.45;
+            ctx.beginPath();
+            ctx.arc(
+              targetCharCenterX + charOffsetX,
+              targetCharY + charOffsetY - layout.fontSize * 0.35,
+              blurAmt * (layout.fontSize * 0.4),
+              0,
+              Math.PI * 2
+            );
+            ctx.fill();
+            ctx.restore();
+          }
+        } else if (state.animationStyle === 'swarm') {
+          // 🌌 Рой мерцающих пылинок и светлячков, конденсирующийся в буквы
+          const charDelay = (c / Math.max(1, line.length)) * 0.35;
+          const charProg = Math.max(0, Math.min(1, (progress - charDelay) / 0.65));
+          const swarmDist = (1 - easeOutCubic(charProg)) * (layout.fontSize * 2.0);
+          charAlpha = Math.min(1, charProg * 2.5);
+          if (charProg < 1 && char !== ' ') {
+            const numMotes = 8;
+            for (let m = 0; m < numMotes; m++) {
+              const mAngle = (m * Math.PI * 2) / numMotes + currentTime * 6 + charIdx * 1.5;
+              const mDist = swarmDist * (0.4 + (m % 3) * 0.3);
+              const mx = targetCharCenterX + Math.cos(mAngle) * mDist;
+              const my = targetCharY - layout.fontSize * 0.35 + Math.sin(mAngle) * mDist;
+              const mSize = Math.max(2, layout.fontSize * 0.045);
+              ctx.save();
+              ctx.fillStyle = m % 2 === 0 ? ((charFill as string) || state.textColor) : '#ffffff';
+              ctx.shadowColor = ctx.fillStyle;
+              ctx.shadowBlur = 8;
+              ctx.globalAlpha = (1 - charProg) * 0.85;
+              ctx.beginPath();
+              ctx.arc(mx, my, mSize, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.restore();
+            }
+          }
+        }
+
+        ctx.save();
+        ctx.translate(targetCharCenterX + charOffsetX, targetCharY + charOffsetY);
+        if (charRot !== 0) ctx.rotate(charRot);
+        if (charScale !== 1) ctx.scale(charScale, charScale);
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * charAlpha));
+
+        // Stroke per char
+        if (state.strokeEnabled && !state.effects.neon) {
+          ctx.save();
+          ctx.strokeStyle = state.strokeColor;
+          ctx.lineWidth = state.strokeWidth;
+          ctx.lineJoin = 'round';
+          ctx.strokeText(char, -charWidth / 2, 0);
+          ctx.restore();
+        }
+
+        ctx.fillStyle = charFill;
+        ctx.fillText(char, -charWidth / 2, 0);
+        ctx.restore();
+
+        runningCharX += charWidth;
+      }
+      ctx.restore();
+    } else {
+      // Main fast single text fill
+      ctx.fillStyle = lineFillStyle;
+      ctx.fillText(line, drawLineX, drawLineY);
+    }
+
+    globalCharOffset += line.length;
 
     // Electric charge running across the letters ("как будто по нему пробегает электрический заряд")
     if (state.animationStyle === 'glitch' && (progress < 1 || glitchIntensity > 0.3)) {
@@ -2124,7 +2452,7 @@ function drawTextSegment({
     }
   });
 
-  // Render Author under the main quote if present
+  // Render Author under the main quote if present (with full animation, color modes & effects applied!)
   if (hasAuthor && linesToDraw.length > 0) {
     const authorStr =
       rawAuthor.startsWith('—') || rawAuthor.startsWith('-')
@@ -2136,15 +2464,16 @@ function drawTextSegment({
       (layout.lines.length - 1) * layout.lineHeight +
       authorGap +
       authorFontSize * 0.9 +
-      offsetY;
+      offsetY +
+      blockShiftY;
 
-    let authorX = blockCenter;
+    let authorX = blockCenter + blockShiftX;
     if (state.textAlign === 'left') {
-      authorX = blockLeft;
+      authorX = blockLeft + blockShiftX;
     } else if (state.textAlign === 'right') {
-      authorX = blockRight;
+      authorX = blockRight + blockShiftX;
     } else {
-      authorX = blockCenter;
+      authorX = blockCenter + blockShiftX;
     }
 
     if (state.animationStyle === 'glitch') {
@@ -2152,30 +2481,184 @@ function drawTextSegment({
       authorX += Math.sin(currentTime * 80) * authorSurge;
     }
 
-    // Author fades in ONLY after the final phrase, word, or sentence has appeared
+    // Author animation progress syncs with reveal
     let authorFade = 0;
-    if (progress >= 0.82) {
-      const revealProgress = Math.min(1, (progress - 0.82) / 0.18);
+    if (progress >= 0.70) {
+      const revealProgress = Math.min(1, (progress - 0.70) / 0.30);
       authorFade = easeOutCubic(revealProgress);
     }
 
     ctx.save();
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha * authorFade * 0.92));
     ctx.font = `italic 600 ${authorFontSize}px 'Playfair Display', 'Caveat', 'Montserrat', Georgia, serif`;
     ctx.textAlign = state.textAlign;
     ctx.textBaseline = 'alphabetic';
 
-    // Author stroke if enabled
-    if (state.strokeEnabled && !state.effects.neon) {
-      ctx.strokeStyle = state.strokeColor;
-      ctx.lineWidth = Math.max(1.5, state.strokeWidth * 0.45);
-      ctx.lineJoin = 'round';
-      ctx.strokeText(authorStr, authorX, authorY);
+    const authorWidth = ctx.measureText(authorStr).width;
+    let authorStartX = authorX;
+    if (state.textAlign === 'center') authorStartX = authorX - authorWidth / 2;
+    else if (state.textAlign === 'right') authorStartX = authorX - authorWidth;
+
+    // Gradient fill resolution for author
+    let authorFillStyle: string | CanvasGradient = state.textColor;
+    if (state.textColorMode === 'gradient') {
+      const c1 = state.textGradientColors?.[0] || state.textColor || '#f43f5e';
+      const c2 = state.textGradientColors?.[1] || state.neonColor || '#38bdf8';
+      const angle = state.textGradientAngle ?? 45;
+      authorFillStyle = createAngleGradient(
+        ctx,
+        authorStartX,
+        authorY - authorFontSize * 0.85,
+        authorWidth,
+        authorFontSize,
+        angle,
+        c1,
+        c2
+      );
     }
 
-    // Author fill
-    ctx.fillStyle = state.textColor;
-    ctx.fillText(authorStr, authorX, authorY);
+    // Neon effect on author
+    if (state.effects.neon) {
+      ctx.save();
+      ctx.shadowColor = state.neonColor || '#a855f7';
+      ctx.shadowBlur = 24;
+      ctx.strokeStyle = state.neonColor || '#a855f7';
+      ctx.lineWidth = Math.max(3, state.strokeWidth * 0.5 + 2);
+      ctx.strokeText(authorStr, authorX, authorY);
+      ctx.restore();
+    }
+
+    // Shadow effect on author
+    if (state.effects.shadow) {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowOffsetX = 5;
+      ctx.shadowOffsetY = 8;
+      ctx.shadowBlur = 16;
+    }
+
+    // Glow pulse on author
+    if (state.effects.glow) {
+      ctx.shadowColor = state.textColor;
+      ctx.shadowBlur = 18;
+    }
+
+    const isAuthorPerChar =
+      isPerCharAnimation ||
+      state.textColorMode === 'letter-rainbow' ||
+      state.textColorMode === 'word-rainbow' ||
+      state.textColorMode === 'letter-random' ||
+      state.textColorMode === 'word-random';
+
+    if (isAuthorPerChar) {
+      ctx.save();
+      let aRunningX = 0;
+      let aWordIdx = 0;
+
+      for (let ac = 0; ac < authorStr.length; ac++) {
+        const aChar = authorStr[ac];
+        if (aChar === ' ') aWordIdx++;
+        const aCharWidth = ctx.measureText(aChar).width;
+        const targetACenterX = authorStartX + aRunningX + aCharWidth / 2;
+
+        let aCharOffsetX = 0;
+        let aCharOffsetY = 0;
+        let aCharRot = 0;
+        let aCharScale = 1;
+        let aCharAlpha = 1;
+        const aCharIdx = ac + 100;
+
+        if (state.animationStyle === 'assemble') {
+          const aSeed = aCharIdx * 47;
+          const aDist = Math.max(canvasWidth, canvasHeight) * 0.4;
+          const aEase = easeOutBack(authorFade);
+          aCharOffsetX = Math.cos(aSeed) * aDist * (1 - aEase);
+          aCharOffsetY = Math.sin(aSeed) * aDist * (1 - aEase);
+          aCharAlpha = Math.min(1, authorFade * 2.5);
+        } else if (state.animationStyle === 'disperse') {
+          const disperseProg = Math.max(0, (progress - 0.5) / 0.5);
+          if (disperseProg > 0) {
+            const ease = easeOutCubic(disperseProg);
+            aCharOffsetX = Math.cos(aCharIdx * 3) * ease * 180;
+            aCharOffsetY = Math.sin(aCharIdx * 3) * ease * 180;
+            aCharRot = ease * 1.5;
+            aCharAlpha = Math.max(0, 1 - ease * 1.2);
+          }
+        } else if (state.animationStyle === 'tumble') {
+          aCharOffsetY = Math.sin(currentTime * 3.0 + aCharIdx * 0.6) * (authorFontSize * 0.16);
+          aCharRot = Math.sin(currentTime * 2.2 + aCharIdx * 0.6) * 0.18;
+        } else if (state.animationStyle === 'wave') {
+          aCharOffsetY = Math.sin(currentTime * 6.0 + aCharIdx * 0.4) * (authorFontSize * 0.2);
+        } else if (state.animationStyle === 'fall') {
+          const fallEase = easeOutBack(authorFade);
+          aCharScale = 1 + (1 - fallEase) * 2.2;
+          aCharOffsetY = -(1 - easeOutCubic(authorFade)) * (authorFontSize * 1.8);
+          aCharAlpha = Math.min(1, authorFade * 2.8);
+        } else if (state.animationStyle === 'blur') {
+          const blurAmt = 1 - easeOutCubic(authorFade);
+          aCharScale = 1 + blurAmt * 0.3;
+          aCharAlpha = 0.2 + (1 - blurAmt) * 0.8;
+          if (blurAmt > 0.05) {
+            ctx.save();
+            ctx.shadowColor = state.textColor;
+            ctx.shadowBlur = blurAmt * 25;
+            ctx.fillStyle = state.textColor;
+            ctx.globalAlpha = blurAmt * 0.4;
+            ctx.beginPath();
+            ctx.arc(targetACenterX, authorY - authorFontSize * 0.35, blurAmt * (authorFontSize * 0.35), 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+          }
+        } else if (state.animationStyle === 'swarm') {
+          aCharAlpha = Math.min(1, authorFade * 2.2);
+        }
+
+        let aCharFill: string | CanvasGradient = authorFillStyle;
+        if (state.textColorMode === 'letter-rainbow') {
+          aCharFill = RAINBOW_LETTER_PALETTE[aCharIdx % RAINBOW_LETTER_PALETTE.length];
+        } else if (state.textColorMode === 'word-rainbow') {
+          aCharFill = RAINBOW_LETTER_PALETTE[aWordIdx % RAINBOW_LETTER_PALETTE.length];
+        } else if (state.textColorMode === 'letter-random') {
+          aCharFill = getChaoticColor(aCharIdx, (state.proceduralSeed || 42) + 21);
+        } else if (state.textColorMode === 'word-random') {
+          aCharFill = getChaoticColor(aWordIdx, (state.proceduralSeed || 42) + 33);
+        }
+
+        ctx.save();
+        ctx.translate(targetACenterX + aCharOffsetX, authorY + aCharOffsetY);
+        if (aCharRot !== 0) ctx.rotate(aCharRot);
+        if (aCharScale !== 1) ctx.scale(aCharScale, aCharScale);
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha * authorFade * aCharAlpha * 0.95));
+
+        // Author stroke per character
+        if (state.strokeEnabled && !state.effects.neon) {
+          ctx.save();
+          ctx.strokeStyle = state.strokeColor;
+          ctx.lineWidth = Math.max(1.5, state.strokeWidth * 0.45);
+          ctx.lineJoin = 'round';
+          ctx.strokeText(aChar, -aCharWidth / 2, 0);
+          ctx.restore();
+        }
+
+        ctx.fillStyle = aCharFill;
+        ctx.fillText(aChar, -aCharWidth / 2, 0);
+        ctx.restore();
+
+        aRunningX += aCharWidth;
+      }
+      ctx.restore();
+    } else {
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * authorFade * 0.92));
+
+      // Author stroke if enabled
+      if (state.strokeEnabled && !state.effects.neon) {
+        ctx.strokeStyle = state.strokeColor;
+        ctx.lineWidth = Math.max(1.5, state.strokeWidth * 0.45);
+        ctx.lineJoin = 'round';
+        ctx.strokeText(authorStr, authorX, authorY);
+      }
+
+      ctx.fillStyle = authorFillStyle;
+      ctx.fillText(authorStr, authorX, authorY);
+    }
     ctx.restore();
   }
 

@@ -301,18 +301,23 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
             state: presetState,
           };
 
-          // Apply state while strictly preserving user's current rawText and authorText
+          // Apply full preset state while strictly preserving user's current rawText and authorText
           const finalAppliedState: VideoProjectState = {
             ...state,
             ...presetState,
+            effects: {
+              ...state.effects,
+              ...(presetState.effects || {}),
+            },
+            audio: {
+              ...state.audio,
+              ...(presetState.audio || {}),
+            },
             rawText: state.rawText,
             authorText: state.authorText,
-            textMode: state.textMode,
+            textMode: presetState.textMode || state.textMode,
           };
           onChange(finalAppliedState);
-
-          // Open Fullscreen player right away!
-          openFullscreen();
 
           trackImportPreset({ presetName: importedName });
           // Show prompt modal asking if user wants to save to catalog
@@ -349,9 +354,17 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     const finalState: VideoProjectState = {
       ...state,
       ...preset.state,
+      effects: {
+        ...state.effects,
+        ...(preset.state.effects || {}),
+      },
+      audio: {
+        ...state.audio,
+        ...(preset.state.audio || {}),
+      },
       rawText: state.rawText,
       authorText: state.authorText,
-      textMode: state.textMode,
+      textMode: preset.state.textMode || state.textMode,
     };
     onChange(finalState);
     trackApplyPreset({
@@ -2183,7 +2196,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
         type="file"
         ref={jsonFileInputRef}
         onChange={handleImportJsonFile}
-        accept=".json"
+        accept=".json,application/json,text/plain,application/octet-stream"
         className="hidden"
       />
 

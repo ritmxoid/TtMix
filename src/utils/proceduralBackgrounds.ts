@@ -970,8 +970,8 @@ function drawEqualizer(
   seed: number,
   skipSolidBg: boolean = false
 ) {
-  // 21 Distinct Equalizer Layouts and Morphologies (including 9 new image architectures)!
-  const layoutType = Math.floor(rng() * 21);
+  // 28 Distinct Equalizer Layouts and Morphologies (including 8 photo-accurate image visualizers)!
+  const layoutType = Math.floor(rng() * 28);
   const colorMode = Math.floor(rng() * 6); // 6 Rich Neon & Spectrum Color Palettes
   const orientationMode = Math.floor(rng() * 4); // 0: Normal / Center, 1: Inverted (Top-down), 2: Mirrored / Alt, 3: Dynamic Tilt / Vertical
   const speedFactor = 0.65 + rng() * 0.95; // 0.65x to 1.6x Speed variation
@@ -1713,9 +1713,373 @@ function drawEqualizer(
       ctx.fillRect(x, curveY - amp, stepX * 0.75, amp * 2);
     }
     ctx.restore();
+  } else if (layoutType === 20) {
+    // ==========================================================
+    // 20 (IMAGE 1): Multi-band Rainbow EQ Bars + Flowing String Wave Mesh
+    // ==========================================================
+    const barCount = 72;
+    const gap = 3;
+    const barW = (w - (barCount + 1) * gap) / barCount;
+    const centerY = h * 0.5;
+
+    // 1. Color clusters for vertical EQ bars (Green -> Blue -> Magenta -> Gold)
+    const getBarColor = (indexRatio: number, r: number) => {
+      if (indexRatio < 0.25) return '#10b981'; // Emerald Green
+      if (indexRatio < 0.50) return '#06b6d4'; // Electric Cyan/Blue
+      if (indexRatio < 0.75) return '#ec4899'; // Neon Magenta/Pink
+      return '#f59e0b'; // Amber / Gold
+    };
+
+    ctx.save();
+    for (let i = 0; i < barCount; i++) {
+      const x = gap + i * (barW + gap);
+      const ratio = i / barCount;
+      // 4 resonant peaks across the screen
+      const bell1 = Math.exp(-Math.pow((ratio - 0.15) * 8, 2));
+      const bell2 = Math.exp(-Math.pow((ratio - 0.38) * 8, 2));
+      const bell3 = Math.exp(-Math.pow((ratio - 0.62) * 8, 2));
+      const bell4 = Math.exp(-Math.pow((ratio - 0.85) * 8, 2));
+      const totalBell = bell1 * 0.95 + bell2 * 0.85 + bell3 * 1.0 + bell4 * 0.9;
+
+      const dynamicAmp = (Math.sin(t * 3.5 + i * 0.3) * 0.35 + 0.65) * (h * 0.38) * totalBell;
+      const barColor = getBarColor(ratio, i);
+
+      // Sliced glowing vertical bars
+      const sliceH = 6;
+      const sliceGap = 2;
+      const totalSlices = Math.floor(dynamicAmp / (sliceH + sliceGap));
+
+      for (let s = -totalSlices; s <= totalSlices; s++) {
+        if (s === 0) continue;
+        const sy = centerY + s * (sliceH + sliceGap);
+        const intensity = 1 - Math.abs(s) / (totalSlices + 2);
+        ctx.fillStyle = barColor;
+        ctx.globalAlpha = 0.35 + intensity * 0.65;
+        ctx.shadowColor = barColor;
+        ctx.shadowBlur = 8;
+        ctx.fillRect(x, sy, barW, sliceH);
+      }
+    }
+    ctx.restore();
+
+    // 2. Horizontal flowing wireframe wave lines (10 overlapping harmonic lines)
+    ctx.save();
+    for (let l = 0; l < 10; l++) {
+      ctx.beginPath();
+      const linePhase = t * 2.2 + l * 0.4;
+      const lineFreq = 0.008 + l * 0.0012;
+      for (let x = 0; x <= w; x += 6) {
+        const env = Math.sin((x / w) * Math.PI);
+        const y = centerY + (Math.sin(x * lineFreq + linePhase) * 60 + Math.cos(x * 0.02 - linePhase * 0.7) * 25) * env;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = '#ffffff';
+      ctx.globalAlpha = 0.45 + (l % 2) * 0.35;
+      ctx.lineWidth = l === 4 ? 2.5 : 1.2;
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (layoutType === 21) {
+    // ==========================================================
+    // 21 (IMAGE 2): Intertwined Glowing Wireframe Ribbon Bundles + Dark Grid
+    // ==========================================================
+    // Subtle background perspective grid
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.lineWidth = 1;
+    const gridStep = Math.max(30, Math.floor(w / 28));
+    for (let x = 0; x <= w; x += gridStep) {
+      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, h); ctx.stroke();
+    }
+    for (let y = 0; y <= h; y += gridStep) {
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(w, y); ctx.stroke();
+    }
+    ctx.restore();
+
+    const centerY = h * 0.5;
+    const ribbons = [
+      { color: '#00f2fe', freq: 0.009, amp: 85, phaseSpeed: 2.0 },
+      { color: '#f72585', freq: 0.011, amp: 95, phaseSpeed: -1.8 },
+      { color: '#4ade80', freq: 0.008, amp: 75, phaseSpeed: 2.3 },
+      { color: '#ffffff', freq: 0.013, amp: 65, phaseSpeed: -2.1 },
+    ];
+
+    ctx.save();
+    ribbons.forEach((rib, rIdx) => {
+      // Draw bundle of 8 parallel wireframe lines per ribbon
+      const lineCount = 8;
+      for (let i = 0; i < lineCount; i++) {
+        ctx.beginPath();
+        const offsetPhase = (i - lineCount / 2) * 0.15;
+        const lineAmp = rib.amp + (i - lineCount / 2) * 6;
+        for (let x = 0; x <= w; x += 5) {
+          const env = Math.sin((x / w) * Math.PI);
+          const y = centerY + Math.sin(x * rib.freq + t * rib.phaseSpeed + offsetPhase) * lineAmp * env;
+          if (x === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = rib.color;
+        ctx.globalAlpha = i === Math.floor(lineCount / 2) ? 0.95 : 0.45;
+        ctx.lineWidth = i === Math.floor(lineCount / 2) ? 3.0 : 1.2;
+        ctx.shadowColor = rib.color;
+        ctx.shadowBlur = 14;
+        ctx.stroke();
+      }
+    });
+    ctx.restore();
+  } else if (layoutType === 22) {
+    // ==========================================================
+    // 22 (IMAGE 3): Volumetric Dotted Point-Cloud Audio Ribbon
+    // ==========================================================
+    drawBackgroundParticles();
+    const cols = 90;
+    const rows = 24;
+    const stepX = w / cols;
+    const centerY = h * 0.5;
+
+    ctx.save();
+    for (let c = 0; c < cols; c++) {
+      const x = c * stepX;
+      const ratio = c / cols;
+      const env = Math.sin(ratio * Math.PI);
+
+      for (let r = 0; r < rows; r++) {
+        const rRatio = (r - rows / 2) / (rows / 2);
+        const wave1 = Math.sin(x * 0.012 + t * 2.5 + r * 0.2) * 90;
+        const wave2 = Math.cos(x * 0.02 - t * 1.8) * 35;
+        const y = centerY + (wave1 + wave2) * env + rRatio * (70 * env);
+
+        const dotSize = Math.max(1.2, (1 - Math.abs(rRatio) * 0.5) * 2.6);
+        const colProg = (ratio * 0.6 + Math.abs(rRatio) * 0.4);
+        ctx.fillStyle = colProg < 0.4 ? '#3b82f6' : colProg < 0.7 ? '#8b5cf6' : '#ec4899';
+        ctx.shadowColor = '#c084fc';
+        ctx.shadowBlur = 6;
+        ctx.globalAlpha = 0.35 + (1 - Math.abs(rRatio)) * 0.6;
+
+        ctx.beginPath();
+        ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  } else if (layoutType === 23) {
+    // ==========================================================
+    // 23 (IMAGE 4): Luminous Fluid Gradient Soundwave Ribbon + Floor Mirror
+    // ==========================================================
+    const centerY = h * 0.48;
+
+    ctx.save();
+    // Ambient color glow behind ribbon
+    const glowCenter = ctx.createRadialGradient(w * 0.5, centerY, 10, w * 0.5, centerY, w * 0.55);
+    glowCenter.addColorStop(0, 'rgba(249, 115, 22, 0.22)');
+    glowCenter.addColorStop(0.4, 'rgba(6, 182, 212, 0.18)');
+    glowCenter.addColorStop(0.7, 'rgba(236, 72, 153, 0.15)');
+    glowCenter.addColorStop(1, 'transparent');
+    ctx.fillStyle = glowCenter;
+    ctx.fillRect(0, 0, w, h);
+
+    const waves = [
+      { color1: '#f97316', color2: '#06b6d4', amp: 110, freq: 0.007, speed: 2.2, width: 6 },
+      { color1: '#ec4899', color2: '#a855f7', amp: 95, freq: 0.010, speed: -1.9, width: 4.5 },
+      { color1: '#38bdf8', color2: '#22c55e', amp: 75, freq: 0.013, speed: 2.6, width: 3.5 },
+    ];
+
+    waves.forEach((wv) => {
+      // Top main wave
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 4) {
+        const env = Math.sin((x / w) * Math.PI);
+        const y = centerY - Math.sin(x * wv.freq + t * wv.speed) * wv.amp * env;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      const grad = ctx.createLinearGradient(0, centerY - wv.amp, w, centerY);
+      grad.addColorStop(0, wv.color1);
+      grad.addColorStop(1, wv.color2);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = wv.width;
+      ctx.shadowColor = wv.color1;
+      ctx.shadowBlur = 18;
+      ctx.stroke();
+
+      // Bottom mirror wave (reflection)
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 4) {
+        const env = Math.sin((x / w) * Math.PI);
+        const y = centerY + Math.sin(x * wv.freq + t * wv.speed) * (wv.amp * 0.7) * env;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = grad;
+      ctx.globalAlpha = 0.45;
+      ctx.lineWidth = wv.width * 0.8;
+      ctx.shadowColor = wv.color2;
+      ctx.shadowBlur = 14;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    });
+    ctx.restore();
+  } else if (layoutType === 24) {
+    // ==========================================================
+    // 24 (IMAGE 5): 3D Volumetric Rolling Landscape Waveform Mesh
+    // ==========================================================
+    const ridgeCount = 20;
+    const baseY = h * 0.78;
+
+    ctx.save();
+    for (let r = 0; r < ridgeCount; r++) {
+      const depthRatio = r / ridgeCount;
+      const ridgeY = baseY - depthRatio * (h * 0.45);
+      const amp = (1 - depthRatio * 0.4) * 55;
+      const phase = t * 2.0 - r * 0.35;
+
+      ctx.beginPath();
+      ctx.moveTo(0, h);
+      for (let x = 0; x <= w; x += 8) {
+        const wave =
+          Math.sin(x * 0.008 + phase) * amp +
+          Math.cos(x * 0.016 - phase * 0.6) * (amp * 0.45);
+        ctx.lineTo(x, ridgeY - wave);
+      }
+      ctx.lineTo(w, h);
+      ctx.closePath();
+
+      // Ridge depth coloring (Magenta -> Cyan -> Sunset Gold)
+      const rGrad = ctx.createLinearGradient(0, ridgeY - amp, w, ridgeY + 20);
+      rGrad.addColorStop(0, depthRatio < 0.5 ? '#ec4899' : '#06b6d4');
+      rGrad.addColorStop(0.5, depthRatio < 0.5 ? '#a855f7' : '#38bdf8');
+      rGrad.addColorStop(1, '#f97316');
+
+      ctx.fillStyle = 'rgba(5, 7, 20, 0.85)';
+      ctx.fill();
+
+      ctx.strokeStyle = rGrad;
+      ctx.lineWidth = 2.0;
+      ctx.shadowColor = '#06b6d4';
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (layoutType === 25) {
+    // ==========================================================
+    // 25 (IMAGE 6): Multi-Laser Sine Strands with Glossy Floor Reflection
+    // ==========================================================
+    const floorY = h * 0.72;
+
+    ctx.save();
+    // Glossy reflective floor baseline
+    const floorGrad = ctx.createLinearGradient(0, floorY, 0, h);
+    floorGrad.addColorStop(0, 'rgba(30, 27, 75, 0.55)');
+    floorGrad.addColorStop(1, 'rgba(3, 7, 18, 0.95)');
+    ctx.fillStyle = floorGrad;
+    ctx.fillRect(0, floorY, w, h - floorY);
+
+    const lasers = [
+      { color: '#38bdf8', amp: 130, freq: 0.009, speed: 2.2 },
+      { color: '#c084fc', amp: 100, freq: 0.013, speed: -1.7 },
+      { color: '#fb923c', amp: 70, freq: 0.017, speed: 2.6 },
+    ];
+
+    lasers.forEach((ls) => {
+      // 1. Direct laser beam
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 4) {
+        const rawY = floorY - Math.abs(Math.sin(x * ls.freq + t * ls.speed)) * ls.amp;
+        if (x === 0) ctx.moveTo(x, rawY);
+        else ctx.lineTo(x, rawY);
+      }
+      ctx.strokeStyle = ls.color;
+      ctx.lineWidth = 3.5;
+      ctx.shadowColor = ls.color;
+      ctx.shadowBlur = 20;
+      ctx.stroke();
+
+      // 2. Glossy floor reflection bounce
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 4) {
+        const bounceY = floorY + Math.abs(Math.sin(x * ls.freq + t * ls.speed)) * (ls.amp * 0.35);
+        if (x === 0) ctx.moveTo(x, bounceY);
+        else ctx.lineTo(x, bounceY);
+      }
+      ctx.globalAlpha = 0.35;
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+      ctx.globalAlpha = 1.0;
+    });
+    ctx.restore();
+  } else if (layoutType === 26) {
+    // ==========================================================
+    // 26 (IMAGE 7): Stacked Parallel Neon Ribbon Frequency Curves + Central Pulse
+    // ==========================================================
+    const strandCount = 14;
+    const centerY = h * 0.5;
+
+    ctx.save();
+    for (let s = 0; s < strandCount; s++) {
+      const strandRatio = s / strandCount;
+      const sColor = strandRatio < 0.35 ? '#ef4444' : strandRatio < 0.7 ? '#06b6d4' : '#8b5cf6';
+      const offset = (s - strandCount / 2) * 14;
+
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 4) {
+        const normX = x / w;
+        // Central peak burst envelope
+        const peakEnvelope = Math.exp(-Math.pow((normX - 0.5) * 5, 2));
+        const y = centerY + offset + (Math.sin(normX * 18 + t * 3.2) * 80 + Math.sin(normX * 8 - t * 2) * 40) * peakEnvelope;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.strokeStyle = sColor;
+      ctx.lineWidth = 2.8;
+      ctx.shadowColor = sColor;
+      ctx.shadowBlur = 14;
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (layoutType === 27) {
+    // ==========================================================
+    // 27 (IMAGE 8): Layered Topographic Neon Sound Wave Iso-Lines
+    // ==========================================================
+    const layerCount = 28;
+    const baseY = h * 0.82;
+    const stepY = (h * 0.42) / layerCount;
+
+    ctx.save();
+    for (let l = 0; l < layerCount; l++) {
+      const lineY = baseY - l * stepY;
+      const layerProg = l / layerCount;
+
+      ctx.beginPath();
+      for (let x = 0; x <= w; x += 6) {
+        const normX = x / w;
+        // Mountain harmonic soundwave crests
+        const hill1 = Math.exp(-Math.pow((normX - 0.35) * 6, 2)) * 65;
+        const hill2 = Math.exp(-Math.pow((normX - 0.75) * 5, 2)) * 80;
+        const wave = Math.sin(normX * 10 + t * 2.5 + l * 0.15) * (15 + layerProg * 25);
+        const y = lineY - (hill1 + hill2 + wave) * layerProg;
+        if (x === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+
+      // Left-to-Right Cyan to Magenta gradient
+      const lineGrad = ctx.createLinearGradient(0, 0, w, 0);
+      lineGrad.addColorStop(0, '#00f2fe');
+      lineGrad.addColorStop(0.5, '#38bdf8');
+      lineGrad.addColorStop(1, '#ec4899');
+
+      ctx.strokeStyle = lineGrad;
+      ctx.lineWidth = l === 0 ? 3.0 : 1.8;
+      ctx.shadowColor = layerProg > 0.5 ? '#ec4899' : '#00f2fe';
+      ctx.shadowBlur = 10;
+      ctx.stroke();
+    }
+    ctx.restore();
   } else {
     // ==========================================================
-    // 20 (NEW 9): Радиальный неоновый круг
+    // Default Radial Neon Equalizer Core
     // ==========================================================
     const cx = w * 0.5;
     const cy = h * 0.5;

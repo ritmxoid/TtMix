@@ -13,7 +13,7 @@ import {
   Infinity,
 } from 'lucide-react';
 import { BACKGROUND_PRESETS } from '../data/presets';
-import { VideoProjectState } from '../types';
+import { VideoProjectState, ProceduralMoodStyle } from '../types';
 import { ColorPickerModal } from './ColorPickerModal';
 import { useLanguage } from '../context/LanguageContext';
 import { trackSelectBgTheme } from '../utils/analytics';
@@ -153,9 +153,14 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   type="button"
                   key={preset.id}
                   onClick={() => {
+                    const isProcedural = preset.id.startsWith('ai-procedural-');
+                    const mood = isProcedural
+                      ? (preset.id.replace('ai-procedural-', '') as ProceduralMoodStyle)
+                      : state.proceduralMood;
                     onChange({
                       bgType: 'preset',
                       bgPresetId: preset.id,
+                      proceduralMood: mood,
                     });
                     trackSelectBgTheme({ presetId: preset.id, name: preset.name });
                   }}
