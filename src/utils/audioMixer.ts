@@ -39,6 +39,11 @@ class AudioMixer {
   private playingSeed: number | null = null;
   private playingFileUrl: string | null = null;
 
+  private synthStartCtxTime = 0;
+  private synthStartOffset = 0;
+  private fileStartCtxTime = 0;
+  private fileStartOffset = 0;
+
   private isPlaying = false;
   private isMuted = false;
   private volumeMultiplier = 1.0;
@@ -260,11 +265,21 @@ class AudioMixer {
 
       const targetPresetId = audioState.presetId || 'lofi-chill';
       const targetSeed = audioState.seed ?? 1337;
+
+      let isSynthTimeAligned = false;
+      if (this.synthSourceNode && this.cachedSynthBuffer) {
+        const elapsed = ctx.currentTime - this.synthStartCtxTime;
+        const dur = this.cachedSynthBuffer.duration || 1;
+        const currentAudioOffset = (this.synthStartOffset + elapsed) % dur;
+        const diff = Math.abs(currentAudioOffset - offsetSeconds);
+        isSynthTimeAligned = diff < 0.25 || Math.abs(diff - dur) < 0.25;
+      }
+
       const canKeepCurrentSynth =
         this.synthSourceNode &&
         this.playingPresetId === targetPresetId &&
         this.playingSeed === targetSeed &&
-        offsetSeconds > 0;
+        isSynthTimeAligned;
 
       if (!canKeepCurrentSynth) {
         const synthConfig: AudioState = {
@@ -296,6 +311,8 @@ class AudioMixer {
 
           try {
             this.synthSourceNode.start(0, clampedOffset);
+            this.synthStartCtxTime = ctx.currentTime;
+            this.synthStartOffset = clampedOffset;
             this.playingPresetId = targetPresetId;
             this.playingSeed = targetSeed;
           } catch (err) {
@@ -332,10 +349,19 @@ class AudioMixer {
       }
       this.fileGainNode.gain.setValueAtTime(safeFileVol, ctx.currentTime);
 
+      let isFileTimeAligned = false;
+      if (this.fileSourceNode && this.cachedFileBuffer) {
+        const elapsed = ctx.currentTime - this.fileStartCtxTime;
+        const dur = this.cachedFileBuffer.duration || audioState.audioDuration || totalDuration || 1;
+        const currentAudioOffset = (this.fileStartOffset + elapsed) % dur;
+        const diff = Math.abs(currentAudioOffset - offsetSeconds);
+        isFileTimeAligned = diff < 0.25 || Math.abs(diff - dur) < 0.25;
+      }
+
       const canKeepCurrentFile =
         this.fileSourceNode &&
         this.playingFileUrl === audioState.audioUrl &&
-        offsetSeconds > 0;
+        isFileTimeAligned;
 
       if (!canKeepCurrentFile) {
         const fileConfig: AudioState = {
@@ -367,6 +393,8 @@ class AudioMixer {
 
           try {
             this.fileSourceNode.start(0, clampedOffset);
+            this.fileStartCtxTime = ctx.currentTime;
+            this.fileStartOffset = clampedOffset;
             this.playingFileUrl = audioState.audioUrl;
           } catch (err) {
             console.warn('File BufferSourceNode start failed:', err);

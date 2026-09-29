@@ -1167,8 +1167,27 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     if (bgMediaElement instanceof HTMLVideoElement && bgMediaElement.duration) {
       bgMediaElement.currentTime = validTime % bgMediaElement.duration;
     }
+    const synthVol =
+      typeof state.audio.musicVolume === 'number'
+        ? state.audio.musicVolume
+        : typeof state.audio.volume === 'number'
+        ? state.audio.volume
+        : 0.7;
+    const fileVol =
+      typeof state.audio.fileVolume === 'number'
+        ? state.audio.fileVolume
+        : 0.8;
+    const isSynthActive = state.audio.enabled && synthVol > 0;
+    const isFileActive =
+      Boolean(state.audio.audioUrl) &&
+      state.audio.fileAudioEnabled !== false &&
+      fileVol > 0;
+
+    if (isPlaying && !isMuted && (isSynthActive || isFileActive)) {
+      audioMixer.play(state.audio, effectiveDuration, validTime, state.bgMediaUrl || undefined);
+    }
     drawFrame(validTime);
-  }, [effectiveDuration, bgMediaElement, drawFrame]);
+  }, [effectiveDuration, bgMediaElement, drawFrame, isPlaying, isMuted, state.audio, state.bgMediaUrl]);
 
   const handleRestart = () => {
     currentTimeRef.current = 0;
