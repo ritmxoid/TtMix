@@ -1688,7 +1688,9 @@ function drawTextSegment({
   // Speed-based animation duration calculations:
   let animDuration: number;
   if (state.animationStyle === 'typewriter') {
-    const charsPerSec = Math.max(1.0, 5.0 / wordDuration);
+    const s = Math.max(0.1, Math.min(3.0, effectiveSpeed));
+    const t = (s - 0.1) / 2.9;
+    const charsPerSec = (1 / 3.0) + t * (43.48 - (1 / 3.0));
     const totalChars = Math.max(1, segment.text.trim().length);
     animDuration = Math.max(0.15, totalChars / charsPerSec);
   } else if (state.animationStyle === 'words') {

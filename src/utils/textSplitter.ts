@@ -8,16 +8,18 @@ import { AnimationStyle, TextMode, TextSegment } from '../types';
 export function getEffectiveSpeed(speedMultiplier: number): {
   speedFactor: number;
   wordDuration: number;
+  unitDuration: number;
 } {
   const s = Math.max(0.1, Math.min(3.0, speedMultiplier));
   const t = (s - 0.1) / 2.9;
 
-  // At s = 0.1: wordDuration = 0.5s exactly as requested
-  // At s = 3.0: 2x faster than previous 3.0x (0.115s)
-  const wordDuration = 0.5 - t * (0.5 - 0.115);
-  const speedFactor = 0.7 / wordDuration;
+  // At s = 0.1 (min speed): 3.0 seconds per unit (character, word, sentence, or text block)
+  // At s = 3.0 (max speed): 0.115 seconds per unit (unchanged maximum speed)
+  const unitDuration = 3.0 - t * (3.0 - 0.115);
+  const wordDuration = unitDuration;
+  const speedFactor = 0.7 / unitDuration;
 
-  return { speedFactor, wordDuration };
+  return { speedFactor, wordDuration, unitDuration };
 }
 
 function getChunkNaturalDuration(
@@ -27,11 +29,13 @@ function getChunkNaturalDuration(
   pause: number,
   style?: AnimationStyle
 ): number {
-  const { speedFactor, wordDuration } = getEffectiveSpeed(speedMultiplier);
+  const { speedFactor, wordDuration, unitDuration } = getEffectiveSpeed(speedMultiplier);
 
   if (style === 'typewriter') {
     const totalChars = Math.max(1, text.trim().length);
-    const charsPerSec = Math.max(1.0, 5.0 / wordDuration);
+    const s = Math.max(0.1, Math.min(3.0, speedMultiplier));
+    const t = (s - 0.1) / 2.9;
+    const charsPerSec = (1 / 3.0) + t * (43.48 - (1 / 3.0));
     const typingDuration = totalChars / charsPerSec;
     const readingPause = Math.max(0.8, pause);
     return typingDuration + readingPause;
@@ -42,9 +46,10 @@ function getChunkNaturalDuration(
     const readingPause = Math.max(0.8, pause);
     return wordsDuration + readingPause;
   }
-  // Fade, Slide, Zoom, Glitch: entrance transition + reading time
-  const entrance = Math.min(1.2, 0.65 / speedFactor);
-  const reading = Math.max(1.2 / speedFactor, 0.8 + words.length * wordDuration);
+  // Fade, Slide, Zoom, Glitch, Bounce, Curves, Assemble, Disperse, Tumble, Wave, Stomp, Fall, Blur, Swarm:
+  // Entrance transition + unit reading time
+  const entrance = Math.min(2.5, 0.65 / speedFactor);
+  const reading = Math.max(unitDuration, 0.8 + words.length * wordDuration);
   return entrance + reading;
 }
 
