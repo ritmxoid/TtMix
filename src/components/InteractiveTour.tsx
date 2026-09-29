@@ -141,10 +141,10 @@ export const InteractiveTour: React.FC<InteractiveTourProps> = ({
       id: 'playback-controls',
       selector: '[data-tour="playback-controls"]',
       titleKey: 'tourStep5_title',
-      defaultTitle: 'Воспроизведение, «С начала» и звук',
+      defaultTitle: 'Воспроизведение и перемотка ролика',
       descKey: 'tourStep5_desc',
       defaultDesc:
-        'Управляйте просмотром в одной панели: пауза/старт, кнопка перезапуска ролика с самого начала (|◀) и включение/выключение звука (долгий тап для громкости).',
+        'Управляйте просмотром: пауза/старт и кнопка «В начало» (|◀), долгий тап по которой вызывает плеер.',
       placement: 'top',
     },
     // 6. Workspace: Animated Procedural Backgrounds Section (Themes: Космос, Неон, Огонь...)
@@ -158,15 +158,15 @@ export const InteractiveTour: React.FC<InteractiveTourProps> = ({
         'Создавайте уникальные анимированные фоны — Космос, Неон, Огонь, Частицы, Пергамент — или настраивайте свой цвет и градиент.',
       placement: 'top',
     },
-    // 7. Workspace: Quick Generator Buttons in dock
+    // 7. Workspace: Quick Generator Buttons & Volume Controls
     {
       id: 'generator-buttons',
       selector: '[data-tour="generator-buttons"]',
       titleKey: 'tourStep7_title',
-      defaultTitle: 'Кнопки быстрой генерации',
+      defaultTitle: 'Кнопки быстрой генерации и регулировка громкости',
       descKey: 'tourStep7_desc',
       defaultDesc:
-        'Кнопки для генерации (и перегенерации на лету) уникальных фонов, музыки и анимированного текста в один клик.',
+        'Быстрая генерация фонов, музыки и текста. Долгое нажатие на кнопку 🎵 вызывает регулятор громкости.',
       placement: 'top',
     },
     // 8. Workspace: Reset Project to Default Settings (header)

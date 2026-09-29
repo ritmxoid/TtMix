@@ -40,6 +40,7 @@ import { trackRecordWebm } from '../utils/analytics';
 import { ColorPickerModal } from './ColorPickerModal';
 import { TextEditPopup } from './TextEditPopup';
 import { MultiTrackVolumePopover } from './MultiTrackVolumePopover';
+import { VideoScrubberPopover } from './VideoScrubberPopover';
 import { useLanguage } from '../context/LanguageContext';
 import { MUSIC_PRESETS } from '../utils/audioGenerator';
 
@@ -115,6 +116,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
   const [isDraggingText, setIsDraggingText] = useState(false);
   const [showFontSizePopup, setShowFontSizePopup] = useState(false);
   const [showVolumePopover, setShowVolumePopover] = useState(false);
+  const [showScrubberPopover, setShowScrubberPopover] = useState(false);
+  const restartLongPressTimerRef = useRef<number | null>(null);
+  const isRestartLongPressRef = useRef<boolean>(false);
+  const longPressToggleTimeRef = useRef<number>(0);
   const [isTextColorPickerOpen, setIsTextColorPickerOpen] = useState(false);
   const [popupOffset, setPopupOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const popupOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -1155,6 +1160,16 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     }
   };
 
+  const handleSeekTo = useCallback((targetTime: number) => {
+    const validTime = Math.max(0, Math.min(effectiveDuration, targetTime));
+    currentTimeRef.current = validTime;
+    lastTimeRef.current = performance.now();
+    if (bgMediaElement instanceof HTMLVideoElement && bgMediaElement.duration) {
+      bgMediaElement.currentTime = validTime % bgMediaElement.duration;
+    }
+    drawFrame(validTime);
+  }, [effectiveDuration, bgMediaElement, drawFrame]);
+
   const handleRestart = () => {
     currentTimeRef.current = 0;
     lastTimeRef.current = performance.now();
@@ -1731,19 +1746,82 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               {isPlaying ? <Pause className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white" /> : <Play className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-white ml-0.5" />}
             </button>
 
-            {/* Restart Button with |◀ SkipBack Icon */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleRestart();
-              }}
-              className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-white/10 flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0"
-              title={t('fromStart', 'С начала')}
-              aria-label={t('fromStart', 'С начала')}
-            >
-              <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-            </button>
+            {/* Restart Button with |◀ SkipBack Icon & Long-Press Full-Width Scrubber */}
+            <div className="relative">
+              {showScrubberPopover && (
+                <VideoScrubberPopover
+                  getCurrentTime={() => currentTimeRef.current || 0}
+                  totalDuration={effectiveDuration}
+                  onSeek={handleSeekTo}
+                  onClose={() => setShowScrubberPopover(false)}
+                />
+              )}
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  isRestartLongPressRef.current = false;
+                  if (restartLongPressTimerRef.current) {
+                    clearTimeout(restartLongPressTimerRef.current);
+                  }
+                  restartLongPressTimerRef.current = window.setTimeout(() => {
+                    isRestartLongPressRef.current = true;
+                    longPressToggleTimeRef.current = Date.now();
+                    setShowScrubberPopover((prev) => !prev);
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      try {
+                        navigator.vibrate(50);
+                      } catch {}
+                    }
+                  }, 350);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  if (restartLongPressTimerRef.current) {
+                    clearTimeout(restartLongPressTimerRef.current);
+                    restartLongPressTimerRef.current = null;
+                  }
+                }}
+                onPointerCancel={(e) => {
+                  e.stopPropagation();
+                  if (restartLongPressTimerRef.current) {
+                    clearTimeout(restartLongPressTimerRef.current);
+                    restartLongPressTimerRef.current = null;
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  if (restartLongPressTimerRef.current) {
+                    clearTimeout(restartLongPressTimerRef.current);
+                    restartLongPressTimerRef.current = null;
+                  }
+                  // Ignore click if long-press timer triggered recently
+                  if (isRestartLongPressRef.current || Date.now() - longPressToggleTimeRef.current < 800) {
+                    setTimeout(() => {
+                      isRestartLongPressRef.current = false;
+                    }, 400);
+                    return;
+                  }
+                  handleRestart();
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (Date.now() - longPressToggleTimeRef.current < 800) {
+                    return;
+                  }
+                  isRestartLongPressRef.current = true;
+                  longPressToggleTimeRef.current = Date.now();
+                  setShowScrubberPopover((prev) => !prev);
+                }}
+                className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-zinc-800/90 hover:bg-zinc-700 text-zinc-300 hover:text-white border border-white/10 flex items-center justify-center cursor-pointer transition-all active:scale-95 shrink-0"
+                title={t('fromStart', 'С начала (долгий тап: перемотка ролика)')}
+                aria-label={t('fromStart', 'С начала')}
+              >
+                <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+              </button>
+            </div>
 
             {/* Mute / Unmute Sound Toggle & Long-Press Multi-Track Volume Popover */}
             <div className="relative">

@@ -58,6 +58,7 @@ import { ColorPickerModal } from './ColorPickerModal';
 import { TextEditPopup } from './TextEditPopup';
 import { BlinkingEyeIcon, EYE_MODE_OVERLAY_THEMES } from './LuckyMode';
 import { MultiTrackVolumePopover } from './MultiTrackVolumePopover';
+import { VideoScrubberPopover } from './VideoScrubberPopover';
 import { useLanguage } from '../context/LanguageContext';
 import {
   trackApplyPreset,
@@ -184,6 +185,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   const [showLeftPresets, setShowLeftPresets] = useState<boolean>(false);
   const [hideControls, setHideControls] = useState<boolean>(false);
   const [isTextColorPickerOpen, setIsTextColorPickerOpen] = useState<boolean>(false);
+  const [showScrubberPopover, setShowScrubberPopover] = useState<boolean>(false);
+  const restartLongPressTimerRef = useRef<number | null>(null);
+  const isRestartLongPressRef = useRef<boolean>(false);
+  const longPressToggleTimeRef = useRef<number>(0);
 
   // New Presets State (Catalog, Save Modal, Load Prompt Modal)
   const LOCAL_PRESETS_KEY = 'vibe_quote_user_presets';
@@ -1069,6 +1074,16 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     }
   };
 
+  const handleSeekTo = useCallback((targetTime: number) => {
+    const validTime = Math.max(0, Math.min(totalDuration, targetTime));
+    currentTimeRef.current = validTime;
+    lastTimeRef.current = performance.now();
+    if (bgMediaElement instanceof HTMLVideoElement && bgMediaElement.duration) {
+      bgMediaElement.currentTime = validTime % bgMediaElement.duration;
+    }
+    drawFrame(validTime);
+  }, [totalDuration, bgMediaElement, drawFrame]);
+
   const handleRestart = () => {
     currentTimeRef.current = 0;
     lastTimeRef.current = performance.now();
@@ -1866,6 +1881,14 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                 hideControls ? 'opacity-0 translate-y-full pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
               }`}
             >
+              {showScrubberPopover && (
+                <VideoScrubberPopover
+                  getCurrentTime={() => currentTimeRef.current || 0}
+                  totalDuration={totalDuration}
+                  onSeek={handleSeekTo}
+                  onClose={() => setShowScrubberPopover(false)}
+                />
+              )}
               <div
                 onPointerDown={(e) => e.stopPropagation()}
                 onTouchStart={(e) => e.stopPropagation()}
@@ -1887,15 +1910,70 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
                     )}
                   </button>
 
-                  {/* 2. Restart from beginning */}
-                  <button
-                    onClick={handleRestart}
-                    className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
-                    title={t('fromStart', 'Запустить снова (с начала)')}
-                    aria-label={t('fromStart', 'Запустить снова')}
-                  >
-                    <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
-                  </button>
+                  {/* 2. Restart from beginning / Long Press: Full-Width Timeline Scrubber */}
+                  <div className="relative">
+                    <button
+                      type="button"
+                      onPointerDown={(e) => {
+                        e.stopPropagation();
+                        isRestartLongPressRef.current = false;
+                        if (restartLongPressTimerRef.current) {
+                          clearTimeout(restartLongPressTimerRef.current);
+                        }
+                        restartLongPressTimerRef.current = window.setTimeout(() => {
+                          isRestartLongPressRef.current = true;
+                          longPressToggleTimeRef.current = Date.now();
+                          setShowScrubberPopover((prev) => !prev);
+                          if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                            try { navigator.vibrate(50); } catch {}
+                          }
+                        }, 350);
+                      }}
+                      onPointerUp={(e) => {
+                        e.stopPropagation();
+                        if (restartLongPressTimerRef.current) {
+                          clearTimeout(restartLongPressTimerRef.current);
+                          restartLongPressTimerRef.current = null;
+                        }
+                      }}
+                      onPointerCancel={(e) => {
+                        e.stopPropagation();
+                        if (restartLongPressTimerRef.current) {
+                          clearTimeout(restartLongPressTimerRef.current);
+                          restartLongPressTimerRef.current = null;
+                        }
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        e.preventDefault();
+                        if (restartLongPressTimerRef.current) {
+                          clearTimeout(restartLongPressTimerRef.current);
+                          restartLongPressTimerRef.current = null;
+                        }
+                        // Ignore click if long-press timer triggered recently
+                        if (isRestartLongPressRef.current || Date.now() - longPressToggleTimeRef.current < 800) {
+                          setTimeout(() => { isRestartLongPressRef.current = false; }, 400);
+                          return;
+                        }
+                        handleRestart();
+                      }}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (Date.now() - longPressToggleTimeRef.current < 800) {
+                          return;
+                        }
+                        isRestartLongPressRef.current = true;
+                        longPressToggleTimeRef.current = Date.now();
+                        setShowScrubberPopover((prev) => !prev);
+                      }}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white flex items-center justify-center transition-all cursor-pointer hover:scale-105 active:scale-95 shrink-0"
+                      title={t('fromStart', 'Запустить снова (долгий клик: перемотка ролика)')}
+                      aria-label={t('fromStart', 'Запустить снова')}
+                    >
+                      <SkipBack className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-current" />
+                    </button>
+                  </div>
                 </div>
 
                 {/* Subtle Divider */}

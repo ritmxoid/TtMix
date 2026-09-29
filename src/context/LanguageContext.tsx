@@ -564,15 +564,15 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep4_title: 'Интерактивный текст на холсте',
     tourStep4_desc:
       'Перетаскивайте текст пальцем или мышью в любую область экрана! Нажмите на текст или зажмите его, чтобы открыть быстрое меню настройки шрифта, размера и цвета.',
-    tourStep5_title: 'Воспроизведение, «С начала» и звук',
+    tourStep5_title: 'Воспроизведение и перемотка ролика',
     tourStep5_desc:
-      'Управляйте просмотром в одной панели: пауза/старт, кнопка перезапуска ролика с самого начала (|◀) и включение/выключение звука (долгий тап для громкости).',
+      'Управляйте просмотром: пауза/старт и кнопка «В начало» (|◀), долгий тап по которой вызывает плеер.',
     tourStep6_title: 'Анимированные процедурные фоны',
     tourStep6_desc:
       'Создавайте уникальные анимированные фоны — Космос, Неон, Огонь, Частицы, Пергамент — или настраивайте свой цвет и градиент.',
-    tourStep7_title: 'Кнопки быстрой генерации',
+    tourStep7_title: 'Кнопки быстрой генерации и регулировка громкости',
     tourStep7_desc:
-      'Кнопки для генерации (и перегенерации на лету) уникальных фонов, музыки и анимированного текста в один клик.',
+      'Быстрая генерация фонов, музыки и текста. Долгое нажатие на кнопку 🎵 вызывает регулятор громкости.',
     tourStep8_title: 'Сброс до стартового состояния',
     tourStep8_desc:
       'Кнопка сброса проекта возвращает все настройки и текст к исходному базовому состоянию в один клик.',
@@ -1129,15 +1129,15 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep4_title: 'Interactive Canvas Text',
     tourStep4_desc:
       'Drag text anywhere on screen with mouse or finger! Tap or press-and-hold text to open quick font, size, and color controls.',
-    tourStep5_title: 'Playback, "From Start" & Audio',
+    tourStep5_title: 'Playback & Video Timeline Scrubber',
     tourStep5_desc:
-      'Control playback in one dock: play/pause, restart video from start (|◀), and toggle sound (long press for volume slider).',
+      'Control playback: play/pause and "From Start" (|◀) button, long tap on which opens the player.',
     tourStep6_title: 'Animated Procedural Backgrounds',
     tourStep6_desc:
       'Create unique animated backgrounds — Space, Neon, Fire, Particles, Parchment — or customize your solid color and gradient.',
-    tourStep7_title: 'Quick Generator Buttons',
+    tourStep7_title: 'Quick Generator Buttons & Volume Control',
     tourStep7_desc:
-      'Buttons to generate (and re-roll on the fly) unique video backgrounds, music tracks, and animated text in one click.',
+      'Quick generation of backgrounds, music, and text. Long press on the 🎵 button opens the volume control.',
     tourStep8_title: 'Reset to Initial State',
     tourStep8_desc:
       'The project reset button returns all settings, animations, and text back to default initial state in one click.',
@@ -1686,15 +1686,15 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep4_title: 'Texto Interactivo en el Lienzo',
     tourStep4_desc:
       '¡Arrastra el texto con el dedo o el ratón a cualquier área! Toca o mantén presionado el texto para abrir el menú rápido de fuente, tamaño y color.',
-    tourStep5_title: 'Reproducción, «Desde el Inicio» y Sonido',
+    tourStep5_title: 'Reproducción y línea de tiempo',
     tourStep5_desc:
-      'Controla la reproducción en un solo panel: pausar/reproducir, reiniciar video desde el inicio (|◀) y activar/desactivar sonido (mantén presionado para volumen).',
+      'Controla la reproducción: pausa/inicio y el botón "Al inicio" (|◀), un toque largo abre el reproductor.',
     tourStep6_title: 'Fondos Procedimentales Animados',
     tourStep6_desc:
       'Crea fondos animados únicos — Espacio, Neón, Fuego, Partículas, Pergamino — o personaliza tu color sólido y degradado.',
-    tourStep7_title: 'Botones de Generación Rápida',
+    tourStep7_title: 'Generadores rápidos y control de volumen',
     tourStep7_desc:
-      'Botones para generar (y regenerar al vuelo) fondos de video, pistas de música y textos animados únicos con un solo clic.',
+      'Generación rápida de fondos, música y texto. Un toque largo en el botón 🎵 abre el control de volumen.',
     tourStep8_title: 'Restablecer al Estado Inicial',
     tourStep8_desc:
       'El botón de restablecimiento devuelve todos los ajustes, animaciones y texto a su estado inicial predeterminado con un solo clic.',
@@ -2243,15 +2243,15 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep4_title: 'Interaktiver Text auf der Leinwand',
     tourStep4_desc:
       'Ziehen Sie Text mit dem Finger oder der Maus an eine beliebige Stelle! Tippen oder halten Sie Text gedrückt, um das Schnellmenü für Schriftart, Größe und Farbe zu öffnen.',
-    tourStep5_title: 'Wiedergabe, "Von Anfang" & Ton',
+    tourStep5_title: 'Wiedergabe & Video-Zeitleiste',
     tourStep5_desc:
-      'Steuern Sie die Wiedergabe in einem Dock: Wiedergabe/Pause, Neustart ab Anfang (|◀) und Ton ein/aus (langes Drücken für Lautstärke).',
+      'Wiedergabe steuern: Pause/Start und Taste "Von Anfang" (|◀), ein langes Tippen auf die der Player aufgerufen wird.',
     tourStep6_title: 'Animierte Prozedurale Hintergründe',
     tourStep6_desc:
       'Erstellen Sie einzigartige animierte Hintergründe — Weltraum, Neon, Feuer, Partikel, Pergament — oder passen Sie Farbe und Farbverlauf an.',
-    tourStep7_title: 'Schnellgenerierungs-Tasten',
+    tourStep7_title: 'Schnellgeneratoren & Lautstärkeregelung',
     tourStep7_desc:
-      'Tasten zum Generieren (und spontanen Regenerieren) einzigartiger Videohintergründe, Musikstücke und animierter Texte mit einem Klick.',
+      'Schnelle Generierung von Hintergründen, Musik und Text. Langes Drücken der Taste 🎵 öffnet den Lautstärkeregler.',
     tourStep8_title: 'Auf Ausgangszustand zurücksetzen',
     tourStep8_desc:
       'Die Schaltfläche zum Zurücksetzen setzt alle Einstellungen, Animationen und Texte mit einem Klick auf die Standardwerte zurück.',
@@ -2800,15 +2800,15 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep4_title: 'Texte Interactif sur la Toile',
     tourStep4_desc:
       'Faites glisser le texte avec le doigt ou la souris où vous le souhaitez ! Appuyez ou maintenez le texte pour ouvrir le menu rapide de police, taille et couleur.',
-    tourStep5_title: 'Lecture, « Depuis le début » & Son',
+    tourStep5_title: 'Lecture et barre de défilement',
     tourStep5_desc:
-      'Contrôlez la lecture dans un seul panneau : pause/lecture, redémarrer la vidéo depuis le début (|◀) et désactiver/activer le son (maintien long pour le volume).',
+      'Contrôlez la lecture : pause/départ et bouton "Au début" (|◀), un appui long sur lequel ouvre le lecteur.',
     tourStep6_title: 'Arrières-plans Procéduraux Animés',
     tourStep6_desc:
       'Créez des arrières-plans animés uniques — Espace, Néon, Feu, Particules, Parchemin — ou personnalisez votre couleur unie et votre dégradé.',
-    tourStep7_title: 'Boutons de Génération Rapide',
+    tourStep7_title: 'Générateurs rapides et contrôle du volume',
     tourStep7_desc:
-      'Boutons pour générer (et régénérer à la volée) des arrières-plans vidéo, des pistes musicales et des textes animés uniques en un seul clic.',
+      'Génération rapide d\'arrière-plans, musique et texte. Un appui long sur le bouton 🎵 ouvre le contrôle du volume.',
     tourStep8_title: 'Réinitialiser à l\'état initial',
     tourStep8_desc:
       'Le bouton de réinitialisation remet tous les paramètres, animations et textes à leurs valeurs par défaut d\'un simple clic.',
@@ -3355,15 +3355,15 @@ export const TRANSLATIONS: Record<LanguageCode, Record<string, string>> = {
     tourStep4_title: '画布上的互动文字',
     tourStep4_desc:
       '用手指或鼠标将文字拖拽到屏幕任意位置！点击或长按文字可打开字体、字号和颜色的快捷设置菜单。',
-    tourStep5_title: '播放、“从头开始”与音效',
+    tourStep5_title: '播放与进度条',
     tourStep5_desc:
-      '在一台控制栏中掌控播放：暂停/播放、从头重新播放视频 (|◀) 以及开启/关闭声音（长按可调节音量）。',
+      '控制播放：暂停/开始与“从头开始”按钮 (|◀)，长按该按钮可调出视频进度条。',
     tourStep6_title: '动态程序化背景',
     tourStep6_desc:
       '创建独特的动态背景——宇宙、霓虹、火焰、粒子、羊皮纸——或自定义您的纯色与渐变。',
-    tourStep7_title: '快捷生成按钮',
+    tourStep7_title: '快速生成与音量调节',
     tourStep7_desc:
-      '一键生成（并实时重新生成）独特的视频背景、音乐轨道和动态文字。',
+      '快速生成背景、音乐和文本。长按 🎵 按钮可调出音量调节器。',
     tourStep8_title: '重置为初始状态',
     tourStep8_desc:
       '项目重置按钮可一键将所有设置、动画和文字恢复为默认初始状态。',
