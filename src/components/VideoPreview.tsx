@@ -1097,8 +1097,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       state.audio.fileAudioEnabled !== false &&
       fileVol > 0;
 
-    if (isPlaying && !isMuted && (isSynthActive || isFileActive)) {
-      audioMixer.play(state.audio, totalDuration, validTime, state.bgMediaUrl || undefined);
+    if (!isMuted && (isSynthActive || isFileActive)) {
+      audioMixer.seekTo(state.audio, totalDuration, validTime, state.bgMediaUrl || undefined, isPlaying);
     }
     drawFrame(validTime);
   }, [totalDuration, bgMediaElement, drawFrame, isPlaying, isMuted, state.audio, state.bgMediaUrl]);

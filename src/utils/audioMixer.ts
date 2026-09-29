@@ -208,7 +208,8 @@ class AudioMixer {
     audioState: AudioState,
     totalDuration: number,
     offsetSeconds = 0,
-    bgVideoUrl?: string
+    bgVideoUrl?: string,
+    forceSeek = false
   ) {
     if (this.isMuted) {
       this.stop();
@@ -276,6 +277,7 @@ class AudioMixer {
       }
 
       const canKeepCurrentSynth =
+        !forceSeek &&
         this.synthSourceNode &&
         this.playingPresetId === targetPresetId &&
         this.playingSeed === targetSeed &&
@@ -359,6 +361,7 @@ class AudioMixer {
       }
 
       const canKeepCurrentFile =
+        !forceSeek &&
         this.fileSourceNode &&
         this.playingFileUrl === audioState.audioUrl &&
         isFileTimeAligned;
@@ -413,6 +416,47 @@ class AudioMixer {
     }
 
     this.isPlaying = isSynthActive || isFileActive;
+  }
+
+  /**
+   * Seek audio track to explicit target offset
+   */
+  public async seekTo(
+    audioState: AudioState,
+    totalDuration: number,
+    offsetSeconds: number,
+    bgVideoUrl?: string,
+    isPlaying = true
+  ) {
+    if (this.isMuted) return;
+    this.synthStartOffset = offsetSeconds;
+    this.fileStartOffset = offsetSeconds;
+    if (this.audioCtx) {
+      this.synthStartCtxTime = this.audioCtx.currentTime;
+      this.fileStartCtxTime = this.audioCtx.currentTime;
+    }
+
+    if (isPlaying) {
+      await this.play(audioState, totalDuration, offsetSeconds, bgVideoUrl, true);
+    } else {
+      if (this.synthSourceNode) {
+        try {
+          this.synthSourceNode.stop();
+          this.synthSourceNode.disconnect();
+        } catch {}
+        this.synthSourceNode = null;
+      }
+      if (this.fileSourceNode) {
+        try {
+          this.fileSourceNode.stop();
+          this.fileSourceNode.disconnect();
+        } catch {}
+        this.fileSourceNode = null;
+      }
+      this.playingPresetId = null;
+      this.playingSeed = null;
+      this.playingFileUrl = null;
+    }
   }
 
   /**
