@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useId } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Check, Palette, RotateCcw } from 'lucide-react';
+import { X, Check, Palette, RotateCcw, Sparkles } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
+import { TextColorMode } from '../types';
 
 interface ColorPickerModalProps {
   isOpen: boolean;
@@ -9,6 +10,12 @@ interface ColorPickerModalProps {
   color: string;
   onChange: (newColor: string) => void;
   title?: string;
+  textColorMode?: TextColorMode;
+  textGradientColors?: [string, string];
+  textGradientAngle?: number;
+  onColorModeChange?: (mode: TextColorMode) => void;
+  onGradientColorsChange?: (colors: [string, string]) => void;
+  onGradientAngleChange?: (angle: number) => void;
 }
 
 // Convert Hex to RGB
@@ -134,6 +141,12 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   color,
   onChange,
   title,
+  textColorMode,
+  textGradientColors,
+  textGradientAngle,
+  onColorModeChange,
+  onGradientColorsChange,
+  onGradientAngleChange,
 }) => {
   const { t } = useLanguage();
   const modalTitle = title || t('colorPicker', 'Микшер цветов');
@@ -142,6 +155,7 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   const [currentColor, setCurrentColor] = useState(color);
   const [hexInput, setHexInput] = useState(color.toUpperCase());
   const [activeTab, setActiveTab] = useState<'hsl' | 'rgb'>('hsl');
+  const [gradientActiveIndex, setGradientActiveIndex] = useState<0 | 1>(0);
 
   const rgb = hexToRgb(currentColor);
   const hsl = rgbToHsl(rgb.r, rgb.g, rgb.b);
@@ -157,26 +171,40 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setInitialColor(color);
-      setCurrentColor(color);
-      setHexInput(color.toUpperCase());
+      if (textColorMode === 'gradient' && textGradientColors) {
+        const activeHex = textGradientColors[gradientActiveIndex] || color;
+        setCurrentColor(activeHex);
+        setHexInput(activeHex.toUpperCase());
+      } else {
+        setCurrentColor(color);
+        setHexInput(color.toUpperCase());
+      }
     }
-  }, [isOpen, color]);
+  }, [isOpen, color, textColorMode, textGradientColors, gradientActiveIndex]);
 
   if (!isOpen) return null;
 
-  const updateColorFromRgb = (r: number, g: number, b: number) => {
-    const hex = rgbToHex(r, g, b);
+  const emitColorChange = (hex: string) => {
     setCurrentColor(hex);
     setHexInput(hex.toUpperCase());
-    onChange(hex);
+    if (textColorMode === 'gradient' && onGradientColorsChange) {
+      const c1 = gradientActiveIndex === 0 ? hex : (textGradientColors?.[0] || '#f43f5e');
+      const c2 = gradientActiveIndex === 1 ? hex : (textGradientColors?.[1] || '#38bdf8');
+      onGradientColorsChange([c1, c2]);
+    } else {
+      onChange(hex);
+    }
+  };
+
+  const updateColorFromRgb = (r: number, g: number, b: number) => {
+    const hex = rgbToHex(r, g, b);
+    emitColorChange(hex);
   };
 
   const updateColorFromHsl = (h: number, s: number, l: number) => {
     const { r, g, b } = hslToRgb(h, s, l);
     const hex = rgbToHex(r, g, b);
-    setCurrentColor(hex);
-    setHexInput(hex.toUpperCase());
-    onChange(hex);
+    emitColorChange(hex);
   };
 
   const handleHexBlur = () => {
@@ -185,24 +213,18 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
     if (/^#[0-9A-Fa-f]{6}$/.test(clean) || /^#[0-9A-Fa-f]{3}$/.test(clean)) {
       const { r, g, b } = hexToRgb(clean);
       const normalized = rgbToHex(r, g, b);
-      setCurrentColor(normalized);
-      setHexInput(normalized.toUpperCase());
-      onChange(normalized);
+      emitColorChange(normalized);
     } else {
       setHexInput(currentColor.toUpperCase());
     }
   };
 
   const handleSelectPreset = (hex: string) => {
-    setCurrentColor(hex);
-    setHexInput(hex.toUpperCase());
-    onChange(hex);
+    emitColorChange(hex);
   };
 
   const handleReset = () => {
-    setCurrentColor(initialColor);
-    setHexInput(initialColor.toUpperCase());
-    onChange(initialColor);
+    emitColorChange(initialColor);
   };
 
   return createPortal(
@@ -235,6 +257,152 @@ export const ColorPickerModal: React.FC<ColorPickerModalProps> = ({
             <X className="w-4 h-4" />
           </button>
         </div>
+
+        {/* Text Color Mode Picker Bar (if text color mixer) */}
+        {onColorModeChange && (
+          <div className="space-y-1.5 p-2 bg-black/40 border border-white/10 rounded-xl">
+            <span className="text-[10px] uppercase font-bold text-purple-300 tracking-wider block">
+              {t('colorMode', 'Режим раскраски текста')}
+            </span>
+            <div className="grid grid-cols-3 gap-1 text-[10px] font-bold">
+              <button
+                type="button"
+                onClick={() => onColorModeChange('solid')}
+                className={`py-1.5 px-1 rounded-lg border transition-all cursor-pointer truncate ${
+                  (textColorMode || 'solid') === 'solid'
+                    ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
+                    : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+                }`}
+              >
+                🎨 Сплошной
+              </button>
+              <button
+                type="button"
+                onClick={() => onColorModeChange('gradient')}
+                className={`py-1.5 px-1 rounded-lg border transition-all cursor-pointer truncate ${
+                  textColorMode === 'gradient'
+                    ? 'bg-gradient-to-r from-rose-500 to-cyan-500 text-white border-cyan-400 shadow-sm'
+                    : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+                }`}
+              >
+                🌈 Градиент
+              </button>
+              <button
+                type="button"
+                onClick={() => onColorModeChange('letter-rainbow')}
+                className={`py-1.5 px-1 rounded-lg border transition-all cursor-pointer truncate ${
+                  textColorMode === 'letter-rainbow'
+                    ? 'bg-gradient-to-r from-yellow-500 via-emerald-500 to-indigo-500 text-white border-yellow-400 shadow-sm'
+                    : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+                }`}
+              >
+                🔤 Радуга букв
+              </button>
+              <button
+                type="button"
+                onClick={() => onColorModeChange('word-rainbow')}
+                className={`py-1.5 px-1 rounded-lg border transition-all cursor-pointer truncate ${
+                  textColorMode === 'word-rainbow'
+                    ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 text-white border-pink-400 shadow-sm'
+                    : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+                }`}
+              >
+                📝 Радуга слов
+              </button>
+              <button
+                type="button"
+                onClick={() => onColorModeChange('letter-random')}
+                className={`py-1.5 px-1 rounded-lg border transition-all cursor-pointer truncate ${
+                  textColorMode === 'letter-random'
+                    ? 'bg-purple-900 text-purple-200 border-purple-400 shadow-sm'
+                    : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+                }`}
+              >
+                🎲 Хаос букв
+              </button>
+              <button
+                type="button"
+                onClick={() => onColorModeChange('word-random')}
+                className={`py-1.5 px-1 rounded-lg border transition-all cursor-pointer truncate ${
+                  textColorMode === 'word-random'
+                    ? 'bg-indigo-900 text-indigo-200 border-indigo-400 shadow-sm'
+                    : 'bg-white/5 text-zinc-400 border-white/10 hover:text-white'
+                }`}
+              >
+                🔀 Хаос слов
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Gradient Settings (Color 1, Color 2, Angle) when Gradient Mode is active */}
+        {textColorMode === 'gradient' && (
+          <div className="space-y-2 p-2.5 bg-purple-950/40 border border-purple-500/40 rounded-xl animate-in fade-in duration-150">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] uppercase font-bold text-purple-200 tracking-wider flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-cyan-400" />
+                {t('gradientSettings', 'Настройка цветов градиента')}
+              </span>
+              <span className="text-[10px] font-semibold text-cyan-300">
+                {gradientActiveIndex === 0 ? 'Настройка Цвет 1' : 'Настройка Цвет 2'}
+              </span>
+            </div>
+
+            {/* Gradient Stops (Color 1 & Color 2) */}
+            <div className="flex items-center justify-around gap-2 bg-black/50 p-2 rounded-lg border border-white/10">
+              <button
+                type="button"
+                onClick={() => setGradientActiveIndex(0)}
+                className={`flex items-center gap-2 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  gradientActiveIndex === 0
+                    ? 'bg-purple-900/80 border-purple-400 ring-2 ring-purple-400 text-white shadow-md'
+                    : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span
+                  className="w-4 h-4 rounded-full border border-white/40 shadow-inner shrink-0"
+                  style={{ backgroundColor: textGradientColors?.[0] || '#f43f5e' }}
+                />
+                <span className="text-xs font-bold">Цвет 1</span>
+              </button>
+
+              <div className="w-px h-6 bg-white/15" />
+
+              <button
+                type="button"
+                onClick={() => setGradientActiveIndex(1)}
+                className={`flex items-center gap-2 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                  gradientActiveIndex === 1
+                    ? 'bg-cyan-900/80 border-cyan-400 ring-2 ring-cyan-400 text-white shadow-md'
+                    : 'bg-white/5 border-white/10 text-zinc-400 hover:text-white'
+                }`}
+              >
+                <span
+                  className="w-4 h-4 rounded-full border border-white/40 shadow-inner shrink-0"
+                  style={{ backgroundColor: textGradientColors?.[1] || '#38bdf8' }}
+                />
+                <span className="text-xs font-bold">Цвет 2</span>
+              </button>
+            </div>
+
+            {/* Angle Slider */}
+            <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
+              <span className="text-[11px] text-zinc-300 font-semibold">Угол градиента:</span>
+              <input
+                type="range"
+                min="0"
+                max="360"
+                step="15"
+                value={textGradientAngle ?? 45}
+                onChange={(e) => onGradientAngleChange?.(parseInt(e.target.value, 10))}
+                className="w-28 accent-cyan-400 bg-zinc-800 h-1.5 rounded-lg cursor-pointer"
+              />
+              <span className="text-[11px] font-mono text-cyan-300 font-bold w-10 text-right">
+                {textGradientAngle ?? 45}°
+              </span>
+            </div>
+          </div>
+        )}
 
         {/* Current Color Preview & HEX input */}
         <div className="flex items-center gap-2.5 sm:gap-3 p-2.5 rounded-xl bg-black/40 border border-white/10">

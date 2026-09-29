@@ -151,14 +151,18 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
                 type="button"
                 onClick={() => setIsTextColorPickerOpen(true)}
                 className="flex items-center gap-1 px-1.5 py-0.5 rounded border border-white/20 bg-zinc-800/80 hover:bg-zinc-700 transition-all cursor-pointer shadow-sm active:scale-95"
-                title={t('colorPicker', 'Выбрать свой цвет шрифта')}
+                title={t('colorPicker', 'Открыть полный микшер цвета текста')}
               >
                 <span
                   className="w-3.5 h-3.5 rounded-full border border-white/40 shadow-inner shrink-0"
-                  style={{ backgroundColor: state.textColor }}
+                  style={{
+                    backgroundColor: state.textColorMode === 'gradient'
+                      ? state.textGradientColors?.[0] || state.textColor
+                      : state.textColor,
+                  }}
                 />
                 <span className="text-[10px] font-mono text-zinc-300 font-semibold uppercase">
-                  {state.textColor}
+                  {state.textColorMode && state.textColorMode !== 'solid' ? state.textColorMode : state.textColor}
                 </span>
               </button>
             </div>
@@ -166,11 +170,12 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
           <div className="flex items-center gap-1.5 flex-wrap">
             {COLOR_SWATCHES.map((swatch) => {
               const isSelected =
-                state.textColor.toLowerCase() === swatch.value.toLowerCase();
+                state.textColor.toLowerCase() === swatch.value.toLowerCase() &&
+                (!state.textColorMode || state.textColorMode === 'solid');
               return (
                 <button
                   key={swatch.value}
-                  onClick={() => onChange({ textColor: swatch.value })}
+                  onClick={() => onChange({ textColor: swatch.value, textColorMode: 'solid' })}
                   className={`w-5 h-5 rounded border transition-all flex items-center justify-center cursor-pointer ${
                     isSelected
                       ? 'ring-2 ring-purple-400 scale-110 border-white z-10'
@@ -193,6 +198,176 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
             })}
           </div>
         </div>
+      </div>
+
+      {/* Text Color Modes Bar (Сплошной, Градиент, Радуга, Хаос) */}
+      <div className="bg-[#0F0F12]/90 border border-white/10 rounded-xl p-3 space-y-2.5">
+        <div className="flex items-center justify-between">
+          <span className="text-xs font-bold text-purple-300 flex items-center gap-1.5">
+            <Palette className="w-3.5 h-3.5 text-purple-400" />
+            <span>Режим раскраски и спецэффекты цвета</span>
+          </span>
+          <span className="text-[10px] font-mono text-zinc-400 font-bold uppercase">
+            {state.textColorMode || 'solid'}
+          </span>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-1.5 text-xs font-semibold">
+          <button
+            type="button"
+            onClick={() => onChange({ textColorMode: 'solid' })}
+            className={`py-1.5 px-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              (!state.textColorMode || state.textColorMode === 'solid')
+                ? 'bg-purple-600 text-white border-purple-400 shadow-sm'
+                : 'bg-zinc-800/80 text-zinc-400 border-white/10 hover:text-white'
+            }`}
+          >
+            <span>🎨 Сплошной</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChange({ textColorMode: 'gradient' })}
+            className={`py-1.5 px-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              state.textColorMode === 'gradient'
+                ? 'bg-gradient-to-r from-rose-500 to-cyan-500 text-white border-cyan-400 shadow-sm'
+                : 'bg-zinc-800/80 text-zinc-400 border-white/10 hover:text-white'
+            }`}
+          >
+            <span>🌈 Градиент</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChange({ textColorMode: 'letter-rainbow' })}
+            className={`py-1.5 px-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              state.textColorMode === 'letter-rainbow'
+                ? 'bg-gradient-to-r from-yellow-500 via-emerald-500 to-indigo-500 text-white border-yellow-400 shadow-sm'
+                : 'bg-zinc-800/80 text-zinc-400 border-white/10 hover:text-white'
+            }`}
+            title="Каждая буква анимируется своим цветом радуги"
+          >
+            <span>🔤 Радуга букв</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChange({ textColorMode: 'word-rainbow' })}
+            className={`py-1.5 px-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              state.textColorMode === 'word-rainbow'
+                ? 'bg-gradient-to-r from-purple-500 via-pink-500 to-amber-500 text-white border-pink-400 shadow-sm'
+                : 'bg-zinc-800/80 text-zinc-400 border-white/10 hover:text-white'
+            }`}
+            title="Каждое слово анимируется своим цветом радуги"
+          >
+            <span>📝 Радуга слов</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChange({ textColorMode: 'letter-random' })}
+            className={`py-1.5 px-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              state.textColorMode === 'letter-random'
+                ? 'bg-purple-900 text-purple-200 border-purple-400 shadow-sm'
+                : 'bg-zinc-800/80 text-zinc-400 border-white/10 hover:text-white'
+            }`}
+            title="Буквы получают случайные неоновые цвета"
+          >
+            <span>🎲 Хаос букв</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onChange({ textColorMode: 'word-random' })}
+            className={`py-1.5 px-2 rounded-lg border transition-all cursor-pointer flex items-center justify-center gap-1 ${
+              state.textColorMode === 'word-random'
+                ? 'bg-indigo-900 text-indigo-200 border-indigo-400 shadow-sm'
+                : 'bg-zinc-800/80 text-zinc-400 border-white/10 hover:text-white'
+            }`}
+            title="Слова получают случайные яркие цвета"
+          >
+            <span>🔀 Хаос слов</span>
+          </button>
+        </div>
+
+        {/* Gradient Settings controls if Gradient mode is active */}
+        {state.textColorMode === 'gradient' && (
+          <div className="pt-2 border-t border-white/10 space-y-2 animate-in fade-in duration-150">
+            <div className="flex items-center justify-between text-xs">
+              <span className="text-zinc-300 font-semibold">Градиентные цвета (Цвет 1 и Цвет 2):</span>
+              <button
+                type="button"
+                onClick={() => setIsTextColorPickerOpen(true)}
+                className="text-[11px] text-purple-300 hover:text-white underline cursor-pointer"
+              >
+                Настроить в Микшере →
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-3 bg-black/40 p-2 rounded-lg border border-white/10">
+              {/* Color 1 */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-zinc-400 font-medium">Цвет 1:</span>
+                <input
+                  type="color"
+                  value={state.textGradientColors?.[0] || '#f43f5e'}
+                  onChange={(e) =>
+                    onChange({
+                      textGradientColors: [
+                        e.target.value,
+                        state.textGradientColors?.[1] || '#38bdf8',
+                      ],
+                    })
+                  }
+                  className="w-7 h-7 rounded-md border-0 bg-transparent cursor-pointer"
+                />
+                <span className="font-mono text-[10px] text-zinc-300 uppercase">
+                  {state.textGradientColors?.[0] || '#f43f5e'}
+                </span>
+              </div>
+
+              {/* Color 2 */}
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] text-zinc-400 font-medium">Цвет 2:</span>
+                <input
+                  type="color"
+                  value={state.textGradientColors?.[1] || '#38bdf8'}
+                  onChange={(e) =>
+                    onChange({
+                      textGradientColors: [
+                        state.textGradientColors?.[0] || '#f43f5e',
+                        e.target.value,
+                      ],
+                    })
+                  }
+                  className="w-7 h-7 rounded-md border-0 bg-transparent cursor-pointer"
+                />
+                <span className="font-mono text-[10px] text-zinc-300 uppercase">
+                  {state.textGradientColors?.[1] || '#38bdf8'}
+                </span>
+              </div>
+
+              {/* Angle */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] text-zinc-400 font-medium">Угол:</span>
+                <input
+                  type="range"
+                  min="0"
+                  max="360"
+                  step="15"
+                  value={state.textGradientAngle ?? 45}
+                  onChange={(e) =>
+                    onChange({ textGradientAngle: parseInt(e.target.value, 10) })
+                  }
+                  className="w-20 accent-purple-500 bg-zinc-800 h-1.5 rounded-lg cursor-pointer"
+                />
+                <span className="font-mono text-[10px] text-purple-300 font-bold w-7 text-right">
+                  {state.textGradientAngle ?? 45}°
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Font Cards Grid - 1.5 rows visible with scroll */}
@@ -422,6 +597,12 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
         color={state.textColor}
         onChange={(newColor) => onChange({ textColor: newColor })}
         title={t('textColorPicker', 'Микшер цвета текста')}
+        textColorMode={state.textColorMode || 'solid'}
+        textGradientColors={state.textGradientColors || ['#f43f5e', '#38bdf8']}
+        textGradientAngle={state.textGradientAngle ?? 45}
+        onColorModeChange={(mode) => onChange({ textColorMode: mode })}
+        onGradientColorsChange={(colors) => onChange({ textGradientColors: colors })}
+        onGradientAngleChange={(angle) => onChange({ textGradientAngle: angle })}
       />
 
       <ColorPickerModal

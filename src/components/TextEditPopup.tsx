@@ -287,6 +287,12 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
             ? t('bgColorPicker', 'Микшер цвета фона')
             : t('textColorPicker', 'Микшер цвета текста')
         }
+        textColorMode={currentTab === 'text' ? (state.textColorMode || 'solid') : undefined}
+        textGradientColors={currentTab === 'text' ? (state.textGradientColors || ['#f43f5e', '#38bdf8']) : undefined}
+        textGradientAngle={currentTab === 'text' ? (state.textGradientAngle ?? 45) : undefined}
+        onColorModeChange={currentTab === 'text' ? (mode) => onChange({ textColorMode: mode }) : undefined}
+        onGradientColorsChange={currentTab === 'text' ? (colors) => onChange({ textGradientColors: colors }) : undefined}
+        onGradientAngleChange={currentTab === 'text' ? (angle) => onChange({ textGradientAngle: angle }) : undefined}
       />
     </>
   );
