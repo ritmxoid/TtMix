@@ -903,7 +903,7 @@ export default function App() {
           onReturnToLanding={() => setAppMode('start')}
           bgMediaElement={bgMediaElement}
           onOpenUploadModal={() => setIsUploadModalOpen(true)}
-          onResetProject={() => setIsResetConfirmOpen(true)}
+          onResetProject={handleResetAll}
         />
         <UploadModal
           isOpen={isUploadModalOpen}

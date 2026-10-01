@@ -3615,7 +3615,7 @@ function drawFlags(
         ctx.stroke();
       }
     } else if (bgStyle === 'flag-blur') {
-      // Ambient blurred giant background flag
+      // Ambient giant background flag watermark (optimized without heavy software Gaussian blur)
       const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, Math.max(w, h) * 0.8);
       bgGrad.addColorStop(0, '#090d16');
       bgGrad.addColorStop(0.65, '#04060a');
@@ -3623,15 +3623,13 @@ function drawFlags(
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Huge blurred national anthem watermark in center
+      // Huge national emblem watermark in center
       ctx.save();
-      ctx.globalAlpha = 0.12;
-      const watermarkSize = Math.max(w, h) * 0.75;
-      ctx.font = `${Math.floor(watermarkSize)}px "Twemoji Country Flags", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.globalAlpha = 0.09;
+      const watermarkSize = Math.max(w, h) * 0.65;
+      ctx.font = `${Math.floor(watermarkSize)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 40;
       ctx.fillText(primaryFlag, w * 0.5, h * 0.5);
       ctx.restore();
     } else {
@@ -3719,104 +3717,106 @@ function drawFlags(
     let y = 0;
     let rot = 0;
     let extraScale = 1;
+    let motionAlpha = 1;
 
     const initX = ((i * (w / totalFlags) + (flagSeed % 160)) % (w * 0.88)) + w * 0.06;
     const initY = ((i * (h / totalFlags) + (flagSeed % 180)) % (h * 0.85)) + h * 0.08;
 
     if (motion === 'vortex') {
-      // Cyclone swirl around center
-      const swirlProg = t * 0.8 + (i * Math.PI * 2) / totalFlags;
-      const swirlDist = isMegaHero ? w * 0.15 : (w * 0.38) * (0.35 + 0.65 * Math.sin(t * 0.5 + i));
+      // Cyclone swirl around center (smooth hypnotic orbit)
+      const swirlProg = t * 0.65 + (i * Math.PI * 2) / totalFlags;
+      const swirlDist = isMegaHero ? w * 0.14 : (w * 0.32) * (0.8 + 0.2 * Math.sin(t * 0.4 + i));
       x = w / 2 + Math.cos(swirlProg) * swirlDist;
       y = h / 2 + Math.sin(swirlProg) * (swirlDist * 0.65);
-      rot = swirlProg * 0.3;
+      rot = swirlProg * 0.25;
     } else if (motion === 'burst') {
-      // Radial burst expanding from center
-      const burstProg = (t * 0.45 + (i / totalFlags)) % 1;
+      // Radial burst expanding from center with smooth birth & fade-out envelope (no popping!)
+      const burstProg = ((t * 0.35) + (i / totalFlags)) % 1;
       const easeB = easeOutCubic(burstProg);
-      const bAngle = (i * Math.PI * 2) / totalFlags + t * 0.1;
-      const bDist = easeB * (Math.max(w, h) * (isMegaHero ? 0.25 : 0.62));
+      const bAngle = (i * Math.PI * 2) / totalFlags + (seed % 10) * 0.1 + t * 0.05;
+      const bDist = easeB * (Math.max(w, h) * (isMegaHero ? 0.22 : 0.58));
       x = w / 2 + Math.cos(bAngle) * bDist;
       y = h / 2 + Math.sin(bAngle) * bDist;
-      rot = Math.sin(t * 2 + i) * 0.2;
+      rot = Math.sin(t * 1.8 + i) * 0.2;
+      // Fade in at center, fade out at outer edge
+      motionAlpha = Math.sin(burstProg * Math.PI);
     } else if (motion === 'rain') {
-      // Falling from sky downwards
-      const fallSpeed = isMegaHero ? 25 : 80 + (i % 6) * 35;
-      y = ((initY + t * fallSpeed + h * 2) % (h + fontSize * 1.5)) - fontSize * 0.5;
-      x = initX + Math.sin(t * 2.2 + i) * 35;
-      rot = Math.sin(t * 1.6 + i) * 0.35;
+      // Falling from sky downwards with positive continuous modulo wrapping
+      const fallSpeed = isMegaHero ? 35 : 75 + (i % 6) * 28;
+      const spanY = h + fontSize * 2;
+      const rawY = initY + t * fallSpeed;
+      y = (((rawY % spanY) + spanY) % spanY) - fontSize;
+      x = initX + Math.sin(t * 1.8 + i) * 28;
+      rot = Math.sin(t * 1.5 + i) * 0.25;
     } else if (motion === 'zoom-3d') {
-      // Emergence from deep 3D space toward viewer
-      const zoomCycle = (t * 0.5 + (i / totalFlags)) % 1;
-      extraScale = 0.2 + Math.pow(zoomCycle, 2.2) * 2.2;
-      x = w / 2 + (initX - w / 2) * (zoomCycle * 1.4);
-      y = h / 2 + (initY - h / 2) * (zoomCycle * 1.4);
-      rot = (zoomCycle - 0.5) * 0.4;
+      // Emergence from 3D depth with smooth alpha envelope (no sudden collapse!)
+      const zoomCycle = ((t * 0.38) + (i / totalFlags)) % 1;
+      extraScale = 0.25 + Math.pow(zoomCycle, 2.0) * 1.8;
+      x = w / 2 + (initX - w / 2) * (zoomCycle * 1.3);
+      y = h / 2 + (initY - h / 2) * (zoomCycle * 1.3);
+      rot = (zoomCycle - 0.5) * 0.35;
+      motionAlpha = Math.sin(zoomCycle * Math.PI);
     } else if (motion === 'wave-banner') {
-      // Horizontal ceremonial stadium drift with strong wave
-      x = initX + Math.sin(t * 1.2 + i) * 25;
-      y = initY + Math.cos(t * 0.9 + i) * 20;
-      rot = Math.sin(t * 2.4 + i) * 0.15;
+      // Ceremonial stadium drift with graceful wave
+      x = initX + Math.sin(t * 1.0 + i) * 22;
+      y = initY + Math.cos(t * 0.8 + i) * 16;
+      rot = Math.sin(t * 2.0 + i) * 0.12;
     } else {
-      // 'drift': natural floating drift across screen
-      const speedY = isMegaHero ? -12 : -35 - (i % 4) * 20;
-      const swayAmp = isMegaHero ? 20 : 35 + (flagSeed % 25);
-      const swayFreq = 0.9 + (flagSeed % 10) * 0.1;
-      y = ((initY + t * speedY + h * 2) % (h + fontSize * 1.8)) - fontSize * 0.4;
+      // 'drift': natural floating drift with positive continuous modulo wrapping
+      const speedY = isMegaHero ? -15 : -35 - (i % 4) * 18;
+      const swayAmp = isMegaHero ? 18 : 30 + (flagSeed % 20);
+      const swayFreq = 0.8 + (flagSeed % 8) * 0.1;
+      const spanY = h + fontSize * 2;
+      const rawY = initY + t * speedY;
+      y = (((rawY % spanY) + spanY) % spanY) - fontSize;
       x = initX + Math.sin(t * swayFreq + i * 1.8) * swayAmp;
-      rot = Math.sin(t * 0.9 + i) * 0.22;
+      rot = Math.sin(t * 0.9 + i) * 0.2;
     }
 
-    // Cloth Wave / Wind Ripple Effect (undulating shearing displacement)
+    // Cloth Wave / Wind Ripple Effect (smooth fluttering oscillation without heavy CPU matrix shear)
     const hasClothWave = effect === 'cloth-wave' || effect === 'all-fx';
-    let clothSkewX = 0;
-    let clothWaveY = 0;
     if (hasClothWave) {
-      clothSkewX = Math.sin(t * 4.5 + i * 1.5) * 0.12;
-      clothWaveY = Math.cos(t * 3.8 + i * 1.2) * (fontSize * 0.06);
+      rot += Math.sin(t * 3.5 + i * 1.4) * 0.08;
+      y += Math.cos(t * 3.2 + i * 1.2) * (fontSize * 0.05);
     }
 
     // Opacity calculation
-    let alpha = isMegaHero ? 0.18 : 0.88;
+    let finalAlpha = isMegaHero ? 0.18 : 0.88;
     if (effect === 'dissolve' || effect === 'all-fx') {
       const dissolveWave = 0.55 + 0.45 * Math.sin(t * 2.2 + i * 1.4);
-      alpha *= dissolveWave;
+      finalAlpha *= dissolveWave;
     }
+    finalAlpha *= motionAlpha;
 
     ctx.save();
-    ctx.translate(x, y + clothWaveY);
+    ctx.translate(x, y);
     ctx.rotate(rot);
-    if (clothSkewX !== 0) {
-      ctx.transform(1, 0, clothSkewX, 1, 0, 0); // Wind shear
-    }
     if (extraScale !== 1) {
       ctx.scale(extraScale, extraScale);
     }
 
-    // Glow Effect
-    if (effect === 'glow' || effect === 'all-fx') {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.65)';
-      ctx.shadowBlur = isMegaHero ? 45 : 18;
+    // Glow Effect (lightweight shadowBlur only for medium/small flags to ensure 60fps)
+    if ((effect === 'glow' || effect === 'all-fx') && !isMegaHero && fontSize <= 120) {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+      ctx.shadowBlur = 6;
     }
 
-    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+    ctx.globalAlpha = Math.max(0, Math.min(1, finalAlpha));
 
-    // Render Flag emoji using high-fidelity font stack
-    ctx.font = `${Math.floor(fontSize)}px "Twemoji Country Flags", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+    // Render Flag emoji using high-performance standard font stack
+    ctx.font = `${Math.floor(fontSize)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(flag, 0, 0);
 
     // Flicker Sparkles at the flag corners
-    if (effect === 'flicker' || effect === 'all-fx') {
-      const sparkleShimmer = Math.sin(t * 35 + i * 7) > 0.35;
-      if (sparkleShimmer && !isMegaHero) {
+    if ((effect === 'flicker' || effect === 'all-fx') && !isMegaHero) {
+      const sparkleShimmer = Math.sin(t * 24 + i * 7);
+      if (sparkleShimmer > 0.4) {
         ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = '#fef08a';
-        ctx.shadowBlur = 10;
-        const sparkOffset = fontSize * 0.38;
-        ctx.fillRect(-sparkOffset, -sparkOffset * 0.7, 3, 3);
-        ctx.fillRect(sparkOffset, sparkOffset * 0.7, 3, 3);
+        const sparkOffset = fontSize * 0.36;
+        ctx.fillRect(-sparkOffset, -sparkOffset * 0.6, 2.5, 2.5);
+        ctx.fillRect(sparkOffset, sparkOffset * 0.6, 2.5, 2.5);
       }
     }
 

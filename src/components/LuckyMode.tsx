@@ -820,10 +820,29 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
   const [eyeModeNotice, setEyeModeNotice] = useState<string | null>(null);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState<boolean>(false);
 
-  const handleResetAllInLucky = () => {
+  const handleResetAllInLucky = async () => {
+    setIsResetConfirmOpen(false);
     if (onResetProject) {
-      onResetProject();
+      await onResetProject();
     }
+    const cleanDefaultState: VideoProjectState = {
+      ...baseState,
+      bgType: 'preset',
+      bgPresetId: 'ai-procedural-matrix',
+      bgMediaUrl: null,
+      bgMediaType: null,
+      mediaOverlayTheme: null,
+      mediaColorTint: null,
+      proceduralMood: 'matrix',
+      rawText: defaultMatrixText,
+      authorText: defaultMatrixAuthor,
+      textBgEnabled: false,
+    };
+    setIsEyeMode(false);
+    setSelectedVariation(null);
+    setIsTextInputOpen(false);
+    setIsRocketConfirmOpen(false);
+    setVariations(generate4Variations(cleanDefaultState, defaultMatrixText, defaultMatrixAuthor, false));
     setEyeModeNotice(t('projectResetNotice', 'Проект сброшен к начальному состоянию 🔄'));
     setTimeout(() => setEyeModeNotice(null), 3000);
   };
