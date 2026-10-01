@@ -45,6 +45,7 @@ export interface ProceduralMoodRenderOptions {
   flagsMotion?: FlagsMotionStyle;
   flagsEffect?: FlagsEffect;
   flagsBgStyle?: FlagsBgStyle;
+  flagsGrain?: boolean;
   // Clouds options (legacy compatibility)
   cloudsStyle?: CloudsSkyStyle;
   cloudsSpeed?: number;
@@ -3548,9 +3549,11 @@ function drawFlags(
   // Count: from 1 to 30 simultaneous flags!
   const totalFlags = Math.max(1, Math.min(30, options?.flagsCount ?? (mode === 'single' ? 12 : 16)));
 
-  // Resolve Primary and Secondary Countries
-  const primaryFlag = options?.flagsPrimaryCountry || '🇷🇺';
-  const secondaryFlag = options?.flagsSecondaryCountry || '🇧🇾';
+  // Resolve Primary and Secondary Countries (seed-driven variety if none explicitly specified)
+  const defaultIdx1 = Math.abs(seed * 17) % WORLD_FLAG_EMOJIS.length;
+  const defaultIdx2 = Math.abs(seed * 31 + 7) % WORLD_FLAG_EMOJIS.length;
+  const primaryFlag = options?.flagsPrimaryCountry || WORLD_FLAG_EMOJIS[defaultIdx1].flag;
+  const secondaryFlag = options?.flagsSecondaryCountry || WORLD_FLAG_EMOJIS[defaultIdx2].flag;
 
   // Scale mode: 'mixed' | 'small' | 'medium' | 'giant' | 'mega-screen'
   const scaleMode = options?.flagsScaleMode || 'mixed';
@@ -3559,16 +3562,171 @@ function drawFlags(
   const motionStyles: FlagsMotionStyle[] = ['drift', 'vortex', 'burst', 'rain', 'zoom-3d', 'wave-banner'];
   const motion: FlagsMotionStyle = options?.flagsMotion || motionStyles[Math.abs(seed) % motionStyles.length];
 
-  // Effect: 'glow' | 'dissolve' | 'flicker' | 'cloth-wave' | 'all-fx'
+  // Effect: 'glow' | 'dissolve' | 'flicker' | 'cloth-wave' | 'all-fx' | 'morph-transform'
   const effect: FlagsEffect = options?.flagsEffect || 'all-fx';
 
-  // Background style: 'dark-space' | 'stadium' | 'neon-glow' | 'cyber-grid' | 'flag-blur'
-  const bgStyles: FlagsBgStyle[] = ['dark-space', 'stadium', 'neon-glow', 'cyber-grid', 'flag-blur'];
+  // Background style: 'dark-space' | 'stadium' | 'neon-glow' | 'cyber-grid' | 'flag-blur' | 'vertical-cloth' | 'flags-morph'
+  const bgStyles: FlagsBgStyle[] = [
+    'dark-space',
+    'stadium',
+    'neon-glow',
+    'cyber-grid',
+    'flag-blur',
+    'vertical-cloth',
+    'flags-morph',
+  ];
   const bgStyle: FlagsBgStyle = options?.flagsBgStyle || bgStyles[Math.abs(seed * 7) % bgStyles.length];
 
   // Draw background if not skipped
   if (!skipSolidBg) {
-    if (bgStyle === 'stadium') {
+    if (bgStyle === 'vertical-cloth') {
+      // Atmospheric vertical hanging flag banner with realistic waving cloth folds & film grain
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bgGrad.addColorStop(0, '#060912');
+      bgGrad.addColorStop(0.5, '#0b1120');
+      bgGrad.addColorStop(1, '#030509');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Hanging vertical flag banner in center covering full screen height/width
+      ctx.save();
+      const bannerSize = Math.max(w, h) * 0.95;
+      const waveRot = Math.PI / 2 + Math.sin(t * 0.9) * 0.035; // Vertically turned with gentle wave sway
+      const waveX = w * 0.5 + Math.sin(t * 1.1) * (w * 0.02);
+      const waveY = h * 0.5 + Math.cos(t * 0.8) * (h * 0.015);
+
+      ctx.translate(waveX, waveY);
+      ctx.rotate(waveRot);
+      ctx.globalAlpha = 0.28; // Subtle backdrop transparency so foreground text remains perfectly legible
+
+      // Draw high-performance hardware scaled vertical flag
+      const RASTER_VERT_BASE = 140;
+      const vertScale = bannerSize / RASTER_VERT_BASE;
+      ctx.font = `${RASTER_VERT_BASE}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.scale(vertScale, vertScale);
+      ctx.fillText(primaryFlag, 0, 0);
+      ctx.restore();
+
+      // Specular moving cloth wave folds (luxury silk / satin cloth ripples)
+      for (let fold = 0; fold < 6; fold++) {
+        const foldPos = w * (0.12 + fold * 0.16) + Math.sin(t * 1.5 + fold * 1.4) * (w * 0.035);
+        const foldGrad = ctx.createLinearGradient(foldPos - 30, 0, foldPos + 30, 0);
+        foldGrad.addColorStop(0, 'rgba(0, 0, 0, 0.35)');
+        foldGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.08)');
+        foldGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.08)');
+        foldGrad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
+        ctx.fillStyle = foldGrad;
+        ctx.fillRect(foldPos - 30, 0, 60, h);
+      }
+
+      // Dark edge vignette to guarantee maximum text contrast
+      const vignette = ctx.createRadialGradient(
+        w * 0.5,
+        h * 0.5,
+        Math.min(w, h) * 0.3,
+        w * 0.5,
+        h * 0.5,
+        Math.max(w, h) * 0.72
+      );
+      vignette.addColorStop(0, 'rgba(0, 0, 0, 0)');
+      vignette.addColorStop(0.65, 'rgba(0, 0, 0, 0.42)');
+      vignette.addColorStop(1, 'rgba(0, 0, 0, 0.88)');
+      ctx.fillStyle = vignette;
+      ctx.fillRect(0, 0, w, h);
+    } else if (bgStyle === 'flags-morph') {
+      // Dynamic world flag morphing & dissolve transitions replacing the background
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, Math.max(w, h) * 0.85);
+      bgGrad.addColorStop(0, '#0a0e1c');
+      bgGrad.addColorStop(0.6, '#040711');
+      bgGrad.addColorStop(1, '#010206');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Morphing cycle between countries
+      const CYCLE_PERIOD = 4.0; // 4 seconds per cycle
+      const MORPH_WINDOW = 1.4; // 1.4 seconds smooth cross-fade / wipe / zoom transition
+      const cycleIdx = Math.floor(t / CYCLE_PERIOD);
+      const timeInCycle = t % CYCLE_PERIOD;
+      const isTransitioning = timeInCycle < MORPH_WINDOW;
+      const p = isTransitioning ? timeInCycle / MORPH_WINDOW : 0;
+      const easeP = easeOutCubic(p);
+
+      const flagIdx1 = Math.abs(seed * 7 + cycleIdx) % WORLD_FLAG_EMOJIS.length;
+      const flagIdx2 = Math.abs(seed * 7 + cycleIdx + 1) % WORLD_FLAG_EMOJIS.length;
+      const curFlag = WORLD_FLAG_EMOJIS[flagIdx1].flag;
+      const nextFlag = WORLD_FLAG_EMOJIS[flagIdx2].flag;
+      const transitionType = cycleIdx % 3; // 0 = dissolve, 1 = curtain wipe, 2 = zoom morph
+
+      const emblemSize = Math.max(w, h) * 0.72;
+      const RASTER_MORPH_BASE = 140;
+      const emblemScale = emblemSize / RASTER_MORPH_BASE;
+
+      ctx.save();
+      ctx.font = `${RASTER_MORPH_BASE}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      if (!isTransitioning) {
+        // Steady state: display current flag watermark with gentle pulse
+        ctx.save();
+        ctx.translate(w * 0.5, h * 0.5);
+        ctx.scale(emblemScale, emblemScale);
+        ctx.globalAlpha = 0.22 + 0.04 * Math.sin(t * 1.5);
+        ctx.fillText(curFlag, 0, 0);
+        ctx.restore();
+      } else if (transitionType === 0) {
+        // Transition 1: Dissolve & Cross-fade blend
+        ctx.save();
+        ctx.translate(w * 0.5, h * 0.5);
+        ctx.scale(emblemScale, emblemScale);
+        ctx.globalAlpha = (1 - easeP) * 0.24;
+        ctx.fillText(curFlag, 0, 0);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(w * 0.5, h * 0.5);
+        ctx.scale(emblemScale, emblemScale);
+        ctx.globalAlpha = easeP * 0.24;
+        ctx.fillText(nextFlag, 0, 0);
+        ctx.restore();
+      } else if (transitionType === 1) {
+        // Transition 2: Curtain Slide / Wipe
+        const slideOffset = easeP * w * 0.85;
+        ctx.save();
+        ctx.translate(w * 0.5 - slideOffset, h * 0.5);
+        ctx.scale(emblemScale, emblemScale);
+        ctx.globalAlpha = (1 - easeP) * 0.22;
+        ctx.fillText(curFlag, 0, 0);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(w * 0.5 + (w * 0.85 - slideOffset), h * 0.5);
+        ctx.scale(emblemScale, emblemScale);
+        ctx.globalAlpha = easeP * 0.22;
+        ctx.fillText(nextFlag, 0, 0);
+        ctx.restore();
+      } else {
+        // Transition 3: Zoom Morph (Depth emergence)
+        ctx.save();
+        ctx.translate(w * 0.5, h * 0.5);
+        const outScale = emblemScale * (1 + easeP * 0.45);
+        ctx.scale(outScale, outScale);
+        ctx.globalAlpha = (1 - easeP) * 0.22;
+        ctx.fillText(curFlag, 0, 0);
+        ctx.restore();
+
+        ctx.save();
+        ctx.translate(w * 0.5, h * 0.5);
+        const inScale = emblemScale * (0.6 + easeP * 0.4);
+        ctx.scale(inScale, inScale);
+        ctx.globalAlpha = easeP * 0.22;
+        ctx.fillText(nextFlag, 0, 0);
+        ctx.restore();
+      }
+      ctx.restore();
+    } else if (bgStyle === 'stadium') {
       // Stadium lights & upward searchlights
       const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
       bgGrad.addColorStop(0, '#020617');
@@ -3627,10 +3785,14 @@ function drawFlags(
       ctx.save();
       ctx.globalAlpha = 0.09;
       const watermarkSize = Math.max(w, h) * 0.65;
-      ctx.font = `${Math.floor(watermarkSize)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      const RASTER_WATERMARK_BASE = 140;
+      const wScale = watermarkSize / RASTER_WATERMARK_BASE;
+      ctx.font = `${RASTER_WATERMARK_BASE}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(primaryFlag, w * 0.5, h * 0.5);
+      ctx.translate(w * 0.5, h * 0.5);
+      ctx.scale(wScale, wScale);
+      ctx.fillText(primaryFlag, 0, 0);
       ctx.restore();
     } else {
       // 'dark-space': deep cosmic void with twinkling stars
@@ -3653,6 +3815,25 @@ function drawFlags(
     }
   }
 
+  // Procedural subtle film grain and fabric weave
+  if (options?.flagsGrain || bgStyle === 'vertical-cloth') {
+    ctx.save();
+    const grainStep = 6;
+    const timeJitter = Math.floor(t * 15);
+    for (let gy = 0; gy < h; gy += grainStep) {
+      const rowSeed = (gy * 91 + timeJitter * 17) % 1000;
+      for (let gx = 0; gx < w; gx += grainStep * 2) {
+        const hash = Math.sin(gx * 12.9898 + gy * 78.233 + rowSeed) * 43758.5453;
+        const val = hash - Math.floor(hash);
+        if (val > 0.84) {
+          ctx.fillStyle = val > 0.93 ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.08)';
+          ctx.fillRect(gx, gy, grainStep, grainStep);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
   // 2. Build flags array for the current scene
   const activeFlags: string[] = [];
   if (mode === 'single') {
@@ -3671,17 +3852,41 @@ function drawFlags(
     }
   }
 
-  // 3. Render Flags
-  for (let i = 0; i < totalFlags; i++) {
-    const flag = activeFlags[i];
+  // 3. Render Flags with 60fps GPU Hardware Scaling & Density Protection
+  // Intelligently cap active foreground count for giant / mega / vertical banner modes
+  let effectiveTotal = totalFlags;
+  if (bgStyle === 'vertical-cloth') {
+    // If vertical banner backdrop is active, cap flying flags to delicate accent particles
+    effectiveTotal = Math.min(totalFlags, 4);
+  } else if (scaleMode === 'mega-screen') {
+    // Prevent giant flags from stacking 30 deep and choking canvas fill-rate
+    effectiveTotal = Math.min(totalFlags, 2);
+  } else if (scaleMode === 'giant') {
+    effectiveTotal = Math.min(totalFlags, 6);
+  }
+
+  // Stable, cached raster base glyph font size (never mutated frame-to-frame to prevent GPU texture re-allocations!)
+  const RASTER_BASE_FONT = 120;
+  ctx.font = `${RASTER_BASE_FONT}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  for (let i = 0; i < effectiveTotal; i++) {
+    let flag = activeFlags[i];
     const flagSeed = seed * 43 + i * 89;
+
+    // Morph transition effect for individual flags
+    if (effect === 'morph-transform') {
+      const morphStep = Math.floor(t * 0.35 + i * 0.35);
+      const mIdx = Math.abs(seed * 11 + i * 19 + morphStep) % WORLD_FLAG_EMOJIS.length;
+      flag = WORLD_FLAG_EMOJIS[mIdx].flag;
+    }
 
     // Scale calculation
     let baseSize = 120;
     let isMegaHero = false;
 
     if (scaleMode === 'mega-screen') {
-      // Massive flags, larger than screen or dominating screen
       baseSize = Math.max(w, h) * (0.65 + ((flagSeed % 40) / 100)); // 650px - 1100px!
       isMegaHero = true;
     } else if (scaleMode === 'giant') {
@@ -3692,25 +3897,21 @@ function drawFlags(
       baseSize = 95 + (flagSeed % 75); // 95px to 170px
     } else {
       // 'mixed': dynamic hierarchy
-      if (i === 0 && totalFlags > 2) {
-        // Hero giant background flag (larger than screen)
-        baseSize = Math.max(w, h) * 0.85;
+      if (i === 0 && effectiveTotal > 2) {
+        baseSize = Math.max(w, h) * 0.82;
         isMegaHero = true;
-      } else if (i < 4) {
-        // Large flags
-        baseSize = 180 + (flagSeed % 120);
-      } else if (i > totalFlags - 6) {
-        // Micro flying flags
+      } else if (i < 3) {
+        baseSize = 180 + (flagSeed % 110);
+      } else if (i > effectiveTotal - 5) {
         baseSize = 42 + (flagSeed % 35);
       } else {
-        // Medium flags
         baseSize = 85 + (flagSeed % 70);
       }
     }
 
     // Size pulse
     const sizePulse = 0.94 + 0.12 * Math.sin(t * 1.8 + i);
-    const fontSize = baseSize * sizePulse;
+    const targetSize = baseSize * sizePulse;
 
     // Motion position computation
     let x = 0;
@@ -3719,38 +3920,37 @@ function drawFlags(
     let extraScale = 1;
     let motionAlpha = 1;
 
-    const initX = ((i * (w / totalFlags) + (flagSeed % 160)) % (w * 0.88)) + w * 0.06;
-    const initY = ((i * (h / totalFlags) + (flagSeed % 180)) % (h * 0.85)) + h * 0.08;
+    const initX = ((i * (w / effectiveTotal) + (flagSeed % 160)) % (w * 0.88)) + w * 0.06;
+    const initY = ((i * (h / effectiveTotal) + (flagSeed % 180)) % (h * 0.85)) + h * 0.08;
 
     if (motion === 'vortex') {
       // Cyclone swirl around center (smooth hypnotic orbit)
-      const swirlProg = t * 0.65 + (i * Math.PI * 2) / totalFlags;
+      const swirlProg = t * 0.65 + (i * Math.PI * 2) / effectiveTotal;
       const swirlDist = isMegaHero ? w * 0.14 : (w * 0.32) * (0.8 + 0.2 * Math.sin(t * 0.4 + i));
       x = w / 2 + Math.cos(swirlProg) * swirlDist;
       y = h / 2 + Math.sin(swirlProg) * (swirlDist * 0.65);
       rot = swirlProg * 0.25;
     } else if (motion === 'burst') {
       // Radial burst expanding from center with smooth birth & fade-out envelope (no popping!)
-      const burstProg = ((t * 0.35) + (i / totalFlags)) % 1;
+      const burstProg = ((t * 0.35) + (i / effectiveTotal)) % 1;
       const easeB = easeOutCubic(burstProg);
-      const bAngle = (i * Math.PI * 2) / totalFlags + (seed % 10) * 0.1 + t * 0.05;
+      const bAngle = (i * Math.PI * 2) / effectiveTotal + (seed % 10) * 0.1 + t * 0.05;
       const bDist = easeB * (Math.max(w, h) * (isMegaHero ? 0.22 : 0.58));
       x = w / 2 + Math.cos(bAngle) * bDist;
       y = h / 2 + Math.sin(bAngle) * bDist;
       rot = Math.sin(t * 1.8 + i) * 0.2;
-      // Fade in at center, fade out at outer edge
       motionAlpha = Math.sin(burstProg * Math.PI);
     } else if (motion === 'rain') {
       // Falling from sky downwards with positive continuous modulo wrapping
       const fallSpeed = isMegaHero ? 35 : 75 + (i % 6) * 28;
-      const spanY = h + fontSize * 2;
+      const spanY = h + targetSize * 2;
       const rawY = initY + t * fallSpeed;
-      y = (((rawY % spanY) + spanY) % spanY) - fontSize;
+      y = (((rawY % spanY) + spanY) % spanY) - targetSize;
       x = initX + Math.sin(t * 1.8 + i) * 28;
       rot = Math.sin(t * 1.5 + i) * 0.25;
     } else if (motion === 'zoom-3d') {
-      // Emergence from 3D depth with smooth alpha envelope (no sudden collapse!)
-      const zoomCycle = ((t * 0.38) + (i / totalFlags)) % 1;
+      // Emergence from 3D depth with smooth alpha envelope
+      const zoomCycle = ((t * 0.38) + (i / effectiveTotal)) % 1;
       extraScale = 0.25 + Math.pow(zoomCycle, 2.0) * 1.8;
       x = w / 2 + (initX - w / 2) * (zoomCycle * 1.3);
       y = h / 2 + (initY - h / 2) * (zoomCycle * 1.3);
@@ -3766,9 +3966,9 @@ function drawFlags(
       const speedY = isMegaHero ? -15 : -35 - (i % 4) * 18;
       const swayAmp = isMegaHero ? 18 : 30 + (flagSeed % 20);
       const swayFreq = 0.8 + (flagSeed % 8) * 0.1;
-      const spanY = h + fontSize * 2;
+      const spanY = h + targetSize * 2;
       const rawY = initY + t * speedY;
-      y = (((rawY % spanY) + spanY) % spanY) - fontSize;
+      y = (((rawY % spanY) + spanY) % spanY) - targetSize;
       x = initX + Math.sin(t * swayFreq + i * 1.8) * swayAmp;
       rot = Math.sin(t * 0.9 + i) * 0.2;
     }
@@ -3777,12 +3977,12 @@ function drawFlags(
     const hasClothWave = effect === 'cloth-wave' || effect === 'all-fx';
     if (hasClothWave) {
       rot += Math.sin(t * 3.5 + i * 1.4) * 0.08;
-      y += Math.cos(t * 3.2 + i * 1.2) * (fontSize * 0.05);
+      y += Math.cos(t * 3.2 + i * 1.2) * (targetSize * 0.05);
     }
 
     // Opacity calculation
     let finalAlpha = isMegaHero ? 0.18 : 0.88;
-    if (effect === 'dissolve' || effect === 'all-fx') {
+    if (effect === 'dissolve' || effect === 'all-fx' || effect === 'morph-transform') {
       const dissolveWave = 0.55 + 0.45 * Math.sin(t * 2.2 + i * 1.4);
       finalAlpha *= dissolveWave;
     }
@@ -3791,22 +3991,20 @@ function drawFlags(
     ctx.save();
     ctx.translate(x, y);
     ctx.rotate(rot);
-    if (extraScale !== 1) {
-      ctx.scale(extraScale, extraScale);
-    }
 
-    // Glow Effect (lightweight shadowBlur only for medium/small flags to ensure 60fps)
-    if ((effect === 'glow' || effect === 'all-fx') && !isMegaHero && fontSize <= 120) {
+    // Hardware GPU texture scale: ultra smooth, zero CPU font re-rasterization
+    const glyphScale = (targetSize / RASTER_BASE_FONT) * extraScale;
+    ctx.scale(glyphScale, glyphScale);
+
+    // Glow Effect (only for smaller flags to ensure 60fps)
+    if ((effect === 'glow' || effect === 'all-fx') && !isMegaHero && targetSize <= 120) {
       ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
       ctx.shadowBlur = 6;
     }
 
     ctx.globalAlpha = Math.max(0, Math.min(1, finalAlpha));
 
-    // Render Flag emoji using high-performance standard font stack
-    ctx.font = `${Math.floor(fontSize)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
+    // Render Flag emoji using cached glyph
     ctx.fillText(flag, 0, 0);
 
     // Flicker Sparkles at the flag corners
@@ -3814,9 +4012,9 @@ function drawFlags(
       const sparkleShimmer = Math.sin(t * 24 + i * 7);
       if (sparkleShimmer > 0.4) {
         ctx.fillStyle = '#ffffff';
-        const sparkOffset = fontSize * 0.36;
-        ctx.fillRect(-sparkOffset, -sparkOffset * 0.6, 2.5, 2.5);
-        ctx.fillRect(sparkOffset, sparkOffset * 0.6, 2.5, 2.5);
+        const sparkOffset = RASTER_BASE_FONT * 0.36;
+        ctx.fillRect(-sparkOffset, -sparkOffset * 0.6, 3, 3);
+        ctx.fillRect(sparkOffset, sparkOffset * 0.6, 3, 3);
       }
     }
 

@@ -433,8 +433,16 @@ export function generate4Variations(
     const flagsModes: FlagsCompositionMode[] = ['single', 'duo', 'multi'];
     const flagsScaleModes: FlagsScaleMode[] = ['mixed', 'small', 'medium', 'giant', 'mega-screen'];
     const flagsMotions: FlagsMotionStyle[] = ['drift', 'vortex', 'burst', 'rain', 'zoom-3d', 'wave-banner'];
-    const flagsEffects: FlagsEffect[] = ['all-fx', 'cloth-wave', 'glow', 'flicker', 'dissolve'];
-    const flagsBgStyles: FlagsBgStyle[] = ['dark-space', 'stadium', 'flag-blur', 'neon-glow', 'cyber-grid'];
+    const flagsEffects: FlagsEffect[] = ['all-fx', 'cloth-wave', 'glow', 'flicker', 'dissolve', 'morph-transform'];
+    const flagsBgStyles: FlagsBgStyle[] = [
+      'dark-space',
+      'stadium',
+      'flag-blur',
+      'neon-glow',
+      'cyber-grid',
+      'vertical-cloth',
+      'flags-morph',
+    ];
 
     const randomMatrixDir = matrixDirections[Math.floor(Math.random() * matrixDirections.length)];
     const randomMatrixTheme = matrixColorThemes[Math.floor(Math.random() * matrixColorThemes.length)];
@@ -483,6 +491,7 @@ export function generate4Variations(
       flagsMotion: randomFlagsMotion,
       flagsEffect: randomFlagsEffect,
       flagsBgStyle: randomFlagsBg,
+      flagsGrain: Math.random() > 0.5,
       cloudsStyle: randomCloudsStyle,
       cloudsSpeed: randomCloudsSpeed,
       cloudsFeather: randomCloudsFeather,

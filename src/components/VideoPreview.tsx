@@ -41,8 +41,22 @@ import {
   AlignCenter,
   AlignRight,
 } from 'lucide-react';
-import { AnimationStyle, ExtraEffects, TextMode, VideoProjectState } from '../types';
-import { FONT_OPTIONS, DEFAULT_PROJECT_STATE } from '../data/presets';
+import {
+  AnimationStyle,
+  ExtraEffects,
+  TextMode,
+  VideoProjectState,
+  ProceduralMoodStyle,
+  MatrixDirection,
+  MatrixColorTheme,
+  FireworksColorTheme,
+  FlagsCompositionMode,
+  FlagsScaleMode,
+  FlagsMotionStyle,
+  FlagsEffect,
+  FlagsBgStyle,
+} from '../types';
+import { FONT_OPTIONS, DEFAULT_PROJECT_STATE, BACKGROUND_PRESETS } from '../data/presets';
 import { BUILTIN_PRESETS, SavedPreset } from '../data/presetLibrary';
 import { SavePresetModal } from './SavePresetModal';
 import { PresetsCatalogModal } from './PresetsCatalogModal';
@@ -60,6 +74,7 @@ import { BlinkingEyeIcon, EYE_MODE_OVERLAY_THEMES } from './LuckyMode';
 import { MultiTrackVolumePopover } from './MultiTrackVolumePopover';
 import { VideoScrubberPopover } from './VideoScrubberPopover';
 import { useLanguage } from '../context/LanguageContext';
+import { WORLD_FLAG_EMOJIS } from '../utils/proceduralBackgrounds';
 import {
   trackApplyPreset,
   trackSavePreset,
@@ -1269,14 +1284,107 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   const handleRegenerateBackground = () => {
     const newSeed = Math.floor(Math.random() * 1000000) + 1;
-    const currentMood = state.proceduralMood || 'cosmic';
-    onChange({
-      bgType: 'procedural',
+
+    // Determine current mood or preset
+    const isExplicitProcedural =
+      Boolean(state.bgPresetId?.startsWith('ai-procedural-')) ||
+      Boolean(state.proceduralMood && state.bgType === 'procedural');
+
+    let targetMood: ProceduralMoodStyle;
+    let targetPresetId: string;
+
+    if (isExplicitProcedural) {
+      targetMood =
+        (state.bgPresetId?.startsWith('ai-procedural-')
+          ? (state.bgPresetId.replace('ai-procedural-', '') as ProceduralMoodStyle)
+          : undefined) ||
+        state.proceduralMood ||
+        'flags';
+      targetPresetId = state.bgPresetId?.startsWith('ai-procedural-')
+        ? state.bgPresetId
+        : `ai-procedural-${targetMood}`;
+    } else {
+      // Pick another random preset from the catalog
+      const otherPresets = BACKGROUND_PRESETS.filter((p) => p.id !== state.bgPresetId);
+      const randomPreset = otherPresets[Math.floor(Math.random() * otherPresets.length)] || BACKGROUND_PRESETS[0];
+      targetPresetId = randomPreset.id;
+      targetMood = randomPreset.id.startsWith('ai-procedural-')
+        ? (randomPreset.id.replace('ai-procedural-', '') as ProceduralMoodStyle)
+        : (state.proceduralMood || 'cosmic');
+    }
+
+    const updates: Partial<VideoProjectState> = {
+      bgType: 'preset',
+      bgPresetId: targetPresetId,
       bgMediaType: null,
       bgMediaUrl: null,
-      proceduralMood: currentMood,
+      proceduralMood: targetMood,
       proceduralSeed: newSeed,
-    });
+    };
+
+    if (targetMood === 'flags') {
+      const modes: FlagsCompositionMode[] = ['single', 'duo', 'multi'];
+      const scaleModes: FlagsScaleMode[] = ['mixed', 'small', 'medium', 'giant', 'mega-screen'];
+      const motions: FlagsMotionStyle[] = ['drift', 'vortex', 'burst', 'rain', 'zoom-3d', 'wave-banner'];
+      const effects: FlagsEffect[] = ['all-fx', 'cloth-wave', 'glow', 'flicker', 'dissolve'];
+      const stages: FlagsBgStyle[] = ['dark-space', 'stadium', 'flag-blur', 'neon-glow', 'cyber-grid'];
+
+      const randomMode = modes[Math.floor(Math.random() * modes.length)];
+      const randomCount = Math.floor(1 + Math.random() * 29); // 1 to 30!
+      const randomScale = scaleModes[Math.floor(Math.random() * scaleModes.length)];
+      const randomMotion = motions[Math.floor(Math.random() * motions.length)];
+      const randomEffect = effects[Math.floor(Math.random() * effects.length)];
+      const randomStage = stages[Math.floor(Math.random() * stages.length)];
+
+      const randomIdx1 = Math.floor(Math.random() * WORLD_FLAG_EMOJIS.length);
+      const randomFlag1 = WORLD_FLAG_EMOJIS[randomIdx1].flag;
+      const randomIdx2 = (randomIdx1 + 1 + Math.floor(Math.random() * (WORLD_FLAG_EMOJIS.length - 1))) % WORLD_FLAG_EMOJIS.length;
+      const randomFlag2 = WORLD_FLAG_EMOJIS[randomIdx2].flag;
+
+      updates.flagsMode = randomMode;
+      updates.flagsCount = randomCount;
+      updates.flagsScaleMode = randomScale;
+      updates.flagsPrimaryCountry = randomFlag1;
+      updates.flagsSecondaryCountry = randomFlag2;
+      updates.flagsMotion = randomMotion;
+      updates.flagsEffect = randomEffect;
+      updates.flagsBgStyle = randomStage;
+    } else if (targetMood === 'fireworks') {
+      const fireworksThemes: FireworksColorTheme[] = [
+        'multicolor',
+        'gold-glitter',
+        'neon-cyber',
+        'crimson-ruby',
+        'cyan-violet',
+        'emerald-lime',
+      ];
+      const scaleModes: ('mixed' | 'small' | 'medium' | 'giant')[] = ['mixed', 'small', 'medium', 'giant'];
+      updates.fireworksColorTheme = fireworksThemes[Math.floor(Math.random() * fireworksThemes.length)];
+      updates.fireworksScaleMode = scaleModes[Math.floor(Math.random() * scaleModes.length)];
+      updates.fireworksCount = Math.floor(1 + Math.random() * 29); // 1 to 30!
+    } else if (targetMood === 'matrix') {
+      const dirs: MatrixDirection[] = [
+        'top-down',
+        'bottom-up',
+        'left-right',
+        'right-left',
+        'edges-to-center',
+        'center-to-edges',
+      ];
+      const themes: MatrixColorTheme[] = [
+        'classic-green',
+        'cyber-cyan',
+        'neon-purple',
+        'amber-gold',
+        'red-alert',
+        'rainbow',
+        'random-shift',
+      ];
+      updates.matrixDirection = dirs[Math.floor(Math.random() * dirs.length)];
+      updates.matrixColorTheme = themes[Math.floor(Math.random() * themes.length)];
+    }
+
+    onChange(updates);
   };
 
   const handleRegenerateMusic = () => {

@@ -149,14 +149,17 @@ export type FlagsEffect =
   | 'dissolve'
   | 'flicker'
   | 'cloth-wave'
-  | 'all-fx';
+  | 'all-fx'
+  | 'morph-transform';
 
 export type FlagsBgStyle =
   | 'dark-space'
   | 'stadium'
   | 'neon-glow'
   | 'cyber-grid'
-  | 'flag-blur';
+  | 'flag-blur'
+  | 'vertical-cloth'
+  | 'flags-morph';
 
 export type CloudsSkyStyle =
   | 'sunset-fiery'
@@ -201,8 +204,9 @@ export interface VideoProjectState {
   flagsPrimaryCountry?: string; // Primary flag emoji (e.g. 🇷🇺)
   flagsSecondaryCountry?: string; // Secondary flag emoji (e.g. 🇧🇾)
   flagsMotion?: FlagsMotionStyle; // 'drift' | 'vortex' | 'burst' | 'rain' | 'zoom-3d' | 'wave-banner'
-  flagsEffect?: FlagsEffect; // 'glow' | 'dissolve' | 'flicker' | 'cloth-wave' | 'all-fx'
-  flagsBgStyle?: FlagsBgStyle; // 'dark-space' | 'stadium' | 'neon-glow' | 'cyber-grid' | 'flag-blur'
+  flagsEffect?: FlagsEffect; // 'glow' | 'dissolve' | 'flicker' | 'cloth-wave' | 'all-fx' | 'morph-transform'
+  flagsBgStyle?: FlagsBgStyle; // 'dark-space' | 'stadium' | 'neon-glow' | 'cyber-grid' | 'flag-blur' | 'vertical-cloth' | 'flags-morph'
+  flagsGrain?: boolean; // Grain & fabric weave texture overlay
   // Clouds theme options (legacy compatibility)
   cloudsStyle?: CloudsSkyStyle;
   cloudsSpeed?: number;

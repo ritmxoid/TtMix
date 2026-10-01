@@ -597,8 +597,8 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                 const modes: FlagsCompositionMode[] = ['single', 'duo', 'multi'];
                 const scaleModes: FlagsScaleMode[] = ['mixed', 'small', 'medium', 'giant', 'mega-screen'];
                 const motionList: FlagsMotionStyle[] = ['drift', 'vortex', 'burst', 'rain', 'zoom-3d', 'wave-banner'];
-                const effectList: FlagsEffect[] = ['all-fx', 'cloth-wave', 'glow', 'flicker', 'dissolve'];
-                const bgList: FlagsBgStyle[] = ['dark-space', 'stadium', 'flag-blur', 'neon-glow', 'cyber-grid'];
+                const effectList: FlagsEffect[] = ['all-fx', 'cloth-wave', 'glow', 'flicker', 'dissolve', 'morph-transform'];
+                const bgList: FlagsBgStyle[] = ['dark-space', 'stadium', 'flag-blur', 'neon-glow', 'cyber-grid', 'vertical-cloth', 'flags-morph'];
 
                 const randomMode = modes[Math.floor(Math.random() * modes.length)];
                 const randomScale = scaleModes[Math.floor(Math.random() * scaleModes.length)];
@@ -610,6 +610,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                 const randomFlag1 = WORLD_FLAG_EMOJIS[Math.floor(Math.random() * WORLD_FLAG_EMOJIS.length)].flag;
                 const randomFlag2 = WORLD_FLAG_EMOJIS[Math.floor(Math.random() * WORLD_FLAG_EMOJIS.length)].flag;
                 const randomSeed = Math.floor(Math.random() * 1000000);
+                const randomGrain = Math.random() > 0.5;
 
                 onChange({
                   flagsMode: randomMode,
@@ -617,6 +618,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   flagsMotion: randomMotion,
                   flagsEffect: randomEffect,
                   flagsBgStyle: randomBg,
+                  flagsGrain: randomGrain,
                   flagsCount: randomCount,
                   flagsPrimaryCountry: randomFlag1,
                   flagsSecondaryCountry: randomFlag2,
@@ -942,6 +944,8 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                   ? '🎇 Мерцание и искры'
                   : state.flagsEffect === 'dissolve'
                   ? '🌫️ Плавное растворение'
+                  : state.flagsEffect === 'morph-transform'
+                  ? '🔄 Морфинг и смена флагов'
                   : '🌟 Все спецэффекты сразу'}
               </span>
             </label>
@@ -952,6 +956,7 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                 { id: 'glow' as const, label: '✨ Сияние' },
                 { id: 'flicker' as const, label: '🎇 Мерцание' },
                 { id: 'dissolve' as const, label: '🌫️ Растворение' },
+                { id: 'morph-transform' as const, label: '🔄 Морфинг' },
               ].map((eff) => {
                 const isSelected = (state.flagsEffect || 'all-fx') === eff.id;
                 return (
@@ -977,7 +982,11 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
             <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
               <span>Фон подложки:</span>
               <span className="text-blue-400 font-mono text-[10px]">
-                {state.flagsBgStyle === 'stadium'
+                {state.flagsBgStyle === 'vertical-cloth'
+                  ? '📜 Вертикальный стяг с зерном'
+                  : state.flagsBgStyle === 'flags-morph'
+                  ? '🔄 Морфинг и растворение флагов'
+                  : state.flagsBgStyle === 'stadium'
                   ? '🏟️ Стадион и прожекторы'
                   : state.flagsBgStyle === 'flag-blur'
                   ? '🚩 Размытый флаг на фоне'
@@ -991,6 +1000,8 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
             <div className="flex items-center gap-1.5 flex-wrap">
               {[
                 { id: 'dark-space' as const, label: '🌌 Тёмный космос' },
+                { id: 'vertical-cloth' as const, label: '📜 Стяг с зерном' },
+                { id: 'flags-morph' as const, label: '🔄 Смена и растворение' },
                 { id: 'stadium' as const, label: '🏟️ Стадион' },
                 { id: 'flag-blur' as const, label: '🚩 Размытый флаг' },
                 { id: 'neon-glow' as const, label: '⚡ Неон' },
@@ -1013,6 +1024,24 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
                 );
               })}
             </div>
+          </div>
+
+          {/* Grain texture toggle */}
+          <div className="flex items-center justify-between pt-1 border-t border-white/10">
+            <span className="text-[11px] font-medium text-zinc-300 flex items-center gap-1.5">
+              <span>🌾 Кинозерно и текстура ткани:</span>
+            </span>
+            <button
+              type="button"
+              onClick={() => onChange({ flagsGrain: !state.flagsGrain })}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-semibold border transition-all cursor-pointer flex items-center gap-1.5 ${
+                state.flagsGrain || state.flagsBgStyle === 'vertical-cloth'
+                  ? 'bg-blue-500/30 border-blue-400 text-white shadow-xs'
+                  : 'bg-black/40 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
+              }`}
+            >
+              <span>{state.flagsGrain || state.flagsBgStyle === 'vertical-cloth' ? '✓ Включено' : 'Выключено'}</span>
+            </button>
           </div>
 
           <p className="text-[10.5px] text-zinc-400 leading-relaxed font-mono">

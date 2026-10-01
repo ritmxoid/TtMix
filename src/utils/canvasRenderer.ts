@@ -674,6 +674,7 @@ function drawPresetOrOverlayBackground(
       flagsMotion: state.flagsMotion,
       flagsEffect: state.flagsEffect,
       flagsBgStyle: state.flagsBgStyle,
+      flagsGrain: state.flagsGrain,
       cloudsStyle: state.cloudsStyle,
       cloudsSpeed: state.cloudsSpeed,
       cloudsFeather: state.cloudsFeather,
