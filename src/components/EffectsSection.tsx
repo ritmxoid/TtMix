@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Flame, Sparkles, SunMedium, Zap, BoxSelect, Orbit } from 'lucide-react';
+import { Flame, Sparkles, SunMedium, Zap, BoxSelect, Orbit, Sparkle, PartyPopper, CloudFog } from 'lucide-react';
 import { ExtraEffects, VideoProjectState } from '../types';
 import { ColorPickerModal } from './ColorPickerModal';
 import { useLanguage } from '../context/LanguageContext';
@@ -15,6 +15,7 @@ export const EffectsSection: React.FC<EffectsSectionProps> = ({
 }) => {
   const { t } = useLanguage();
   const [isColorPickerOpen, setIsColorPickerOpen] = useState(false);
+  const [isSmokeColorPickerOpen, setIsSmokeColorPickerOpen] = useState(false);
 
   const EFFECTS_CONFIG: {
     key: keyof ExtraEffects;
@@ -23,6 +24,27 @@ export const EffectsSection: React.FC<EffectsSectionProps> = ({
     icon: React.ReactNode;
     activeColor: string;
   }[] = [
+    {
+      key: 'sparkler',
+      title: t('effectSparklerTitle', 'Бенгальский огонь'),
+      desc: t('effectSparklerDesc', 'Трещащие яркие золотисто-белые искры разлетаются от контуров букв'),
+      icon: <Sparkle className="w-4 h-4 text-amber-300" />,
+      activeColor: 'border-amber-400/60 bg-amber-500/15 text-amber-200',
+    },
+    {
+      key: 'firework',
+      title: t('effectFireworkTitle', 'Фейерверк'),
+      desc: t('effectFireworkDesc', 'Праздничные мини-салюты и мерцающие вспышки над буквами'),
+      icon: <PartyPopper className="w-4 h-4 text-rose-300" />,
+      activeColor: 'border-rose-400/60 bg-rose-500/15 text-rose-200',
+    },
+    {
+      key: 'smoke',
+      title: t('effectSmokeTitle', 'Дым'),
+      desc: t('effectSmokeDesc', 'Клубящийся атмосферный дым поднимается от текста'),
+      icon: <CloudFog className="w-4 h-4 text-slate-300" />,
+      activeColor: 'border-slate-400/60 bg-slate-500/15 text-slate-200',
+    },
     {
       key: 'particles',
       title: t('effectParticlesTitle', 'Частицы (Particles)'),
@@ -144,6 +166,38 @@ export const EffectsSection: React.FC<EffectsSectionProps> = ({
                 {state.neonColor}
               </span>
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Smoke Color selector if Smoke is enabled */}
+      {state.effects.smoke && (
+        <div className="pt-2 border-t border-white/10 flex items-center justify-between text-xs">
+          <span className="text-slate-300 flex items-center gap-1.5 font-medium">
+            <CloudFog className="w-3.5 h-3.5 text-slate-400" /> Цвет дыма:
+          </span>
+          <div className="flex items-center gap-1.5">
+            {[
+              { id: undefined, label: 'Разноцветный', color: 'linear-gradient(135deg, #a855f7, #38bdf8, #f472b6)' },
+              { id: '#cbd5e1', label: 'Белый дым', color: '#cbd5e1' },
+              { id: '#a855f7', label: 'Неоновый фиолетовый', color: '#a855f7' },
+              { id: '#38bdf8', label: 'Циан', color: '#38bdf8' },
+              { id: '#f43f5e', label: 'Рубиновый', color: '#f43f5e' },
+            ].map((s) => {
+              const isSelected = state.effects.smokeColor === s.id;
+              return (
+                <button
+                  type="button"
+                  key={s.label}
+                  onClick={() => onChange({ effects: { ...state.effects, smokeColor: s.id } })}
+                  className={`w-5 h-5 rounded-full border transition-all cursor-pointer ${
+                    isSelected ? 'ring-2 ring-purple-400 scale-110 border-white' : 'border-white/25 hover:scale-105'
+                  }`}
+                  style={{ background: s.color }}
+                  title={s.label}
+                />
+              );
+            })}
           </div>
         </div>
       )}

@@ -1,4 +1,4 @@
-import { BackgroundPreset, FontOption } from '../types';
+import { BackgroundPreset, FontOption, VideoProjectState } from '../types';
 
 export const FONT_OPTIONS: FontOption[] = [
   {
@@ -196,6 +196,27 @@ export const FONT_OPTIONS: FontOption[] = [
 ];
 
 export const BACKGROUND_PRESETS: BackgroundPreset[] = [
+  {
+    id: 'ai-procedural-matrix',
+    name: 'Матрица',
+    type: 'procedural',
+    colors: ['#000000', '#022c15', '#00ff66'],
+    description: 'Бегущие биты и символы кода с трансформацией в текст в реальном времени',
+  },
+  {
+    id: 'ai-procedural-fireworks',
+    name: 'Фейерверки',
+    type: 'procedural',
+    colors: ['#050510', '#180a2a', '#facc15'],
+    description: '35+ видов салютов: хризантемы, ивы, камуро, кольца, кометы и комбо-залпы от 1 до 30 штук',
+  },
+  {
+    id: 'ai-procedural-flags',
+    name: 'Флаги',
+    type: 'procedural',
+    colors: ['#0f172a', '#1e293b', '#38bdf8'],
+    description: 'Летающие флаги стран: соло, дуэли и парад от 1 до 30 флагов с развеванием, сиянием и масштабом до гигантского',
+  },
   {
     id: 'ai-procedural-cosmic',
     name: '✨ Космос и Магия',
@@ -460,4 +481,59 @@ export const LOCALIZED_DEFAULT_TEXTS: Record<string, string> = {
 export function getDefaultSampleText(lang: string = 'ru'): string {
   return LOCALIZED_DEFAULT_TEXTS[lang] || LOCALIZED_DEFAULT_TEXTS.en || LOCALIZED_DEFAULT_TEXTS.ru;
 }
+
+export const DEFAULT_PROJECT_STATE: VideoProjectState = {
+  bgType: 'preset',
+  bgMediaUrl: null,
+  bgMediaType: null,
+  bgPresetId: 'ai-procedural-cosmic',
+  proceduralMood: 'cosmic',
+  proceduralSeed: 1337,
+  bgOverlayOpacity: 0.20,
+  audio: {
+    enabled: false,
+    sourceType: 'generator',
+    audioUrl: null,
+    audioFileName: null,
+    presetId: 'lofi-chill',
+    volume: 0.7,
+    loop: true,
+    audioDuration: 0,
+  },
+  rawText: '',
+  authorText: '',
+  textMode: 'sentence',
+  fontFamily: "'Amatic SC', cursive",
+  fontSize: 128,
+  textColor: '#ffffff',
+  textColorMode: 'solid',
+  textOpacity: 1.0,
+  strokeEnabled: false,
+  strokeColor: '#000000',
+  strokeWidth: 6,
+  textAlign: 'center',
+  textPosition: 'center',
+  textPositionY: 50,
+  textPositionX: 50,
+  isUppercase: false,
+  textBgEnabled: false,
+  textBgColor: '#0070f3',
+  textBgOpacity: 0.85,
+  textBgPadding: 20,
+  textBgRadius: 18,
+  textMaxWidthPercent: 85,
+  animationStyle: 'typewriter',
+  effects: {
+    glow: true,
+    sparkle: false,
+    fire: false,
+    neon: false,
+    shadow: true,
+    particles: true,
+  },
+  neonColor: '#a855f7',
+  speedMultiplier: 1.0,
+  pauseBetweenSeconds: 0.8,
+  aspectRatio: '9:16',
+};
 

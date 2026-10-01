@@ -13,7 +13,20 @@ import {
   Infinity,
 } from 'lucide-react';
 import { BACKGROUND_PRESETS } from '../data/presets';
-import { VideoProjectState, ProceduralMoodStyle } from '../types';
+import {
+  VideoProjectState,
+  ProceduralMoodStyle,
+  MatrixDirection,
+  MatrixColorTheme,
+  FireworksColorTheme,
+  FlagsCompositionMode,
+  FlagsScaleMode,
+  FlagsMotionStyle,
+  FlagsEffect,
+  FlagsBgStyle,
+  CloudsSkyStyle,
+} from '../types';
+import { WORLD_FLAG_EMOJIS } from '../utils/proceduralBackgrounds';
 import { ColorPickerModal } from './ColorPickerModal';
 import { useLanguage } from '../context/LanguageContext';
 import { trackSelectBgTheme } from '../utils/analytics';
@@ -230,6 +243,783 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Matrix Code Digital Rain Controls */}
+      {(state.bgPresetId === 'ai-procedural-matrix' || state.proceduralMood === 'matrix') && (
+        <div className="bg-gradient-to-b from-emerald-950/40 to-black/60 border border-emerald-500/30 rounded-xl p-3.5 space-y-3 shadow-inner">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="text-xs font-bold text-emerald-300 flex items-center gap-1.5 font-mono uppercase tracking-wider">
+                🟢 Матрица: Настройки кода
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const dirs: MatrixDirection[] = [
+                  'top-down',
+                  'bottom-up',
+                  'left-right',
+                  'right-left',
+                  'edges-to-center',
+                  'center-to-edges',
+                ];
+                const themes: MatrixColorTheme[] = [
+                  'classic-green',
+                  'cyber-cyan',
+                  'neon-purple',
+                  'amber-gold',
+                  'red-alert',
+                  'rainbow',
+                  'random-shift',
+                ];
+                const randomDir = dirs[Math.floor(Math.random() * dirs.length)];
+                const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+                const randomSeed = Math.floor(Math.random() * 1000000);
+                onChange({
+                  matrixDirection: randomDir,
+                  matrixColorTheme: randomTheme,
+                  proceduralSeed: randomSeed,
+                });
+              }}
+              className="text-[11px] font-semibold text-emerald-300 hover:text-white bg-emerald-500/20 hover:bg-emerald-500/30 px-2.5 py-1 rounded-lg border border-emerald-500/30 transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+              title="Рандомизировать направление, цвета и расположение битов"
+            >
+              <Dices className="w-3.5 h-3.5" /> Микс матрицы
+            </button>
+          </div>
+
+          {/* 1. Matrix Direction selector (6 directions) */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Направление потока:</span>
+              <span className="text-emerald-400 font-mono text-[10px]">
+                {state.matrixDirection === 'bottom-up'
+                  ? '⬆️ Снизу вверх'
+                  : state.matrixDirection === 'left-right'
+                  ? '➡️ Слева направо'
+                  : state.matrixDirection === 'right-left'
+                  ? '⬅️ Справа налево'
+                  : state.matrixDirection === 'edges-to-center'
+                  ? '🎯 С краев к центру'
+                  : state.matrixDirection === 'center-to-edges'
+                  ? '💥 От центра к краям'
+                  : '⬇️ Сверху вниз'}
+              </span>
+            </label>
+
+            <div className="grid grid-cols-3 sm:grid-cols-6 gap-1.5">
+              {[
+                { id: 'top-down' as MatrixDirection, label: '⬇️ Вниз', title: 'Сверху вниз (Классика)' },
+                { id: 'bottom-up' as MatrixDirection, label: '⬆️ Вверх', title: 'Снизу вверх (Антигравитация)' },
+                { id: 'left-right' as MatrixDirection, label: '➡️ Вправо', title: 'Слева направо (Кибер-сканер)' },
+                { id: 'right-left' as MatrixDirection, label: '⬅️ Влево', title: 'Справа налево (Реверс)' },
+                { id: 'edges-to-center' as MatrixDirection, label: '🎯 К центру', title: 'С краев навстречу к центру' },
+                { id: 'center-to-edges' as MatrixDirection, label: '💥 Из центра', title: 'От центра к краям экрана' },
+              ].map((item) => {
+                const isSelected = (state.matrixDirection || 'top-down') === item.id;
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => onChange({ matrixDirection: item.id })}
+                    className={`py-1.5 px-1 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer text-center truncate ${
+                      isSelected
+                        ? 'bg-emerald-500/30 border-emerald-400 text-white shadow-sm ring-1 ring-emerald-400/50 scale-[1.02]'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:border-emerald-500/30 hover:text-white'
+                    }`}
+                    title={item.title}
+                  >
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Matrix Color Theme selector (7 styles) */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Цветовая гамма битов:</span>
+              <span className="text-emerald-400 font-mono text-[10px]">
+                {state.matrixColorTheme === 'cyber-cyan'
+                  ? '🔷 Циан'
+                  : state.matrixColorTheme === 'neon-purple'
+                  ? '🟣 Пурпур'
+                  : state.matrixColorTheme === 'amber-gold'
+                  ? '🟠 Янтарный'
+                  : state.matrixColorTheme === 'red-alert'
+                  ? '🔴 Кибер-красный'
+                  : state.matrixColorTheme === 'rainbow'
+                  ? '🌈 Радуга'
+                  : state.matrixColorTheme === 'random-shift'
+                  ? '🎲 Случайный перелив'
+                  : '🟢 Зеленый (Matrix)'}
+              </span>
+            </label>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { id: 'classic-green' as MatrixColorTheme, name: 'Зеленый', color: '#00ff66' },
+                { id: 'cyber-cyan' as MatrixColorTheme, name: 'Циан', color: '#00f0ff' },
+                { id: 'neon-purple' as MatrixColorTheme, name: 'Пурпур', color: '#e879f9' },
+                { id: 'amber-gold' as MatrixColorTheme, name: 'Янтарный', color: '#facc15' },
+                { id: 'red-alert' as MatrixColorTheme, name: 'Красный', color: '#f43f5e' },
+                { id: 'rainbow' as MatrixColorTheme, name: 'Радуга', gradient: 'linear-gradient(135deg, #f43f5e, #facc15, #00ff66, #00f0ff, #e879f9)' },
+                { id: 'random-shift' as MatrixColorTheme, name: 'Рандом', gradient: 'radial-gradient(circle, #38bdf8, #a855f7, #ec4899)' },
+              ].map((theme) => {
+                const isSelected = (state.matrixColorTheme || 'classic-green') === theme.id;
+                return (
+                  <button
+                    type="button"
+                    key={theme.id}
+                    onClick={() => onChange({ matrixColorTheme: theme.id })}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-emerald-500/25 border-emerald-400 text-white shadow-sm ring-1 ring-emerald-400/40 scale-[1.03]'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:border-white/20 hover:text-white'
+                    }`}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full border border-white/30 shrink-0 shadow-xs"
+                      style={theme.gradient ? { background: theme.gradient } : { backgroundColor: theme.color }}
+                    />
+                    <span>{theme.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <p className="text-[10.5px] text-zinc-400 leading-relaxed font-mono">
+            💡 Размер битов синхронизирован с размером текста. В центре экрана биты раскодируются в буквы текста.
+          </p>
+        </div>
+      )}
+
+      {/* Fireworks Procedural Generator Controls */}
+      {(state.bgPresetId === 'ai-procedural-fireworks' || state.proceduralMood === 'fireworks') && (
+        <div className="bg-gradient-to-b from-purple-950/40 via-amber-950/20 to-black/60 border border-amber-500/30 rounded-xl p-3.5 space-y-3.5 shadow-inner">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+              <span className="text-xs font-bold text-amber-300 flex items-center gap-1.5 font-mono uppercase tracking-wider">
+                🎆 Фейерверки: Настройки салюта
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const themes: FireworksColorTheme[] = [
+                  'multicolor',
+                  'gold-glitter',
+                  'neon-cyber',
+                  'crimson-ruby',
+                  'cyan-violet',
+                  'emerald-lime',
+                ];
+                const scaleModes: ('mixed' | 'small' | 'medium' | 'giant')[] = ['mixed', 'small', 'medium', 'giant'];
+                const randomTheme = themes[Math.floor(Math.random() * themes.length)];
+                const randomScale = scaleModes[Math.floor(Math.random() * scaleModes.length)];
+                const randomCount = Math.floor(1 + Math.random() * 29); // 1 to 30!
+                const randomSeed = Math.floor(Math.random() * 1000000);
+                onChange({
+                  fireworksColorTheme: randomTheme,
+                  fireworksScaleMode: randomScale,
+                  fireworksCount: randomCount,
+                  proceduralSeed: randomSeed,
+                });
+              }}
+              className="text-[11px] font-semibold text-amber-300 hover:text-white bg-amber-500/20 hover:bg-amber-500/30 px-2.5 py-1 rounded-lg border border-amber-500/30 transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+              title="Рандомизировать количество, масштаб, разновидности салютов и палитру"
+            >
+              <Dices className="w-3.5 h-3.5" /> Микс салютов
+            </button>
+          </div>
+
+          {/* 1. Fireworks Count Slider (1 to 30) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-zinc-400 font-medium">Количество салютов одновременно:</span>
+              <span className="text-amber-400 font-mono font-bold text-xs">
+                {state.fireworksCount ?? 8} {Number(state.fireworksCount ?? 8) === 1 ? 'залп (соло)' : Number(state.fireworksCount ?? 8) === 30 ? 'залпов (гранд финал!)' : 'залпов'}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="30"
+              step="1"
+              value={state.fireworksCount ?? 8}
+              onChange={(e) => onChange({ fireworksCount: parseInt(e.target.value, 10) })}
+              className="w-full accent-amber-500 bg-zinc-800 h-2 rounded-lg cursor-pointer"
+            />
+            {/* Quick Count Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              {[
+                { count: 1, label: '1 (Соло)' },
+                { count: 5, label: '5 (Шоу)' },
+                { count: 10, label: '10 (Салют)' },
+                { count: 20, label: '20 (Батарея)' },
+                { count: 30, label: '30 (Гранд Финал)' },
+              ].map((chip) => {
+                const isSelected = (state.fireworksCount ?? 8) === chip.count;
+                return (
+                  <button
+                    type="button"
+                    key={chip.count}
+                    onClick={() => onChange({ fireworksCount: chip.count })}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-500/30 border-amber-400 text-white shadow-xs'
+                        : 'bg-black/30 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Scale Mode: small, medium, giant, mixed */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Масштаб и калибр салютов:</span>
+              <span className="text-amber-400 font-mono text-[10px]">
+                {state.fireworksScaleMode === 'giant'
+                  ? '💥 Очень крупные'
+                  : state.fireworksScaleMode === 'small'
+                  ? '🎇 Мелкие искры'
+                  : state.fireworksScaleMode === 'medium'
+                  ? '✨ Средние'
+                  : '🎲 От мелких до гигантских'}
+              </span>
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { id: 'mixed' as const, label: '🎲 Разные (от мелких до гигантских)', desc: 'Все калибры сразу' },
+                { id: 'giant' as const, label: '💥 Очень крупные', desc: 'Мега-снаряды на весь экран' },
+                { id: 'medium' as const, label: '✨ Средние', desc: 'Классический калибр' },
+                { id: 'small' as const, label: '🎇 Мелкие', desc: 'Плотная россыпь искр' },
+              ].map((scaleOpt) => {
+                const isSelected = (state.fireworksScaleMode || 'mixed') === scaleOpt.id;
+                return (
+                  <button
+                    type="button"
+                    key={scaleOpt.id}
+                    onClick={() => onChange({ fireworksScaleMode: scaleOpt.id })}
+                    className={`py-1.5 px-2 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer text-left truncate flex flex-col justify-center ${
+                      isSelected
+                        ? 'bg-amber-500/30 border-amber-400 text-white shadow-sm ring-1 ring-amber-400/50'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:border-amber-500/30 hover:text-white'
+                    }`}
+                  >
+                    <span className="truncate">{scaleOpt.label}</span>
+                    <span className="text-[9px] text-zinc-400 font-normal truncate">{scaleOpt.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Fireworks Color Theme selector */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Цветовая гамма салютов:</span>
+              <span className="text-amber-400 font-mono text-[10px]">
+                {state.fireworksColorTheme === 'gold-glitter'
+                  ? '✨ Золотой блеск'
+                  : state.fireworksColorTheme === 'neon-cyber'
+                  ? '⚡ Неоновый кибер'
+                  : state.fireworksColorTheme === 'crimson-ruby'
+                  ? '🔴 Рубиновый пламень'
+                  : state.fireworksColorTheme === 'cyan-violet'
+                  ? '🔷 Циан и Пурпур'
+                  : state.fireworksColorTheme === 'emerald-lime'
+                  ? '🟢 Изумрудный'
+                  : '🌈 Праздничный мультиколор'}
+              </span>
+            </label>
+
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { id: 'multicolor' as FireworksColorTheme, name: 'Мультиколор', gradient: 'linear-gradient(135deg, #f43f5e, #fbbf24, #38bdf8, #a855f7)' },
+                { id: 'gold-glitter' as FireworksColorTheme, name: 'Золото', color: '#facc15' },
+                { id: 'neon-cyber' as FireworksColorTheme, name: 'Кибернеон', gradient: 'linear-gradient(135deg, #ff007f, #00f0ff)' },
+                { id: 'crimson-ruby' as FireworksColorTheme, name: 'Рубин', color: '#ef4444' },
+                { id: 'cyan-violet' as FireworksColorTheme, name: 'Циан/Пурпур', gradient: 'linear-gradient(135deg, #06b6d4, #a855f7)' },
+                { id: 'emerald-lime' as FireworksColorTheme, name: 'Изумруд', color: '#10b981' },
+              ].map((theme) => {
+                const isSelected = (state.fireworksColorTheme || 'multicolor') === theme.id;
+                return (
+                  <button
+                    type="button"
+                    key={theme.id}
+                    onClick={() => onChange({ fireworksColorTheme: theme.id })}
+                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg border text-[11px] font-medium transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-amber-500/25 border-amber-400 text-white shadow-sm ring-1 ring-amber-400/40 scale-[1.03]'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:border-white/20 hover:text-white'
+                    }`}
+                  >
+                    <span
+                      className="w-3 h-3 rounded-full border border-white/30 shrink-0 shadow-xs"
+                      style={theme.gradient ? { background: theme.gradient } : { backgroundColor: theme.color }}
+                    />
+                    <span>{theme.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <p className="text-[10.5px] text-zinc-400 leading-relaxed font-mono">
+            💡 35+ разновидностей салютов: хризантемы, ивы, камуро, сердце, сатурн, мандала, супернова, драконьи яйца, кометы, водопады и комбо-залпы от 1 до 30 штук одновременно.
+          </p>
+        </div>
+      )}
+
+      {/* Flags Procedural Generator Controls */}
+      {(state.bgPresetId === 'ai-procedural-flags' || state.proceduralMood === 'flags' || state.bgPresetId === 'ai-procedural-clouds' || state.proceduralMood === 'clouds') && (
+        <div className="bg-gradient-to-b from-blue-950/40 via-indigo-950/25 to-black/60 border border-blue-500/30 rounded-xl p-3.5 space-y-3.5 shadow-inner">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-blue-400 animate-ping" />
+              <span className="text-xs font-bold text-blue-300 flex items-center gap-1.5 font-mono uppercase tracking-wider">
+                🚩 Флаги: Настройки флагов стран
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                const modes: FlagsCompositionMode[] = ['single', 'duo', 'multi'];
+                const scaleModes: FlagsScaleMode[] = ['mixed', 'small', 'medium', 'giant', 'mega-screen'];
+                const motionList: FlagsMotionStyle[] = ['drift', 'vortex', 'burst', 'rain', 'zoom-3d', 'wave-banner'];
+                const effectList: FlagsEffect[] = ['all-fx', 'cloth-wave', 'glow', 'flicker', 'dissolve'];
+                const bgList: FlagsBgStyle[] = ['dark-space', 'stadium', 'flag-blur', 'neon-glow', 'cyber-grid'];
+
+                const randomMode = modes[Math.floor(Math.random() * modes.length)];
+                const randomScale = scaleModes[Math.floor(Math.random() * scaleModes.length)];
+                const randomMotion = motionList[Math.floor(Math.random() * motionList.length)];
+                const randomEffect = effectList[Math.floor(Math.random() * effectList.length)];
+                const randomBg = bgList[Math.floor(Math.random() * bgList.length)];
+                const randomCount = Math.floor(1 + Math.random() * 29); // 1 to 30
+
+                const randomFlag1 = WORLD_FLAG_EMOJIS[Math.floor(Math.random() * WORLD_FLAG_EMOJIS.length)].flag;
+                const randomFlag2 = WORLD_FLAG_EMOJIS[Math.floor(Math.random() * WORLD_FLAG_EMOJIS.length)].flag;
+                const randomSeed = Math.floor(Math.random() * 1000000);
+
+                onChange({
+                  flagsMode: randomMode,
+                  flagsScaleMode: randomScale,
+                  flagsMotion: randomMotion,
+                  flagsEffect: randomEffect,
+                  flagsBgStyle: randomBg,
+                  flagsCount: randomCount,
+                  flagsPrimaryCountry: randomFlag1,
+                  flagsSecondaryCountry: randomFlag2,
+                  proceduralSeed: randomSeed,
+                });
+              }}
+              className="text-[11px] font-semibold text-blue-300 hover:text-white bg-blue-500/20 hover:bg-blue-500/30 px-2.5 py-1 rounded-lg border border-blue-500/30 transition-all cursor-pointer flex items-center gap-1 active:scale-95 shadow-sm"
+              title="Рандомизировать флаги, состав, масштаб, спецэффекты и фон"
+            >
+              <Dices className="w-3.5 h-3.5" /> Микс флагов
+            </button>
+          </div>
+
+          {/* 1. Mode Selector: single country, duo countries, multi world mix */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Состав и режим флагов:</span>
+              <span className="text-blue-400 font-mono text-[10px]">
+                {(state.flagsMode || 'single') === 'single'
+                  ? '🚩 Одной страны (1-30 шт.)'
+                  : state.flagsMode === 'duo'
+                  ? '⚔️ Двух стран (дуэль / союз)'
+                  : '🌍 Парад разных стран'}
+              </span>
+            </label>
+            <div className="grid grid-cols-3 gap-1.5">
+              {[
+                { id: 'single' as const, label: '🚩 Одной страны', desc: '1–30 флагов одного государства' },
+                { id: 'duo' as const, label: '⚔️ Двух стран', desc: 'Дуэль или альянс 2 стран' },
+                { id: 'multi' as const, label: '🌍 Микс стран', desc: 'Международный парад' },
+              ].map((m) => {
+                const isSelected = (state.flagsMode || 'single') === m.id;
+                return (
+                  <button
+                    type="button"
+                    key={m.id}
+                    onClick={() => onChange({ flagsMode: m.id })}
+                    className={`py-1.5 px-2 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer text-left flex flex-col justify-center ${
+                      isSelected
+                        ? 'bg-blue-500/30 border-blue-400 text-white shadow-sm ring-1 ring-blue-400/50'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:border-blue-500/30 hover:text-white'
+                    }`}
+                  >
+                    <span className="truncate">{m.label}</span>
+                    <span className="text-[9px] text-zinc-400 font-normal truncate">{m.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Country Picker (for single or duo) */}
+          {(state.flagsMode || 'single') !== 'multi' && (
+            <div className="space-y-2 pt-0.5">
+              {/* Primary country */}
+              <div className="space-y-1">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="text-zinc-400 font-medium">
+                    {(state.flagsMode || 'single') === 'duo' ? 'Флаг первой страны:' : 'Выбранная страна:'}
+                  </span>
+                  <span className="text-blue-300 font-bold flex items-center gap-1">
+                    <span className="text-base">{state.flagsPrimaryCountry || '🇷🇺'}</span>
+                    <span>{WORLD_FLAG_EMOJIS.find(f => f.flag === (state.flagsPrimaryCountry || '🇷🇺'))?.name || 'Россия'}</span>
+                  </span>
+                </div>
+
+                {/* Quick Popular Country Chips */}
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  {[
+                    { flag: '🇷🇺', name: 'РФ' },
+                    { flag: '🇧🇾', name: 'Беларусь' },
+                    { flag: '🇰🇿', name: 'Казахстан' },
+                    { flag: '🇺🇸', name: 'США' },
+                    { flag: '🇨🇳', name: 'Китай' },
+                    { flag: '🇩🇪', name: 'Германия' },
+                    { flag: '🇫🇷', name: 'Франция' },
+                    { flag: '🇬🇧', name: 'Британия' },
+                    { flag: '🇹🇷', name: 'Турция' },
+                    { flag: '🇦🇪', name: 'ОАЭ' },
+                    { flag: '🇦🇷', name: 'Аргентина' },
+                    { flag: '🇧🇷', name: 'Бразилия' },
+                    { flag: '🏁', name: 'Финиш' },
+                    { flag: '🏴‍☠️', name: 'Пират' },
+                    { flag: '🏳️‍🌈', name: 'Радуга' },
+                  ].map((item) => {
+                    const isSelected = (state.flagsPrimaryCountry || '🇷🇺') === item.flag;
+                    return (
+                      <button
+                        type="button"
+                        key={item.flag}
+                        onClick={() => onChange({ flagsPrimaryCountry: item.flag })}
+                        className={`px-2 py-0.5 rounded-md text-[10.5px] font-medium border transition-all cursor-pointer flex items-center gap-1 ${
+                          isSelected
+                            ? 'bg-blue-500/30 border-blue-400 text-white shadow-xs'
+                            : 'bg-black/30 border-white/10 text-zinc-300 hover:text-white hover:border-white/20'
+                        }`}
+                      >
+                        <span className="text-xs">{item.flag}</span>
+                        <span>{item.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* All Countries dropdown */}
+                <select
+                  value={state.flagsPrimaryCountry || '🇷🇺'}
+                  onChange={(e) => onChange({ flagsPrimaryCountry: e.target.value })}
+                  className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-xs text-white cursor-pointer mt-1"
+                >
+                  {WORLD_FLAG_EMOJIS.map((item) => (
+                    <option key={item.code} value={item.flag}>
+                      {item.flag} {item.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Secondary country when duo mode */}
+              {state.flagsMode === 'duo' && (
+                <div className="space-y-1 pt-1 border-t border-white/10">
+                  <div className="flex items-center justify-between text-[11px]">
+                    <span className="text-zinc-400 font-medium">Флаг второй страны:</span>
+                    <span className="text-emerald-300 font-bold flex items-center gap-1">
+                      <span className="text-base">{state.flagsSecondaryCountry || '🇧🇾'}</span>
+                      <span>{WORLD_FLAG_EMOJIS.find(f => f.flag === (state.flagsSecondaryCountry || '🇧🇾'))?.name || 'Беларусь'}</span>
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    {[
+                      { flag: '🇧🇾', name: 'Беларусь' },
+                      { flag: '🇷🇺', name: 'РФ' },
+                      { flag: '🇰🇿', name: 'Казахстан' },
+                      { flag: '🇨🇳', name: 'Китай' },
+                      { flag: '🇺🇸', name: 'США' },
+                      { flag: '🇩🇪', name: 'Германия' },
+                      { flag: '🇦🇷', name: 'Аргентина' },
+                      { flag: '🇧🇷', name: 'Бразилия' },
+                      { flag: '🏁', name: 'Финиш' },
+                    ].map((item) => {
+                      const isSelected = (state.flagsSecondaryCountry || '🇧🇾') === item.flag;
+                      return (
+                        <button
+                          type="button"
+                          key={item.flag}
+                          onClick={() => onChange({ flagsSecondaryCountry: item.flag })}
+                          className={`px-2 py-0.5 rounded-md text-[10.5px] font-medium border transition-all cursor-pointer flex items-center gap-1 ${
+                            isSelected
+                              ? 'bg-emerald-500/30 border-emerald-400 text-white shadow-xs'
+                              : 'bg-black/30 border-white/10 text-zinc-300 hover:text-white hover:border-white/20'
+                          }`}
+                        >
+                          <span className="text-xs">{item.flag}</span>
+                          <span>{item.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <select
+                    value={state.flagsSecondaryCountry || '🇧🇾'}
+                    onChange={(e) => onChange({ flagsSecondaryCountry: e.target.value })}
+                    className="w-full bg-zinc-900 border border-white/10 rounded-lg py-1 px-2 text-xs text-white cursor-pointer mt-1"
+                  >
+                    {WORLD_FLAG_EMOJIS.map((item) => (
+                      <option key={item.code} value={item.flag}>
+                        {item.flag} {item.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 3. Flags Count Slider (1 to 30) */}
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="text-zinc-400 font-medium">Количество флагов одновременно:</span>
+              <span className="text-blue-400 font-mono font-bold text-xs">
+                {state.flagsCount ?? ((state.flagsMode || 'single') === 'single' ? 12 : 16)} {Number(state.flagsCount ?? 12) === 1 ? 'флаг' : Number(state.flagsCount ?? 12) >= 20 ? 'флагов (максимум!)' : 'флагов'}
+              </span>
+            </div>
+            <input
+              type="range"
+              min="1"
+              max="30"
+              step="1"
+              value={state.flagsCount ?? ((state.flagsMode || 'single') === 'single' ? 12 : 16)}
+              onChange={(e) => onChange({ flagsCount: parseInt(e.target.value, 10) })}
+              className="w-full accent-blue-500 bg-zinc-800 h-2 rounded-lg cursor-pointer"
+            />
+            {/* Quick Count Chips */}
+            <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+              {[
+                { count: 1, label: '1 (Один флаг)' },
+                { count: 5, label: '5 (Звено)' },
+                { count: 10, label: '10 (Группа)' },
+                { count: 20, label: '20 (Эскадра)' },
+                { count: 30, label: '30 (Салют флагов)' },
+              ].map((chip) => {
+                const currentCount = state.flagsCount ?? ((state.flagsMode || 'single') === 'single' ? 12 : 16);
+                const isSelected = currentCount === chip.count;
+                return (
+                  <button
+                    type="button"
+                    key={chip.count}
+                    onClick={() => onChange({ flagsCount: chip.count })}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-semibold border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-500/30 border-blue-400 text-white shadow-xs'
+                        : 'bg-black/30 border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    {chip.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 4. Scale Mode Selector (from micro to bigger than screen) */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Масштаб и размер флагов:</span>
+              <span className="text-blue-400 font-mono text-[10px]">
+                {state.flagsScaleMode === 'mega-screen'
+                  ? '🌌 Больше экрана'
+                  : state.flagsScaleMode === 'giant'
+                  ? '💥 Крупные'
+                  : state.flagsScaleMode === 'small'
+                  ? '🎇 Мелкие'
+                  : state.flagsScaleMode === 'medium'
+                  ? '✨ Средние'
+                  : '🎲 От мелких до больше экрана'}
+              </span>
+            </label>
+            <div className="grid grid-cols-2 gap-1.5">
+              {[
+                { id: 'mixed' as const, label: '🎲 Разные (все калибры)', desc: 'От мелких до больше экрана' },
+                { id: 'mega-screen' as const, label: '🌌 Больше экрана (Мега)', desc: 'Гигантские флаги на весь фон' },
+                { id: 'giant' as const, label: '💥 Крупные (240–420px)', desc: 'Выразительные флаги' },
+                { id: 'medium' as const, label: '✨ Средние (95–170px)', desc: 'Классический размер' },
+                { id: 'small' as const, label: '🎇 Мелкие (38–80px)', desc: 'Плотный рой флагов' },
+              ].map((scaleOpt) => {
+                const isSelected = (state.flagsScaleMode || 'mixed') === scaleOpt.id;
+                return (
+                  <button
+                    type="button"
+                    key={scaleOpt.id}
+                    onClick={() => onChange({ flagsScaleMode: scaleOpt.id })}
+                    className={`py-1.5 px-2 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer text-left flex flex-col justify-center ${
+                      isSelected
+                        ? 'bg-blue-500/30 border-blue-400 text-white shadow-sm ring-1 ring-blue-400/50'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:border-blue-500/30 hover:text-white'
+                    }`}
+                  >
+                    <span className="truncate">{scaleOpt.label}</span>
+                    <span className="text-[9px] text-zinc-400 font-normal truncate">{scaleOpt.desc}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 5. Motion Trajectory Selector */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Стиль движения и анимации:</span>
+              <span className="text-blue-400 font-mono text-[10px]">
+                {state.flagsMotion === 'vortex'
+                  ? '🌪️ Вихрь и спираль'
+                  : state.flagsMotion === 'burst'
+                  ? '💥 Разлёт из центра'
+                  : state.flagsMotion === 'rain'
+                  ? '🌧️ Дождь флагов'
+                  : state.flagsMotion === 'zoom-3d'
+                  ? '🚀 3D налёт (Zoom)'
+                  : state.flagsMotion === 'wave-banner'
+                  ? '🏳️ Развевание знамён'
+                  : '🍃 Парение и дрейф'}
+              </span>
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+              {[
+                { id: 'drift' as const, label: '🍃 Парение и дрейф' },
+                { id: 'vortex' as const, label: '🌪️ Вихрь и спираль' },
+                { id: 'burst' as const, label: '💥 Разлёт из центра' },
+                { id: 'rain' as const, label: '🌧️ Дождь флагов' },
+                { id: 'zoom-3d' as const, label: '🚀 3D налёт (Zoom)' },
+                { id: 'wave-banner' as const, label: '🏳️ Развевание знамён' },
+              ].map((m) => {
+                const isSelected = (state.flagsMotion || 'drift') === m.id;
+                return (
+                  <button
+                    type="button"
+                    key={m.id}
+                    onClick={() => onChange({ flagsMotion: m.id })}
+                    className={`py-1.5 px-2 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer text-left truncate ${
+                      isSelected
+                        ? 'bg-blue-500/30 border-blue-400 text-white shadow-xs ring-1 ring-blue-400/40'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:border-blue-500/30 hover:text-white'
+                    }`}
+                  >
+                    <span className="truncate">{m.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 6. Effects: Glow, Dissolve, Flicker, Cloth Wave, All */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Спецэффекты ткани и оптики:</span>
+              <span className="text-blue-400 font-mono text-[10px]">
+                {state.flagsEffect === 'cloth-wave'
+                  ? '💨 Развевание ткани (ветер)'
+                  : state.flagsEffect === 'glow'
+                  ? '✨ Сияние и аура'
+                  : state.flagsEffect === 'flicker'
+                  ? '🎇 Мерцание и искры'
+                  : state.flagsEffect === 'dissolve'
+                  ? '🌫️ Плавное растворение'
+                  : '🌟 Все спецэффекты сразу'}
+              </span>
+            </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { id: 'all-fx' as const, label: '🌟 Все эффекты' },
+                { id: 'cloth-wave' as const, label: '💨 Развевание ткани' },
+                { id: 'glow' as const, label: '✨ Сияние' },
+                { id: 'flicker' as const, label: '🎇 Мерцание' },
+                { id: 'dissolve' as const, label: '🌫️ Растворение' },
+              ].map((eff) => {
+                const isSelected = (state.flagsEffect || 'all-fx') === eff.id;
+                return (
+                  <button
+                    type="button"
+                    key={eff.id}
+                    onClick={() => onChange({ flagsEffect: eff.id })}
+                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-500/30 border-blue-400 text-white shadow-xs'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    {eff.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 7. Background Stage Style */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] font-medium text-zinc-400 flex items-center justify-between">
+              <span>Фон подложки:</span>
+              <span className="text-blue-400 font-mono text-[10px]">
+                {state.flagsBgStyle === 'stadium'
+                  ? '🏟️ Стадион и прожекторы'
+                  : state.flagsBgStyle === 'flag-blur'
+                  ? '🚩 Размытый флаг на фоне'
+                  : state.flagsBgStyle === 'neon-glow'
+                  ? '⚡ Неоновое свечение'
+                  : state.flagsBgStyle === 'cyber-grid'
+                  ? '📐 Кибер-сетка'
+                  : '🌌 Тёмный космос'}
+              </span>
+            </label>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {[
+                { id: 'dark-space' as const, label: '🌌 Тёмный космос' },
+                { id: 'stadium' as const, label: '🏟️ Стадион' },
+                { id: 'flag-blur' as const, label: '🚩 Размытый флаг' },
+                { id: 'neon-glow' as const, label: '⚡ Неон' },
+                { id: 'cyber-grid' as const, label: '📐 Кибер-сетка' },
+              ].map((bg) => {
+                const isSelected = (state.flagsBgStyle || 'dark-space') === bg.id;
+                return (
+                  <button
+                    type="button"
+                    key={bg.id}
+                    onClick={() => onChange({ flagsBgStyle: bg.id })}
+                    className={`px-2.5 py-1 rounded-lg text-[10.5px] font-semibold border transition-all cursor-pointer ${
+                      isSelected
+                        ? 'bg-blue-500/30 border-blue-400 text-white shadow-xs'
+                        : 'bg-black/40 border-white/10 text-zinc-300 hover:text-white hover:border-white/20'
+                    }`}
+                  >
+                    {bg.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <p className="text-[10.5px] text-zinc-400 leading-relaxed font-mono">
+            💡 Летающие флаги стран мира от 1 до 30 штук одновременно. Поддерживаются соло-флаг, дуэль двух государств и мировой парад с развеванием ткани, сиянием и масштабом до больше экрана холста.
+          </p>
+        </div>
+      )}
 
       {/* Custom Color Selector for Лист and Gradient Backgrounds */}
       {(state.bgPresetId === 'clean-white' || state.bgPresetId === 'notebook-grid' || BACKGROUND_PRESETS.find(p => p.id === state.bgPresetId)?.type === 'gradient') && (

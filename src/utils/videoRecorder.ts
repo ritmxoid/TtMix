@@ -778,13 +778,13 @@ async function exportWithMediaRecorder({
       audioStreamDestination = audioContext.createMediaStreamDestination();
       const gainNode = audioContext.createGain();
       gainNode.gain.setValueAtTime(1.0, 0);
-      gainNode.connect(audioStreamDestination);
+      try { gainNode.connect(audioStreamDestination); } catch {}
 
       audioBufferSource = audioContext.createBufferSource();
       audioBufferSource.buffer = audioBuffer;
       audioBufferSource.loop = true;
-      audioBufferSource.connect(gainNode);
-      audioBufferSource.start(0);
+      try { audioBufferSource.connect(gainNode); } catch {}
+      try { audioBufferSource.start(0); } catch {}
     } catch (e) {
       console.warn('MediaRecorder audio setup warning:', e);
     }

@@ -153,17 +153,7 @@ export const TextInputSection: React.FC<TextInputSectionProps> = ({
       {isModalOpen && (
         <div className="fixed inset-0 z-[9999] bg-black/85 backdrop-blur-md flex flex-col p-3 sm:p-5 animate-in fade-in duration-150">
           <div className="max-w-2xl w-full mx-auto flex-1 flex flex-col bg-[#16161D] border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden">
-            {/* Header info */}
-            <div className="flex items-center justify-between px-4 py-3 border-b border-white/10 bg-[#1A1A22]">
-              <span className="text-xs font-semibold text-zinc-300">
-                {t('textSectionTitle', 'Текст цитаты или сценария')}
-              </span>
-              <span className="text-[11px] text-zinc-400 font-medium">
-                {wordCount} {t('words', 'слов')} • {state.rawText.length} {t('chars', 'симв.')}
-              </span>
-            </div>
-
-            {/* Editor Textarea - Takes all available space */}
+            {/* Editor Textarea - Takes all available top space directly without top header */}
             <div className="flex-1 p-3.5 flex flex-col space-y-3 overflow-y-auto">
               <textarea
                 ref={modalTextareaRef}
@@ -201,7 +191,7 @@ export const TextInputSection: React.FC<TextInputSectionProps> = ({
                   });
                 }}
                 placeholder={t('pasteOrTypeText', 'Вставьте или напечатайте текст сюда...')}
-                className="w-full flex-1 min-h-[140px] bg-[#0F0F12] border border-white/15 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 rounded-xl p-3.5 text-base text-zinc-100 placeholder-zinc-500 outline-none leading-relaxed resize-none"
+                className="w-full flex-1 min-h-[160px] bg-[#0F0F12] border border-white/15 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 rounded-xl p-3.5 text-base text-zinc-100 placeholder-zinc-500 outline-none leading-relaxed resize-none"
               />
 
               {/* Author Field inside modal */}
@@ -224,27 +214,37 @@ export const TextInputSection: React.FC<TextInputSectionProps> = ({
               </div>
             </div>
 
-            {/* Bottom Actions Bar - ONLY TWO BUTTONS: 1 RED TRASH + 1 GREEN CHECKMARK */}
-            <div className="px-4 py-3 border-t border-white/10 bg-[#1A1A22] flex items-center justify-between gap-3">
+            {/* Bottom Actions Bar with Centered Info & Counter */}
+            <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-white/10 bg-[#1A1A22] flex items-center justify-between gap-2 sm:gap-3 shrink-0">
               {/* Red Delete Button */}
               <button
                 type="button"
                 onClick={handleClearText}
-                className="flex items-center justify-center p-3 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 transition-all cursor-pointer active:scale-95 shadow-md"
+                className="flex items-center justify-center p-3 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 transition-all cursor-pointer active:scale-95 shadow-md shrink-0"
                 title={t('clearText', 'Очистить текст')}
               >
                 <Trash2 className="w-5 h-5" />
               </button>
 
+              {/* Center Section Title & Words/Chars Counter */}
+              <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0 px-1 select-none">
+                <span className="text-[11px] sm:text-xs font-semibold text-zinc-300 truncate max-w-full leading-tight">
+                  {t('textSectionTitle', 'Текст цитаты или сценария')}
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-zinc-400 font-medium font-mono leading-tight mt-0.5">
+                  {wordCount} {t('words', 'слов')} • {state.rawText.length} {t('chars', 'симв.')}
+                </span>
+              </div>
+
               {/* Green Confirm / Done Button */}
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all cursor-pointer active:scale-98"
+                className="flex items-center justify-center gap-1.5 p-3 sm:px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all cursor-pointer active:scale-95 shrink-0"
                 title={t('done', 'Готово')}
               >
                 <Check className="w-5 h-5 stroke-[2.5]" />
-                <span>{t('done', 'Готово')}</span>
+                <span className="hidden sm:inline">{t('done', 'Готово')}</span>
               </button>
             </div>
           </div>

@@ -1,4 +1,4 @@
-export type TextMode = 'word' | 'sentence' | 'full';
+export type TextMode = 'word' | 'sentence' | 'paragraph' | 'full';
 
 export type AnimationStyle =
   | 'typewriter'
@@ -33,6 +33,10 @@ export interface ExtraEffects {
   neon: boolean;
   shadow: boolean;
   particles: boolean;
+  sparkler?: boolean; // Бенгальский огонь
+  firework?: boolean; // Фейерверк
+  smoke?: boolean; // Дым
+  smokeColor?: string; // Color / palette mode for smoke
 }
 
 export type AspectRatio = '9:16' | '16:9' | '1:1';
@@ -98,6 +102,69 @@ export interface AudioState {
   fileVolume?: number; // 0 to 1 (User uploaded audio file / voice volume)
 }
 
+export type MatrixDirection =
+  | 'top-down'
+  | 'bottom-up'
+  | 'left-right'
+  | 'right-left'
+  | 'edges-to-center'
+  | 'center-to-edges';
+
+export type MatrixColorTheme =
+  | 'classic-green'
+  | 'cyber-cyan'
+  | 'neon-purple'
+  | 'amber-gold'
+  | 'red-alert'
+  | 'rainbow'
+  | 'random-shift';
+
+export type FireworksColorTheme =
+  | 'multicolor'
+  | 'gold-glitter'
+  | 'neon-cyber'
+  | 'crimson-ruby'
+  | 'cyan-violet'
+  | 'emerald-lime';
+
+export type FlagsCompositionMode = 'single' | 'duo' | 'multi';
+
+export type FlagsScaleMode =
+  | 'mixed'
+  | 'small'
+  | 'medium'
+  | 'giant'
+  | 'mega-screen';
+
+export type FlagsMotionStyle =
+  | 'drift'
+  | 'vortex'
+  | 'burst'
+  | 'rain'
+  | 'zoom-3d'
+  | 'wave-banner';
+
+export type FlagsEffect =
+  | 'glow'
+  | 'dissolve'
+  | 'flicker'
+  | 'cloth-wave'
+  | 'all-fx';
+
+export type FlagsBgStyle =
+  | 'dark-space'
+  | 'stadium'
+  | 'neon-glow'
+  | 'cyber-grid'
+  | 'flag-blur';
+
+export type CloudsSkyStyle =
+  | 'sunset-fiery'
+  | 'azure-noon'
+  | 'deep-sky'
+  | 'golden-hour'
+  | 'twilight-purple';
+
 export type ProceduralMoodStyle =
   | 'cosmic'
   | 'cyberpunk'
@@ -107,7 +174,11 @@ export type ProceduralMoodStyle =
   | 'fluid'
   | 'equalizer'
   | 'shapes'
-  | 'emojis';
+  | 'emojis'
+  | 'matrix'
+  | 'fireworks'
+  | 'flags'
+  | 'clouds';
 
 export interface VideoProjectState {
   // Background
@@ -118,6 +189,24 @@ export interface VideoProjectState {
   bgCustomColor?: string; // Optional custom sheet / gradient color
   proceduralMood?: ProceduralMoodStyle; // AI Procedural generator mood style
   proceduralSeed?: number; // Seed variation for unique generated background
+  matrixDirection?: MatrixDirection; // Direction of matrix code rain
+  matrixColorTheme?: MatrixColorTheme; // Color scheme of matrix rain
+  fireworksColorTheme?: FireworksColorTheme; // Color scheme for fireworks background
+  fireworksCount?: number; // 1 to 30 simultaneous fireworks
+  fireworksScaleMode?: 'mixed' | 'small' | 'medium' | 'giant'; // Scale mode
+  // Flags procedural theme options
+  flagsMode?: FlagsCompositionMode; // 'single' (1 country), 'duo' (2 countries), 'multi' (3..30 nations)
+  flagsCount?: number; // 1 to 30 simultaneous flags
+  flagsScaleMode?: FlagsScaleMode; // 'mixed' | 'small' | 'medium' | 'giant' | 'mega-screen'
+  flagsPrimaryCountry?: string; // Primary flag emoji (e.g. 🇷🇺)
+  flagsSecondaryCountry?: string; // Secondary flag emoji (e.g. 🇧🇾)
+  flagsMotion?: FlagsMotionStyle; // 'drift' | 'vortex' | 'burst' | 'rain' | 'zoom-3d' | 'wave-banner'
+  flagsEffect?: FlagsEffect; // 'glow' | 'dissolve' | 'flicker' | 'cloth-wave' | 'all-fx'
+  flagsBgStyle?: FlagsBgStyle; // 'dark-space' | 'stadium' | 'neon-glow' | 'cyber-grid' | 'flag-blur'
+  // Clouds theme options (legacy compatibility)
+  cloudsStyle?: CloudsSkyStyle;
+  cloudsSpeed?: number;
+  cloudsFeather?: number;
   bgOverlayOpacity: number; // 0 to 0.9
   mediaOverlayTheme?: string | null; // Theme ID for floating particles/elements overlay on user media (hearts, balloons, snow, etc.)
   mediaColorTint?: string | null; // Color tint overlay for user media
@@ -132,6 +221,7 @@ export interface VideoProjectState {
   fontFamily: string;
   fontSize: number; // in pt/px base
   textColor: string;
+  textOpacity?: number; // 0.05 to 1.0 (default 1.0)
   textColorMode?: TextColorMode; // 'solid' | 'gradient' | 'letter-rainbow' | 'word-rainbow'
   textGradientColors?: [string, string]; // e.g. ['#f43f5e', '#38bdf8']
   textGradientAngle?: number; // 0, 45, 90, 135, etc.

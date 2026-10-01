@@ -584,8 +584,8 @@ export const LuckyModeTour: React.FC<LuckyModeTourProps> = ({
         {/* Step 12: Final Completion Screen */}
         {currentStep.isFinal && (
           <div className="flex flex-col items-center justify-center h-full gap-4">
-            <div className="w-10 h-10 rounded-full bg-cyan-500/20 border border-cyan-400/40 text-cyan-300 flex items-center justify-center font-semibold text-xl shadow-xl">
-              ✓
+            <div className="w-12 h-12 rounded-full bg-cyan-500/20 border-2 border-cyan-400/60 text-cyan-300 flex items-center justify-center font-bold text-xl shadow-xl">
+              <Check className="w-6 h-6 stroke-[3]" />
             </div>
 
             <h3 className="text-white font-medium text-2xl sm:text-3xl text-center drop-shadow-md">

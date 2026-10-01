@@ -71,7 +71,7 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
       {/* Backdrop overlay: tapping anywhere closes popup (only active when color picker modal is not open) */}
       {!isPickerOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/30 backdrop-blur-[1px] cursor-pointer"
+          className="fixed inset-0 z-40 bg-black/10 backdrop-blur-[0.5px] cursor-pointer"
           onPointerDown={(e) => {
             e.stopPropagation();
             onClose();
@@ -83,40 +83,64 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
         />
       )}
 
-      {/* Main floating popup docked at the bottom of the screen covering tool buttons */}
+      {/* Main floating popup docked above the tool buttons over the canvas */}
       <div
         data-dock="true"
         data-tour="text-properties-panel"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
-        className="absolute bottom-2 sm:bottom-3 left-1/2 -translate-x-1/2 w-64 sm:w-72 max-w-[94vw] p-3 pb-[max(0.75rem,calc(0.75rem+env(safe-area-inset-bottom,0px)))] rounded-2xl bg-zinc-900/95 backdrop-blur-2xl border border-white/20 shadow-2xl shadow-black/90 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
+        className="fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[94vw] p-3.5 sm:p-4 rounded-3xl bg-black/35 backdrop-blur-md border border-white/20 shadow-2xl shadow-black/60 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
       >
-        {/* TOP SECTION: Swaps between Text Size Slider and Background Opacity/Width Sliders */}
+        {/* TOP SECTION: Swaps between Text Sliders (Size & Opacity) and Background Sliders (Opacity & Width) */}
         {currentTab === 'text' ? (
-          /* Text Mode: TT Icon + Font Size Range Slider */
-          <div className="flex items-center gap-2">
-            <div className="flex items-center justify-center text-purple-300 font-serif font-bold text-sm select-none shrink-0 w-5">
-              <span className="tracking-tighter text-sm">Тт</span>
+          /* Text Mode: Font Size & Text Opacity Sliders */
+          <div className="flex flex-col gap-2 animate-in fade-in duration-150">
+            {/* Row 1: Font Size */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-purple-300 shrink-0 w-20">
+                {t('fontSize', 'Размер (Тт)')}:
+              </span>
+              <input
+                type="range"
+                min="18"
+                max="500"
+                step="2"
+                value={state.fontSize || 42}
+                onChange={(e) =>
+                  onChange({ fontSize: parseInt(e.target.value, 10) })
+                }
+                className="w-full accent-purple-500 bg-zinc-800/80 h-1.5 rounded-lg cursor-pointer"
+              />
+              <span className="text-[10px] font-mono text-purple-200 font-bold shrink-0 w-8 text-right">
+                {state.fontSize || 42}
+              </span>
             </div>
-            <input
-              type="range"
-              min="18"
-              max="500"
-              step="2"
-              value={state.fontSize || 42}
-              onChange={(e) =>
-                onChange({ fontSize: parseInt(e.target.value, 10) })
-              }
-              className="w-full accent-purple-500 bg-zinc-800/70 h-2 rounded-lg cursor-pointer"
-            />
+            {/* Row 2: Text Opacity */}
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-purple-300 shrink-0 w-20">
+                {t('opacity', 'Прозрачность')}:
+              </span>
+              <input
+                type="range"
+                min="0.05"
+                max="1"
+                step="0.05"
+                value={state.textOpacity ?? 1}
+                onChange={(e) => onChange({ textOpacity: parseFloat(e.target.value) })}
+                className="w-full accent-purple-500 bg-zinc-800/80 h-1.5 rounded-lg cursor-pointer"
+              />
+              <span className="text-[10px] font-mono text-purple-200 font-bold shrink-0 w-8 text-right">
+                {Math.round((state.textOpacity ?? 1) * 100)}%
+              </span>
+            </div>
           </div>
         ) : (
           /* Background Mode: Two compact sliders for Opacity & Width */
-          <div className="flex flex-col gap-1.5 animate-in fade-in duration-150">
+          <div className="flex flex-col gap-2 animate-in fade-in duration-150">
             {/* Row 1: Opacity */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold text-blue-300 shrink-0 w-16">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-blue-300 shrink-0 w-20">
                 {t('opacity', 'Прозрачность')}:
               </span>
               <input
@@ -128,10 +152,13 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
                 onChange={(e) => onChange({ textBgOpacity: parseFloat(e.target.value) })}
                 className="w-full accent-blue-500 bg-zinc-800/80 h-1.5 rounded-lg cursor-pointer"
               />
+              <span className="text-[10px] font-mono text-blue-200 font-bold shrink-0 w-8 text-right">
+                {Math.round((state.textBgOpacity ?? 0.85) * 100)}%
+              </span>
             </div>
             {/* Row 2: Width */}
-            <div className="flex items-center gap-1.5">
-              <span className="text-[10px] font-semibold text-blue-300 shrink-0 w-16">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-semibold text-blue-300 shrink-0 w-20">
                 {t('boxWidth', 'Ширина')}:
               </span>
               <input
@@ -143,6 +170,9 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
                 onChange={(e) => onChange({ textMaxWidthPercent: parseInt(e.target.value, 10) })}
                 className="w-full accent-blue-500 bg-zinc-800/80 h-1.5 rounded-lg cursor-pointer"
               />
+              <span className="text-[10px] font-mono text-blue-200 font-bold shrink-0 w-8 text-right">
+                {state.textMaxWidthPercent ?? 85}%
+              </span>
             </div>
           </div>
         )}

@@ -939,10 +939,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         const gainNode = audioCtx.createGain();
         gainNode.gain.setValueAtTime(1.0, audioCtx.currentTime);
 
-        sourceNode.connect(gainNode);
-        gainNode.connect(audioDest);
+        try { sourceNode.connect(gainNode); } catch {}
+        try { gainNode.connect(audioDest); } catch {}
         if (!isMuted) {
-          gainNode.connect(audioCtx.destination);
+          try { gainNode.connect(audioCtx.destination); } catch {}
         }
 
         const tracks = audioDest.stream.getAudioTracks();
@@ -1004,9 +1004,6 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           captureAudioSourceRef.current = null;
         }
         if (captureAudioDestRef.current) {
-          try {
-            captureAudioDestRef.current.disconnect();
-          } catch {}
           captureAudioDestRef.current = null;
         }
 

@@ -137,6 +137,32 @@ export function splitTextIntoSegments(
 
       currentTime = endTime + pause;
     });
+  } else if (mode === 'paragraph') {
+    // Split by paragraph delimiters (newlines: \n+)
+    const rawParagraphs = clean
+      .split(/\r?\n+/)
+      .map((p) => p.trim())
+      .filter(Boolean);
+
+    // If no paragraph breaks were found (single block), treat as 1 segment (full text)
+    const finalParagraphs = rawParagraphs.length > 0 ? rawParagraphs : [clean];
+
+    finalParagraphs.forEach((paragraph) => {
+      const words = paragraph.split(/\s+/).filter(Boolean);
+      const readTime = getChunkNaturalDuration(paragraph, words, speed, pause, animationStyle);
+      const startTime = currentTime;
+      const endTime = startTime + readTime;
+
+      baseSegments.push({
+        text: paragraph,
+        words,
+        startTime,
+        endTime,
+        duration: readTime,
+      });
+
+      currentTime = endTime + pause;
+    });
   } else {
     // Full text mode
     const words = clean.split(/\s+/).filter(Boolean);

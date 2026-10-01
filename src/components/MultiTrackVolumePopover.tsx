@@ -95,7 +95,7 @@ export const MultiTrackVolumePopover: React.FC<MultiTrackVolumePopoverProps> = (
         onTouchStart={(e) => e.stopPropagation()}
         onTouchEnd={(e) => e.stopPropagation()}
         onClick={(e) => e.stopPropagation()}
-        className={`fixed bottom-36 sm:bottom-40 left-1/2 -translate-x-1/2 z-[100] bg-black/65 backdrop-blur-xl border border-white/20 p-3 sm:p-3.5 rounded-3xl shadow-2xl flex flex-col items-center gap-2.5 animate-in fade-in zoom-in-95 duration-150 text-white pointer-events-auto select-none min-w-[130px] ${className}`}
+        className={`fixed bottom-36 sm:bottom-40 left-1/2 -translate-x-1/2 z-[100] bg-black/35 backdrop-blur-md border border-white/20 p-3.5 sm:p-4 rounded-3xl shadow-2xl shadow-black/60 flex flex-col items-center gap-2.5 animate-in fade-in zoom-in-95 duration-150 text-white pointer-events-auto select-none min-w-[130px] ${className}`}
       >
         {/* Header with Title and Track Count */}
         <div className="flex items-center justify-between w-full px-1 border-b border-white/10 pb-1.5 gap-2">

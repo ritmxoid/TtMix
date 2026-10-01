@@ -1,9 +1,22 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
-import { Sparkles, Sliders, ArrowLeft, Type, Wand2, RefreshCw, Eye, Check, Upload, Rocket, X, AlertTriangle, RotateCcw } from 'lucide-react';
-import { VideoProjectState, ProceduralMoodStyle } from '../types';
+import { Sparkles, Sliders, ArrowLeft, Type, Wand2, RefreshCw, Eye, Check, Upload, Rocket, X, AlertTriangle, RotateCcw, User, Trash2 } from 'lucide-react';
+import {
+  VideoProjectState,
+  ProceduralMoodStyle,
+  MatrixDirection,
+  MatrixColorTheme,
+  FireworksColorTheme,
+  FlagsCompositionMode,
+  FlagsScaleMode,
+  FlagsMotionStyle,
+  FlagsEffect,
+  FlagsBgStyle,
+  CloudsSkyStyle,
+} from '../types';
 import { FONT_OPTIONS, BACKGROUND_PRESETS, LOCALIZED_DEFAULT_TEXTS } from '../data/presets';
 import { MUSIC_PRESETS } from '../utils/audioGenerator';
+import { WORLD_FLAG_EMOJIS } from '../utils/proceduralBackgrounds';
 import { renderCanvasFrame, particleEngine } from '../utils/canvasRenderer';
 import { splitTextIntoSegments } from '../utils/textSplitter';
 import { FullscreenPlayer } from './FullscreenPlayer';
@@ -41,6 +54,9 @@ const ANIMATION_STYLES = [
   'stomp',
 ] as const;
 const PROCEDURAL_MOODS: ProceduralMoodStyle[] = [
+  'matrix',
+  'fireworks',
+  'clouds',
   'cosmic',
   'cyberpunk',
   'ember',
@@ -52,20 +68,22 @@ const PROCEDURAL_MOODS: ProceduralMoodStyle[] = [
   'emojis',
 ];
 
-// Balanced and diverse effect archetypes so that "Мерцание (Glow)" is NOT oversaturated
+// Balanced and diverse effect archetypes
 const EFFECT_ARCHETYPES = [
   // 0: Clean Minimalist (No glow, no sparkles - pure crisp typography with deep shadow)
-  { glow: false, sparkle: false, fire: false, neon: false, shadow: true, particles: false },
+  { glow: false, sparkle: false, fire: false, neon: false, shadow: true, particles: false, sparkler: false, firework: false, smoke: false },
   // 1: Cyberpunk Neon & Glitch (Electric neon edge with particles, no flickering glow)
-  { glow: false, sparkle: false, fire: false, neon: true, shadow: true, particles: true },
-  // 2: Golden Sparkles & Stardust (Stars & sparkles without plain glow)
-  { glow: false, sparkle: true, fire: false, neon: false, shadow: true, particles: true },
-  // 3: Fiery Ember & Blaze (Rising flames & embers)
-  { glow: false, sparkle: false, fire: true, neon: false, shadow: true, particles: true },
-  // 4: Subtle Soft Pulse (Soft aura, only on 1 variation at most)
-  { glow: true, sparkle: false, fire: false, neon: false, shadow: true, particles: false },
-  // 5: Cosmic Magic (Sparkles & particles)
-  { glow: false, sparkle: true, fire: false, neon: false, shadow: true, particles: true },
+  { glow: false, sparkle: false, fire: false, neon: true, shadow: true, particles: true, sparkler: false, firework: false, smoke: false },
+  // 2: Golden Sparkles & Stardust
+  { glow: false, sparkle: true, fire: false, neon: false, shadow: true, particles: true, sparkler: false, firework: false, smoke: false },
+  // 3: Sparkler Crackle (Бенгальский огонь)
+  { glow: false, sparkle: false, fire: false, neon: false, shadow: true, particles: false, sparkler: true, firework: false, smoke: false },
+  // 4: Festive Fireworks (Фейерверк)
+  { glow: false, sparkle: false, fire: false, neon: false, shadow: true, particles: false, sparkler: false, firework: true, smoke: false },
+  // 5: Billowing Smoke (Дым)
+  { glow: false, sparkle: false, fire: false, neon: false, shadow: true, particles: false, sparkler: false, firework: false, smoke: true },
+  // 6: Fiery Ember & Blaze (Rising flames & embers)
+  { glow: false, sparkle: false, fire: true, neon: false, shadow: true, particles: true, sparkler: false, firework: false, smoke: false },
 ];
 
 // Rich palette of diverse contrasting text colors for Lucky variations (no more monochromatic orange!)
@@ -170,6 +188,20 @@ export const BlinkingEyeIcon: React.FC<{ className?: string; isGenerating?: bool
   );
 };
 
+// History tracking for recent mix generations to prevent consecutive repetitions
+let recentAnimationsHistory: string[] = [];
+let recentPresetsHistory: string[] = [];
+let recentFontsHistory: string[] = [];
+
+function shuffleDeck<T>(items: readonly T[] | T[]): T[] {
+  const result = [...items];
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
 export function generate4Variations(
   baseState: VideoProjectState,
   overrideText?: string,
@@ -188,42 +220,71 @@ export function generate4Variations(
   const activeText = overrideText ?? baseState.rawText;
   const activeAuthor = overrideAuthor ?? baseState.authorText;
 
-  const textModeOptions: ('word' | 'sentence' | 'full')[] = ['word', 'sentence', 'full'];
+  const textModeOptions: ('word' | 'sentence' | 'paragraph' | 'full')[] = [
+    'word',
+    'sentence',
+    'paragraph',
+    'full',
+  ];
   const textAlignOptions: ('center' | 'left' | 'right')[] = ['center', 'left', 'right'];
 
-  // Shuffle overlay themes so all 4 variations get completely different themes!
-  const shuffledOverlays = [...EYE_MODE_OVERLAY_THEMES].sort(() => Math.random() - 0.5);
+  // Fisher-Yates shuffled decks for 100% unique variations per card
+  // Filter out recently used items to avoid repetitions across consecutive Mix clicks!
+  const unusedAnims = ANIMATION_STYLES.filter((a) => !recentAnimationsHistory.includes(a));
+  const animDeck = shuffleDeck(unusedAnims.length >= 4 ? unusedAnims : ANIMATION_STYLES);
+
+  const unusedPresets = BACKGROUND_PRESETS.filter((p) => !recentPresetsHistory.includes(p.id));
+  const presetDeck = shuffleDeck(unusedPresets.length >= 4 ? unusedPresets : BACKGROUND_PRESETS);
+
+  const unusedFonts = FONT_OPTIONS.filter((f) => !recentFontsHistory.includes(f.family));
+  const fontDeck = shuffleDeck(unusedFonts.length >= 4 ? unusedFonts : FONT_OPTIONS);
+
+  const moodDeck = shuffleDeck(PROCEDURAL_MOODS);
+  const musicDeck = shuffleDeck(MUSIC_PRESETS);
+  const textModeDeck = shuffleDeck([...textModeOptions, ...textModeOptions]);
+  const textColorDeck = shuffleDeck(LUCKY_TEXT_COLORS);
+  const neonColorDeck = shuffleDeck(LUCKY_NEON_COLORS);
+  const effectsDeck = shuffleDeck(EFFECT_ARCHETYPES);
+  const shuffledOverlays = shuffleDeck(EYE_MODE_OVERLAY_THEMES);
+
+  // Track chosen items for history
+  const chosenAnims: string[] = [];
+  const chosenPresets: string[] = [];
+  const chosenFonts: string[] = [];
 
   for (let i = 0; i < 4; i++) {
-    // 1. Completely independent font selection
-    const randomFont = FONT_OPTIONS[Math.floor(Math.random() * FONT_OPTIONS.length)];
+    // 1. Guaranteed distinct font
+    const randomFont = fontDeck[i % fontDeck.length];
+    chosenFonts.push(randomFont.family);
 
-    // 2. Completely independent background preset & mood
-    const randomPreset = BACKGROUND_PRESETS[Math.floor(Math.random() * BACKGROUND_PRESETS.length)];
-    const randomMood = PROCEDURAL_MOODS[Math.floor(Math.random() * PROCEDURAL_MOODS.length)];
+    // 2. Guaranteed distinct background preset & mood
+    const randomPreset = presetDeck[i % presetDeck.length];
+    chosenPresets.push(randomPreset.id);
+    const randomMood = moodDeck[i % moodDeck.length];
 
-    // 3. Completely independent animation style
-    const randomAnim = ANIMATION_STYLES[Math.floor(Math.random() * ANIMATION_STYLES.length)];
+    // 3. Guaranteed distinct animation style
+    const randomAnim = animDeck[i % animDeck.length];
+    chosenAnims.push(randomAnim);
 
-    // 4. Completely independent music track & seed
-    const randomMusic = MUSIC_PRESETS[Math.floor(Math.random() * MUSIC_PRESETS.length)];
+    // 4. Guaranteed distinct music track
+    const randomMusic = musicDeck[i % musicDeck.length];
 
-    // 5. Completely independent text color & neon color
-    const textColor = LUCKY_TEXT_COLORS[Math.floor(Math.random() * LUCKY_TEXT_COLORS.length)];
-    const neonColor = LUCKY_NEON_COLORS[Math.floor(Math.random() * LUCKY_NEON_COLORS.length)];
+    // 5. Distinct text color & neon color
+    const textColor = textColorDeck[i % textColorDeck.length];
+    const neonColor = neonColorDeck[i % neonColorDeck.length];
 
-    // 6. Completely independent text display mode (sentence, word, full)
-    const textMode = textModeOptions[Math.floor(Math.random() * textModeOptions.length)];
+    // 6. Text display mode (sentence, word, full)
+    const textMode = textModeDeck[i % textModeDeck.length];
 
-    // 7. Completely independent animation speed (0.7x to 1.6x)
+    // 7. Animation speed (0.7x to 1.6x)
     const speedMultiplier = Math.round((0.7 + Math.random() * 0.9) * 10) / 10;
 
-    // 8. Completely independent pause between phrases (0.3s to 1.1s)
+    // 8. Pause between phrases (0.3s to 1.1s)
     const pauseBetweenSeconds = Math.round((0.3 + Math.random() * 0.8) * 10) / 10;
 
-    // 9. Completely independent alignment & 2D coordinates (safe 50px/15% zone)
+    // 9. Alignment & 2D coordinates
     const textAlign = Math.random() < 0.6 ? 'center' : textAlignOptions[Math.floor(Math.random() * textAlignOptions.length)];
-    const textPositionY = Math.floor(20 + Math.random() * 55); // 20% to 75%
+    const textPositionY = Math.floor(20 + Math.random() * 55);
     let textPositionX = 50;
     if (textAlign === 'left') {
       textPositionX = 18 + Math.floor(Math.random() * 16);
@@ -235,14 +296,14 @@ export function generate4Variations(
     const textPositionPreset: 'top' | 'center' | 'bottom' =
       textPositionY < 35 ? 'top' : textPositionY > 65 ? 'bottom' : 'center';
 
-    // 10. Truly dynamic font size tailored to the chosen font
+    // 10. Dynamic font size tailored to font family
     let fontSize = 85;
     if (['Amatic SC', 'Caveat', 'Neucha', 'Pacifico', 'Comfortaa'].includes(randomFont.name)) {
-      fontSize = Math.floor(82 + Math.random() * 52); // 82 - 134
+      fontSize = Math.floor(82 + Math.random() * 52);
     } else if (['Press Start 2P', 'Rubik Mono One'].includes(randomFont.name)) {
-      fontSize = Math.floor(44 + Math.random() * 32); // 44 - 76
+      fontSize = Math.floor(44 + Math.random() * 32);
     } else {
-      fontSize = Math.floor(58 + Math.random() * 46); // 58 - 104
+      fontSize = Math.floor(58 + Math.random() * 46);
     }
 
     // 11. Random uppercase & stroke
@@ -264,14 +325,14 @@ export function generate4Variations(
     let textGradientAngle: number | undefined = undefined;
 
     const GRADIENT_PAIRS: [string, string][] = [
-      ['#f43f5e', '#38bdf8'], // Rose to Sky Blue
-      ['#facc15', '#ec4899'], // Gold to Neon Pink
-      ['#06b6d4', '#10b981'], // Cyan to Emerald
-      ['#a855f7', '#fb923c'], // Purple to Warm Amber
-      ['#38bdf8', '#c084fc'], // Sky to Cyber Lavender
-      ['#4ade80', '#facc15'], // Green to Bright Yellow
-      ['#ff007a', '#7928ca'], // Electric Magenta to Violet
-      ['#00f2fe', '#4facfe'], // Ice Cyan to Royal Blue
+      ['#f43f5e', '#38bdf8'],
+      ['#facc15', '#ec4899'],
+      ['#06b6d4', '#10b981'],
+      ['#a855f7', '#fb923c'],
+      ['#38bdf8', '#c084fc'],
+      ['#4ade80', '#facc15'],
+      ['#ff007a', '#7928ca'],
+      ['#00f2fe', '#4facfe'],
     ];
     const GRADIENT_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315];
 
@@ -291,8 +352,8 @@ export function generate4Variations(
       textColorMode = 'solid';
     }
 
-    // 13. Completely independent effect profile
-    const baseEffects = EFFECT_ARCHETYPES[Math.floor(Math.random() * EFFECT_ARCHETYPES.length)];
+    // 13. Distinct effect profile
+    const baseEffects = effectsDeck[i % effectsDeck.length];
     const selectedEffects = {
       ...baseEffects,
       neon: Math.random() < 0.35,
@@ -336,6 +397,63 @@ export function generate4Variations(
       ? shuffledOverlays[i % shuffledOverlays.length]
       : null;
 
+    const matrixDirections: MatrixDirection[] = [
+      'top-down',
+      'bottom-up',
+      'left-right',
+      'right-left',
+      'edges-to-center',
+      'center-to-edges',
+    ];
+    const matrixColorThemes: MatrixColorTheme[] = [
+      'classic-green',
+      'cyber-cyan',
+      'neon-purple',
+      'amber-gold',
+      'red-alert',
+      'rainbow',
+      'random-shift',
+    ];
+    const fireworksColorThemes: FireworksColorTheme[] = [
+      'multicolor',
+      'gold-glitter',
+      'neon-cyber',
+      'crimson-ruby',
+      'cyan-violet',
+      'emerald-lime',
+    ];
+    const cloudsSkyStyles: CloudsSkyStyle[] = [
+      'sunset-fiery',
+      'azure-noon',
+      'deep-sky',
+      'golden-hour',
+      'twilight-purple',
+    ];
+    const fireworksScaleModes: ('mixed' | 'small' | 'medium' | 'giant')[] = ['mixed', 'small', 'medium', 'giant'];
+    const flagsModes: FlagsCompositionMode[] = ['single', 'duo', 'multi'];
+    const flagsScaleModes: FlagsScaleMode[] = ['mixed', 'small', 'medium', 'giant', 'mega-screen'];
+    const flagsMotions: FlagsMotionStyle[] = ['drift', 'vortex', 'burst', 'rain', 'zoom-3d', 'wave-banner'];
+    const flagsEffects: FlagsEffect[] = ['all-fx', 'cloth-wave', 'glow', 'flicker', 'dissolve'];
+    const flagsBgStyles: FlagsBgStyle[] = ['dark-space', 'stadium', 'flag-blur', 'neon-glow', 'cyber-grid'];
+
+    const randomMatrixDir = matrixDirections[Math.floor(Math.random() * matrixDirections.length)];
+    const randomMatrixTheme = matrixColorThemes[Math.floor(Math.random() * matrixColorThemes.length)];
+    const randomFireworksTheme = fireworksColorThemes[Math.floor(Math.random() * fireworksColorThemes.length)];
+    const randomFireworksScale = fireworksScaleModes[Math.floor(Math.random() * fireworksScaleModes.length)];
+    const randomFireworksCount = Math.floor(1 + Math.random() * 29); // 1 to 30 fireworks
+    const randomCloudsStyle = cloudsSkyStyles[Math.floor(Math.random() * cloudsSkyStyles.length)];
+    const randomCloudsSpeed = Math.round((0.6 + Math.random() * 0.9) * 10) / 10;
+    const randomCloudsFeather = Math.round((0.8 + Math.random() * 0.8) * 10) / 10;
+
+    const randomFlagsMode = flagsModes[Math.floor(Math.random() * flagsModes.length)];
+    const randomFlagsScale = flagsScaleModes[Math.floor(Math.random() * flagsScaleModes.length)];
+    const randomFlagsMotion = flagsMotions[Math.floor(Math.random() * flagsMotions.length)];
+    const randomFlagsEffect = flagsEffects[Math.floor(Math.random() * flagsEffects.length)];
+    const randomFlagsBg = flagsBgStyles[Math.floor(Math.random() * flagsBgStyles.length)];
+    const randomFlagsCount = Math.floor(1 + Math.random() * 29); // 1 to 30 flags
+    const randomFlag1 = WORLD_FLAG_EMOJIS[Math.floor(Math.random() * WORLD_FLAG_EMOJIS.length)].flag;
+    const randomFlag2 = WORLD_FLAG_EMOJIS[Math.floor(Math.random() * WORLD_FLAG_EMOJIS.length)].flag;
+
     const varState: VideoProjectState = {
       ...baseState,
       textBgEnabled: false,
@@ -352,6 +470,22 @@ export function generate4Variations(
       mediaColorTint: null,
       proceduralMood: randomMood,
       proceduralSeed: Math.floor(Math.random() * 999999) + 1,
+      matrixDirection: randomMatrixDir,
+      matrixColorTheme: randomMatrixTheme,
+      fireworksColorTheme: randomFireworksTheme,
+      fireworksCount: randomFireworksCount,
+      fireworksScaleMode: randomFireworksScale,
+      flagsMode: randomFlagsMode,
+      flagsCount: randomFlagsCount,
+      flagsScaleMode: randomFlagsScale,
+      flagsPrimaryCountry: randomFlag1,
+      flagsSecondaryCountry: randomFlag2,
+      flagsMotion: randomFlagsMotion,
+      flagsEffect: randomFlagsEffect,
+      flagsBgStyle: randomFlagsBg,
+      cloudsStyle: randomCloudsStyle,
+      cloudsSpeed: randomCloudsSpeed,
+      cloudsFeather: randomCloudsFeather,
       fontFamily: randomFont.family,
       fontSize,
       textColor,
@@ -374,6 +508,11 @@ export function generate4Variations(
 
     result.push(varState);
   }
+
+  // Update history buffer
+  recentAnimationsHistory = chosenAnims;
+  recentPresetsHistory = chosenPresets;
+  recentFontsHistory = chosenFonts;
 
   return result;
 }
@@ -530,92 +669,79 @@ const DirectTextInputModal: React.FC<{
     onSave(text, val);
   };
 
+  const handleClearText = () => {
+    setText('');
+    onSave('', author);
+    if (textareaRef.current) {
+      textareaRef.current.focus();
+    }
+  };
+
+  const wordCount = text.trim() ? text.trim().split(/\s+/).length : 0;
+
   return createPortal(
     <div
-      className="fixed inset-0 z-[2147483647] bg-black/85 backdrop-blur-md flex items-center justify-center p-3 sm:p-5"
+      className="fixed inset-0 z-[2147483647] bg-black/85 backdrop-blur-md flex flex-col p-3 sm:p-5 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="relative w-full max-w-lg bg-zinc-900/95 border border-purple-500/40 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col gap-4 text-white"
+        className="max-w-2xl w-full mx-auto flex-1 flex flex-col bg-[#16161D] border border-purple-500/30 rounded-2xl shadow-2xl overflow-hidden text-white"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between pb-3 border-b border-white/10">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-purple-600/30 text-purple-300 flex items-center justify-center font-black text-sm border border-purple-500/30">
-              Т
-            </div>
-            <div>
-              <h3 className="text-sm sm:text-base font-extrabold text-white">
-                {t('editTextInputTitle', 'Ввод текста')}
-              </h3>
-              <p className="text-[11px] text-zinc-400">
-                {t('directInputSubtitle', 'Клавиатура открыта, вводите текст')}
-              </p>
-            </div>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-zinc-300 hover:text-white transition-colors cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Text Area */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-purple-300">
-            {t('quoteTextLabel', 'Основной текст цитаты')}
-          </label>
-          <div className="relative">
-            <textarea
-              ref={textareaRef}
-              value={text}
-              onChange={handleTextChange}
-              rows={4}
-              placeholder={t('typeTextPlaceholder', 'Введите ваш текст здесь...')}
-              className="w-full p-3.5 rounded-2xl bg-zinc-950/90 border-2 border-purple-500/50 focus:border-purple-400 text-white text-sm sm:text-base placeholder-zinc-500 focus:outline-none resize-none shadow-inner transition-colors"
-            />
-            {text.length > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setText('');
-                  onSave('', author);
-                  textareaRef.current?.focus();
-                }}
-                className="absolute top-3 right-3 px-2 py-0.5 rounded-md bg-white/10 hover:bg-white/20 text-zinc-400 hover:text-white text-[10px] font-semibold transition-all cursor-pointer"
-              >
-                {t('clear', 'Очистить')}
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Author Field */}
-        <div className="space-y-1.5">
-          <label className="text-[11px] font-bold uppercase tracking-wider text-zinc-400">
-            {t('authorLabel', 'Автор (необязательно)')}
-          </label>
-          <input
-            type="text"
-            value={author}
-            onChange={handleAuthorChange}
-            placeholder={t('authorPlaceholder', '— Автор или источник')}
-            className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-950/90 border border-white/15 focus:border-purple-400 text-white text-xs sm:text-sm placeholder-zinc-500 focus:outline-none transition-colors"
+        {/* Editor Textarea - Takes all available top space directly without top header */}
+        <div className="flex-1 p-3.5 flex flex-col space-y-3 overflow-y-auto">
+          <textarea
+            ref={textareaRef}
+            value={text}
+            onChange={handleTextChange}
+            placeholder={t('pasteOrTypeText', 'Вставьте или напечатайте текст сюда...')}
+            className="w-full flex-1 min-h-[160px] bg-[#0F0F12] border border-white/15 focus:border-purple-500 focus:ring-1 focus:ring-purple-500/30 rounded-xl p-3.5 text-base text-zinc-100 placeholder-zinc-500 outline-none leading-relaxed resize-none font-sans"
           />
+
+          {/* Author Field inside modal */}
+          <div className="flex items-center gap-2 bg-[#0F0F12] border border-white/10 rounded-xl px-3 py-2">
+            <User className="w-4 h-4 text-purple-400 shrink-0" />
+            <input
+              type="text"
+              value={author}
+              onChange={handleAuthorChange}
+              placeholder={t('authorPlaceholder', 'Автор (необязательно, появится в конце)')}
+              className="w-full bg-transparent text-xs sm:text-sm text-zinc-100 placeholder-zinc-500 outline-none"
+            />
+          </div>
         </div>
 
-        {/* Action Button: Done */}
-        <div className="pt-2 flex items-center justify-end gap-2">
+        {/* Bottom Actions Bar with Centered Info & Counter */}
+        <div className="px-3 sm:px-4 py-2.5 sm:py-3 border-t border-white/10 bg-[#1A1A22] flex items-center justify-between gap-2 sm:gap-3 shrink-0">
+          {/* Red Delete Button */}
+          <button
+            type="button"
+            onClick={handleClearText}
+            className="flex items-center justify-center p-3 rounded-xl bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white border border-rose-500/30 transition-all cursor-pointer active:scale-95 shadow-md shrink-0"
+            title={t('clearText', 'Очистить текст')}
+          >
+            <Trash2 className="w-5 h-5" />
+          </button>
+
+          {/* Center Section Title & Words/Chars Counter */}
+          <div className="flex-1 flex flex-col items-center justify-center text-center min-w-0 px-1 select-none">
+            <span className="text-[11px] sm:text-xs font-semibold text-zinc-300 truncate max-w-full leading-tight">
+              {t('textSectionTitle', 'Текст цитаты или сценария')}
+            </span>
+            <span className="text-[10px] sm:text-[11px] text-zinc-400 font-medium font-mono leading-tight mt-0.5">
+              {wordCount} {t('words', 'слов')} • {text.length} {t('chars', 'симв.')}
+            </span>
+          </div>
+
+          {/* Green Confirm / Done Button */}
           <button
             type="button"
             onClick={onClose}
-            className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-black text-sm tracking-wide shadow-xl shadow-purple-600/30 flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+            className="flex items-center justify-center gap-1.5 p-3 sm:px-5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-sm shadow-lg shadow-emerald-600/30 transition-all cursor-pointer active:scale-95 shrink-0"
+            title={t('done', 'Готово')}
           >
-            <Check className="w-4 h-4 stroke-[3]" />
-            <span>{t('done', 'Готово')}</span>
+            <Check className="w-5 h-5 stroke-[2.5]" />
+            <span className="hidden sm:inline">{t('done', 'Готово')}</span>
           </button>
         </div>
       </div>

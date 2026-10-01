@@ -225,6 +225,9 @@ class ParticleEngine {
   }
 
   dustParticles: Particle[] = [];
+  sparklerParticles: Particle[] = [];
+  fireworkParticles: Particle[] = [];
+  smokeParticles: Particle[] = [];
 
   updateAndDrawDust(
     ctx: CanvasRenderingContext2D,
@@ -276,10 +279,206 @@ class ParticleEngine {
     }
   }
 
+  updateAndDrawSparklers(
+    ctx: CanvasRenderingContext2D,
+    bounds: { x: number; y: number; width: number; height: number },
+    time: number
+  ) {
+    if (bounds.width <= 0) return;
+
+    // Spawn intense crackling sparkler sparks around text contour
+    if (this.sparklerParticles.length < 80) {
+      for (let s = 0; s < 5; s++) {
+        const px = bounds.x + Math.random() * bounds.width;
+        const py = bounds.y + Math.random() * bounds.height;
+        const angle = Math.random() * Math.PI * 2;
+        const speed = 70 + Math.random() * 160;
+        this.sparklerParticles.push({
+          x: px,
+          y: py,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 1.5 + Math.random() * 3,
+          alpha: 1,
+          color: Math.random() > 0.4 ? '#ffffff' : Math.random() > 0.3 ? '#fef08a' : '#f59e0b',
+          rotation: Math.random() * Math.PI,
+          life: 0,
+          maxLife: 0.25 + Math.random() * 0.35,
+        });
+      }
+    }
+
+    const dt = 0.03;
+    for (let i = this.sparklerParticles.length - 1; i >= 0; i--) {
+      const p = this.sparklerParticles[i];
+      p.life += dt;
+      if (p.life >= p.maxLife) {
+        this.sparklerParticles.splice(i, 1);
+        continue;
+      }
+
+      const prevX = p.x;
+      const prevY = p.y;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 45 * dt; // gravity
+
+      const progress = p.life / p.maxLife;
+      p.alpha = Math.max(0, 1 - progress);
+
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.strokeStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 10;
+      ctx.lineWidth = Math.max(1, p.size * (1 - progress));
+      ctx.beginPath();
+      ctx.moveTo(prevX, prevY);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
+
+      // Spark tip star
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(p.x - 1, p.y - 1, 2, 2);
+      ctx.restore();
+    }
+  }
+
+  updateAndDrawFireworks(
+    ctx: CanvasRenderingContext2D,
+    bounds: { x: number; y: number; width: number; height: number },
+    time: number
+  ) {
+    if (bounds.width <= 0) return;
+
+    // Periodic fireworks bursts around letters
+    if (this.fireworkParticles.length < 75 && Math.random() < 0.35) {
+      const burstX = bounds.x + Math.random() * bounds.width;
+      const burstY = bounds.y - 10 + Math.random() * (bounds.height * 0.8);
+      const palette = ['#f43f5e', '#38bdf8', '#facc15', '#a855f7', '#4ade80', '#ffffff'];
+      const burstColor = palette[Math.floor(Math.random() * palette.length)];
+
+      const sparkCount = 18;
+      for (let i = 0; i < sparkCount; i++) {
+        const angle = (i * Math.PI * 2) / sparkCount + (Math.random() - 0.5) * 0.3;
+        const speed = 40 + Math.random() * 85;
+        this.fireworkParticles.push({
+          x: burstX,
+          y: burstY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          size: 2.5 + Math.random() * 3,
+          alpha: 1,
+          color: i % 3 === 0 ? '#ffffff' : burstColor,
+          rotation: 0,
+          life: 0,
+          maxLife: 0.6 + Math.random() * 0.5,
+        });
+      }
+    }
+
+    const dt = 0.03;
+    for (let i = this.fireworkParticles.length - 1; i >= 0; i--) {
+      const p = this.fireworkParticles[i];
+      p.life += dt;
+      if (p.life >= p.maxLife) {
+        this.fireworkParticles.splice(i, 1);
+        continue;
+      }
+
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      p.vy += 35 * dt; // gravity
+      p.vx *= 0.96; // drag
+
+      const progress = p.life / p.maxLife;
+      p.alpha = Math.max(0, 1 - progress);
+
+      ctx.save();
+      ctx.globalAlpha = p.alpha;
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 12;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(1, p.size * (1 - progress * 0.5)), 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  updateAndDrawSmoke(
+    ctx: CanvasRenderingContext2D,
+    bounds: { x: number; y: number; width: number; height: number },
+    color: string | undefined,
+    time: number
+  ) {
+    if (bounds.width <= 0) return;
+
+    // Spawn billowing smoke puffs from text baseline
+    if (this.smokeParticles.length < 50) {
+      for (let s = 0; s < 2; s++) {
+        const px = bounds.x + Math.random() * bounds.width;
+        const py = bounds.y + bounds.height * 0.75 + (Math.random() - 0.5) * 15;
+        const smokePalettes = ['#cbd5e1', '#94a3b8', '#a855f7', '#38bdf8', '#f472b6'];
+        const pColor = color || smokePalettes[Math.floor(Math.random() * smokePalettes.length)];
+        this.smokeParticles.push({
+          x: px,
+          y: py,
+          vx: (Math.random() - 0.5) * 20,
+          vy: -25 - Math.random() * 35,
+          size: 14 + Math.random() * 18,
+          alpha: 0.45,
+          color: pColor,
+          rotation: Math.random() * Math.PI * 2,
+          life: 0,
+          maxLife: 1.6 + Math.random() * 1.2,
+        });
+      }
+    }
+
+    const dt = 0.03;
+    for (let i = this.smokeParticles.length - 1; i >= 0; i--) {
+      const p = this.smokeParticles[i];
+      p.life += dt;
+      if (p.life >= p.maxLife) {
+        this.smokeParticles.splice(i, 1);
+        continue;
+      }
+
+      p.x += p.vx * dt + Math.sin(time * 2 + p.y * 0.03) * 1.5;
+      p.y += p.vy * dt;
+      p.rotation += 0.02;
+      p.size += 18 * dt; // Smoke expands as it rises
+
+      const progress = p.life / p.maxLife;
+      // Soft fade-in then gradual fade-out
+      p.alpha = Math.sin(progress * Math.PI) * 0.42;
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, p.alpha));
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rotation);
+
+      const radGrad = ctx.createRadialGradient(0, 0, 2, 0, 0, p.size);
+      radGrad.addColorStop(0, p.color);
+      radGrad.addColorStop(0.65, p.color);
+      radGrad.addColorStop(1, 'transparent');
+
+      ctx.fillStyle = radGrad;
+      ctx.beginPath();
+      ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
   reset() {
     this.sparkles = [];
     this.fireParticles = [];
     this.dustParticles = [];
+    this.sparklerParticles = [];
+    this.fireworkParticles = [];
+    this.smokeParticles = [];
   }
 }
 
@@ -457,7 +656,28 @@ function drawPresetOrOverlayBackground(
       state.proceduralMood ||
       'cosmic';
     const seed = state.proceduralSeed || 42;
-    drawProceduralMoodBackground(ctx, width, height, time, moodStyle, seed, skipSolidBg);
+    drawProceduralMoodBackground(ctx, width, height, time, moodStyle, seed, skipSolidBg, {
+      direction: state.matrixDirection,
+      colorTheme: state.matrixColorTheme,
+      fontSize: state.fontSize,
+      rawText: state.rawText,
+      activeSegmentText: activeSegment?.text,
+      isUppercase: state.isUppercase,
+      fireworksColorTheme: state.fireworksColorTheme,
+      fireworksCount: state.fireworksCount,
+      fireworksScaleMode: state.fireworksScaleMode,
+      flagsMode: state.flagsMode,
+      flagsCount: state.flagsCount,
+      flagsScaleMode: state.flagsScaleMode,
+      flagsPrimaryCountry: state.flagsPrimaryCountry,
+      flagsSecondaryCountry: state.flagsSecondaryCountry,
+      flagsMotion: state.flagsMotion,
+      flagsEffect: state.flagsEffect,
+      flagsBgStyle: state.flagsBgStyle,
+      cloudsStyle: state.cloudsStyle,
+      cloudsSpeed: state.cloudsSpeed,
+      cloudsFeather: state.cloudsFeather,
+    });
     return;
   }
 
@@ -1975,6 +2195,10 @@ function drawTextSegment({
   ctx.textAlign = state.textAlign;
   ctx.textBaseline = 'alphabetic';
 
+  // Apply user text opacity multiplier
+  const userTextOpacity = Math.max(0.05, Math.min(1, state.textOpacity ?? 1.0));
+  alpha *= userTextOpacity;
+
   // Apply Shadow effect if enabled
   if (state.effects.shadow) {
     ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
@@ -2120,6 +2344,7 @@ function drawTextSegment({
     // Neon effect multi-pass
     if (state.effects.neon) {
       ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
       ctx.shadowColor = state.neonColor || '#a855f7';
       ctx.shadowBlur = 35;
       ctx.strokeStyle = state.neonColor || '#a855f7';
@@ -2139,6 +2364,7 @@ function drawTextSegment({
 
     if (state.strokeEnabled && !state.effects.neon && !isPerCharAnimation) {
       ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
       ctx.strokeStyle = state.strokeColor;
       ctx.lineWidth = state.strokeWidth;
       ctx.lineJoin = 'round';
@@ -2147,6 +2373,7 @@ function drawTextSegment({
       ctx.restore();
     } else if (isLightPreset && isLightTextColor && !state.effects.neon && !isPerCharAnimation) {
       ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
       ctx.strokeStyle = 'rgba(15, 23, 42, 0.75)';
       ctx.lineWidth = 3;
       ctx.lineJoin = 'round';
@@ -2323,8 +2550,11 @@ function drawTextSegment({
       ctx.restore();
     } else {
       // Main fast single text fill
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
       ctx.fillStyle = lineFillStyle;
       ctx.fillText(line, drawLineX, drawLineY);
+      ctx.restore();
     }
 
     globalCharOffset += line.length;
@@ -2666,7 +2896,7 @@ function drawTextSegment({
 
   ctx.restore();
 
-  // Draw Particles (Sparkles / Fire / Particles Dust) over text
+  // Draw Particles (Sparkles / Fire / Particles Dust / Sparkler / Fireworks / Smoke) over text
   if (state.effects.sparkle) {
     particleEngine.updateAndDrawSparkles(ctx, bounds, currentTime);
   }
@@ -2675,6 +2905,15 @@ function drawTextSegment({
   }
   if (state.effects.particles) {
     particleEngine.updateAndDrawDust(ctx, bounds, state.textColor, currentTime);
+  }
+  if (state.effects.sparkler) {
+    particleEngine.updateAndDrawSparklers(ctx, bounds, currentTime);
+  }
+  if (state.effects.firework) {
+    particleEngine.updateAndDrawFireworks(ctx, bounds, currentTime);
+  }
+  if (state.effects.smoke) {
+    particleEngine.updateAndDrawSmoke(ctx, bounds, state.effects.smokeColor, currentTime);
   }
 
   // Draw 2D Coordinate Ruler (Рейсшина) when dragging text

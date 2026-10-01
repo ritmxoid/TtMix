@@ -39,8 +39,8 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
         <span className="text-xs text-zinc-400 font-medium">20+ {t('fonts', 'шрифтов')}</span>
       </div>
 
-      {/* Primary Position, Size & Color Controls */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-[#0F0F12]/90 border border-white/10 rounded-xl p-3.5 shadow-sm">
+      {/* Primary Position, Size, Opacity & Color Controls */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 bg-[#0F0F12]/90 border border-white/10 rounded-xl p-3.5 shadow-sm">
         {/* Height Position (Положение по вертикали Y) */}
         <div className="flex flex-col justify-between gap-1.5">
           <div className="flex items-center justify-between text-xs">
@@ -136,6 +136,35 @@ export const FontSection: React.FC<FontSectionProps> = ({ state, onChange }) => 
               title={t('fontSize', 'Размер шрифта')}
             />
             <span className="text-[10px] text-zinc-500 font-medium">A+</span>
+          </div>
+        </div>
+
+        {/* Text Opacity (Прозрачность текста) */}
+        <div className="flex flex-col justify-between gap-1.5">
+          <div className="flex items-center justify-between text-xs">
+            <span className="text-zinc-300 font-semibold flex items-center gap-1.5">
+              <Type className="w-3.5 h-3.5 text-purple-400 opacity-60" />
+              <span>{t('textOpacityLabel', 'Прозрачность')}</span>
+            </span>
+            <span className="text-[11px] text-zinc-400 font-mono">
+              {Math.round((state.textOpacity ?? 1.0) * 100)}%
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] text-zinc-500 font-medium">5%</span>
+            <input
+              type="range"
+              min="0.05"
+              max="1"
+              step="0.05"
+              value={state.textOpacity ?? 1.0}
+              onChange={(e) =>
+                onChange({ textOpacity: parseFloat(e.target.value) })
+              }
+              className="w-full accent-purple-500 bg-zinc-800 h-1.5 rounded-lg cursor-pointer"
+              title="Прозрачность текста"
+            />
+            <span className="text-[10px] text-zinc-500 font-medium">100%</span>
           </div>
         </div>
 

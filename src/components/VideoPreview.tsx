@@ -42,7 +42,7 @@ import {
   AlignRight,
 } from 'lucide-react';
 import { AnimationStyle, ExtraEffects, TextMode, VideoProjectState } from '../types';
-import { FONT_OPTIONS } from '../data/presets';
+import { FONT_OPTIONS, DEFAULT_PROJECT_STATE } from '../data/presets';
 import { BUILTIN_PRESETS, SavedPreset } from '../data/presetLibrary';
 import { SavePresetModal } from './SavePresetModal';
 import { PresetsCatalogModal } from './PresetsCatalogModal';
@@ -308,19 +308,20 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
 
           // Apply full preset state while strictly preserving user's current rawText and authorText
           const finalAppliedState: VideoProjectState = {
-            ...state,
+            ...DEFAULT_PROJECT_STATE,
             ...presetState,
             effects: {
-              ...state.effects,
+              ...DEFAULT_PROJECT_STATE.effects,
               ...(presetState.effects || {}),
             },
             audio: {
-              ...state.audio,
+              ...DEFAULT_PROJECT_STATE.audio,
               ...(presetState.audio || {}),
             },
             rawText: state.rawText,
             authorText: state.authorText,
-            textMode: presetState.textMode || state.textMode,
+            bgMediaUrl: presetState.bgType === 'video' || presetState.bgType === 'image' ? state.bgMediaUrl : (presetState.bgMediaUrl || null),
+            bgMediaType: presetState.bgType === 'video' || presetState.bgType === 'image' ? state.bgMediaType : (presetState.bgMediaType || null),
           };
           onChange(finalAppliedState);
 
@@ -355,21 +356,22 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
   };
 
   const handleApplyPreset = (preset: SavedPreset) => {
-    // Preserve user's active rawText and authorText so applying preset NEVER wipes out what user typed
+    // Construct clean baseline state from DEFAULT_PROJECT_STATE while strictly preserving user's rawText & authorText
     const finalState: VideoProjectState = {
-      ...state,
+      ...DEFAULT_PROJECT_STATE,
       ...preset.state,
       effects: {
-        ...state.effects,
+        ...DEFAULT_PROJECT_STATE.effects,
         ...(preset.state.effects || {}),
       },
       audio: {
-        ...state.audio,
+        ...DEFAULT_PROJECT_STATE.audio,
         ...(preset.state.audio || {}),
       },
       rawText: state.rawText,
       authorText: state.authorText,
-      textMode: preset.state.textMode || state.textMode,
+      bgMediaUrl: preset.state.bgType === 'video' || preset.state.bgType === 'image' ? state.bgMediaUrl : (preset.state.bgMediaUrl || null),
+      bgMediaType: preset.state.bgType === 'video' || preset.state.bgType === 'image' ? state.bgMediaType : (preset.state.bgMediaType || null),
     };
     onChange(finalState);
     trackApplyPreset({

@@ -1,16 +1,18 @@
 // Procedural Canvas Background Generator Module
 // Generates unique dynamic animated background scenes based on mood styles and seed variations
 
-export type ProceduralMoodStyle =
-  | 'cosmic'
-  | 'cyberpunk'
-  | 'ember'
-  | 'nature'
-  | 'gold'
-  | 'fluid'
-  | 'equalizer'
-  | 'shapes'
-  | 'emojis';
+import {
+  MatrixDirection,
+  MatrixColorTheme,
+  FireworksColorTheme,
+  FlagsCompositionMode,
+  FlagsScaleMode,
+  FlagsMotionStyle,
+  FlagsEffect,
+  FlagsBgStyle,
+  CloudsSkyStyle,
+  ProceduralMoodStyle,
+} from '../types';
 
 export interface ProceduralMoodDefinition {
   id: ProceduralMoodStyle;
@@ -22,7 +24,61 @@ export interface ProceduralMoodDefinition {
   accentColors: [string, string, string];
 }
 
+export interface ProceduralMoodRenderOptions {
+  // Matrix options
+  direction?: MatrixDirection;
+  colorTheme?: MatrixColorTheme;
+  fontSize?: number;
+  rawText?: string;
+  activeSegmentText?: string;
+  isUppercase?: boolean;
+  // Fireworks options
+  fireworksColorTheme?: FireworksColorTheme;
+  fireworksCount?: number;
+  fireworksScaleMode?: 'mixed' | 'small' | 'medium' | 'giant';
+  // Flags options
+  flagsMode?: FlagsCompositionMode;
+  flagsCount?: number;
+  flagsScaleMode?: FlagsScaleMode;
+  flagsPrimaryCountry?: string;
+  flagsSecondaryCountry?: string;
+  flagsMotion?: FlagsMotionStyle;
+  flagsEffect?: FlagsEffect;
+  flagsBgStyle?: FlagsBgStyle;
+  // Clouds options (legacy compatibility)
+  cloudsStyle?: CloudsSkyStyle;
+  cloudsSpeed?: number;
+  cloudsFeather?: number;
+}
+
 export const PROCEDURAL_MOODS: ProceduralMoodDefinition[] = [
+  {
+    id: 'matrix',
+    nameKey: 'moodMatrixName',
+    defaultName: 'Матрица',
+    icon: '🟢',
+    descriptionKey: 'moodMatrixDesc',
+    defaultDesc: 'Бегущие биты и символы кода с трансформацией в текст в реальном времени',
+    accentColors: ['#000000', '#022c15', '#00ff66'],
+  },
+  {
+    id: 'fireworks',
+    nameKey: 'moodFireworksName',
+    defaultName: 'Фейерверки',
+    icon: '🎆',
+    descriptionKey: 'moodFireworksDesc',
+    defaultDesc: '35+ видов салютов: хризантемы, ивы, камуро, кольца, кометы и комбо-залпы',
+    accentColors: ['#050510', '#3b0764', '#facc15'],
+  },
+  {
+    id: 'flags',
+    nameKey: 'moodFlagsName',
+    defaultName: 'Флаги',
+    icon: '🚩',
+    descriptionKey: 'moodFlagsDesc',
+    defaultDesc: 'Летающие флаги стран: соло, дуэли и парад от 1 до 30 флагов с развеванием и сиянием',
+    accentColors: ['#0f172a', '#1e293b', '#38bdf8'],
+  },
   {
     id: 'cosmic',
     nameKey: 'moodCosmicName',
@@ -116,6 +172,10 @@ function seededRandom(seed: number) {
   };
 }
 
+function easeOutCubic(t: number): number {
+  return 1 - Math.pow(1 - t, 3);
+}
+
 /**
  * Renders a procedural animated background on canvas
  */
@@ -126,11 +186,22 @@ export function drawProceduralMoodBackground(
   time: number,
   moodStyle: ProceduralMoodStyle = 'cosmic',
   seed: number = 42,
-  skipSolidBg: boolean = false
+  skipSolidBg: boolean = false,
+  options?: ProceduralMoodRenderOptions
 ) {
   const rng = seededRandom(seed);
 
   switch (moodStyle) {
+    case 'matrix':
+      drawMatrix(ctx, width, height, time, rng, seed, skipSolidBg, options);
+      break;
+    case 'fireworks':
+      drawFireworks(ctx, width, height, time, rng, seed, skipSolidBg, options);
+      break;
+    case 'flags':
+    case 'clouds':
+      drawFlags(ctx, width, height, time, rng, seed, skipSolidBg, options);
+      break;
     case 'cosmic':
       drawCosmic(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
@@ -159,7 +230,7 @@ export function drawProceduralMoodBackground(
       drawEmojis(ctx, width, height, time, rng, seed, skipSolidBg);
       break;
     default:
-      drawCosmic(ctx, width, height, time, rng, seed, skipSolidBg);
+      drawMatrix(ctx, width, height, time, rng, seed, skipSolidBg, options);
   }
 }
 
@@ -2295,28 +2366,63 @@ function drawEmojis(
     ctx.fillRect(0, 0, w, h);
   }
 
-  // Expanded rich emoji pool
+  // Comprehensive multi-category rich emoji library (280+ standard emojis)
   const fullEmojiLibrary = [
-    '🤩', '🚀', '💎', '🦄', '⚡', '🔮', '🌟', '🍕', '🎭',
-    '👾', '🪐', '🔥', '🌈', '🥳', '👽', '🎨', '💥', '🎈',
-    '💖', '🍀', '🏆', '🎯', '🎸', '🍿', '🍦', '🍩', '🥑',
-    '🦊', '🐱', '🦋', '😎', '🛸', '👑', '🎉', '🌊', '⚡',
-    '🧸', '🌮', '🍭', '🌸', '✨', '🪐', '🤖', '🍒', '🌻'
+    // 1. Reactions & Gestures (likes, dislikes, claps, peace, prayer, etc.)
+    '👍', '👎', '👏', '🙌', '🤝', '✌️', '🤞', '🤟', '🤘', '👌', '🤌', '🤏',
+    '👈', '👉', '👆', '👇', '☝️', '✋', '🤚', '🖐️', '🖖', '👋', '🤙', '✍️', '🙏', '🦾', '💪',
+    // 2. Popular Expressions & Faces
+    '😀', '😃', '😄', '😁', '😆', '😅', '🤣', '😂', '🙂', '🙃', '😉', '😊',
+    '😇', '🥰', '😍', '🤩', '😘', '😋', '😜', '🤪', '😝', '🤑', '🤗', '🤭',
+    '🤫', '🤔', '🤐', '🤨', '😐', '😑', '😶', '😏', '😒', '🙄', '😬', '🤥',
+    '😌', '😴', '😷', '🤒', '🤕', '🤢', '🤮', '🤧', '🥵', '🥶', '🥴', '😵',
+    '🤯', '🤠', '🥳', '🥸', '😎', '🤓', '🧐', '🥺', '😭', '😱', '😤', '😡',
+    '😠', '🤬', '😈', '👿', '💀', '☠️', '💩', '🤡', '👹', '👺', '👻', '👽', '👾', '🤖',
+    // 3. Hearts, Stars, Fire, 100 & High-Energy Symbols
+    '❤️', '🧡', '💛', '💚', '💙', '💜', '🖤', '🤍', '🤎', '💔', '❣️', '💕',
+    '💞', '💓', '💗', '💖', '💘', '💝', '💟', '💯', '🔥', '⚡', '💥', '✨',
+    '🌟', '⭐️', '💫', '☀️', '🌙', '🪐', '🌈', '🌊', '💨', '💦', '🫧', '💤',
+    // 4. Celebrations, Trophies, Luxury & Fun
+    '👑', '💎', '💍', '🏆', '🥇', '🥈', '🥉', '🏅', '🎖️', '🎉', '🎊', '🎈',
+    '🎁', '🚀', '🛸', '🎯', '🎲', '🎰', '🎮', '🎳', '🎸', '🎹', '🥁', '🎷',
+    '🎺', '🎻', '🎤', '🎧', '🎬', '🎨', '🎭', '🎪', '🪄', '🔮', '🧿', '💡',
+    '💵', '💰', '💳', '🪙', '📦', '🔔', '📢', '📣', '🚗', '🏎️', '⛵', '✈️',
+    // 5. Animals, Nature & Magic
+    '🦄', '🦊', '🐱', '🐶', '🦁', '🐯', '🐼', '🐨', '🐻', '🐵', '🐸', '🐙',
+    '🦀', '🦋', '🐝', '🐞', '🐢', '🐬', '🐳', '🦈', '🐊', '🦖', '🦕', '🦅',
+    '🦉', '🦩', '🦚', '🦜', '🌸', '🌺', '🌻', '🌹', '🍀', '🌴', '🌲', '🍁', '🍄',
+    // 6. Food & Treats
+    '🍕', '🍔', '🍟', '🌭', '🍿', '🍩', '🍦', '🍨', '🎂', '🍰', '🧁', '🍫',
+    '🍬', '🍭', '🍓', '🍒', '🥑', '🌮', '🍣', '🍙', '☕', '🧃', '🥤', '🍺', '🥂', '🍾'
   ];
 
-  // Pick 12 distinct emojis for this seed universe
+  // Guaranteed hero reactions to mix in alongside random choices
+  const heroReactions = ['👍', '👎', '❤️', '🔥', '💯', '👑', '🚀', '👏', '🥳', '😎', '💀', '🎉'];
+
+  // Pick 24 distinct emojis for this universe
   const chosenEmojis: string[] = [];
-  for (let i = 0; i < 12; i++) {
+  // Include 4 curated core heroes
+  for (let h = 0; h < 4; h++) {
+    const hIdx = Math.floor(rng() * heroReactions.length);
+    if (!chosenEmojis.includes(heroReactions[hIdx])) {
+      chosenEmojis.push(heroReactions[hIdx]);
+    }
+  }
+  // Fill remaining from the comprehensive library
+  while (chosenEmojis.length < 24) {
     const idx = Math.floor(rng() * fullEmojiLibrary.length);
-    chosenEmojis.push(fullEmojiLibrary[idx]);
+    const em = fullEmojiLibrary[idx];
+    if (!chosenEmojis.includes(em)) {
+      chosenEmojis.push(em);
+    }
   }
 
-  // Render 32 emojis ranging from GIANT background objects (380px) to micro dust (16px)
-  const count = 32;
+  // Render 36 emojis ranging from GIANT hero objects (380px) to micro dust (16px)
+  const count = 36;
   for (let i = 0; i < count; i++) {
     const emoji = chosenEmojis[i % chosenEmojis.length];
     const isGiant = i < 3; // 3 giant background floating emojis
-    const isMicro = i > 24; // micro dust emojis
+    const isMicro = i > 28; // micro dust emojis
 
     let baseFontSize = 48;
     if (isGiant) {
@@ -2324,7 +2430,7 @@ function drawEmojis(
     } else if (isMicro) {
       baseFontSize = 14 + rng() * 16; // 14px to 30px
     } else {
-      baseFontSize = 38 + rng() * 65; // 38px to 103px
+      baseFontSize = 42 + rng() * 68; // 42px to 110px
     }
 
     const scalePulse = 0.9 + 0.2 * Math.sin(t * 1.5 + i);
@@ -2345,16 +2451,1374 @@ function drawEmojis(
     ctx.translate(x, y);
     ctx.rotate(rot);
 
-    ctx.globalAlpha = isGiant ? 0.16 : isMicro ? 0.4 + 0.4 * Math.sin(t * 3 + i) : 0.85 + 0.15 * Math.sin(t * 2 + i);
+    ctx.globalAlpha = isGiant ? 0.16 : isMicro ? 0.4 + 0.4 * Math.sin(t * 3 + i) : 0.88 + 0.12 * Math.sin(t * 2 + i);
     if (!isGiant) {
-      ctx.shadowColor = 'rgba(255, 255, 255, 0.4)';
-      ctx.shadowBlur = isMicro ? 4 : 15;
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.45)';
+      ctx.shadowBlur = isMicro ? 4 : 16;
     }
 
     ctx.font = `${Math.floor(fontSize)}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(emoji, 0, 0);
+
+    ctx.restore();
+  }
+}
+
+/* ================= 10. MATRIX DIGITAL RAIN & CODE DECODE ================= */
+function drawMatrix(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  t: number,
+  rng: () => number,
+  seed: number,
+  skipSolidBg: boolean = false,
+  options?: ProceduralMoodRenderOptions
+) {
+  // Available directions & color themes
+  const directions: MatrixDirection[] = [
+    'top-down',
+    'bottom-up',
+    'left-right',
+    'right-left',
+    'edges-to-center',
+    'center-to-edges',
+  ];
+  const colorThemes: MatrixColorTheme[] = [
+    'classic-green',
+    'cyber-cyan',
+    'neon-purple',
+    'amber-gold',
+    'red-alert',
+    'rainbow',
+    'random-shift',
+  ];
+
+  // Resolve direction and color theme (either from options or deterministic seed fallback)
+  const dirIndex = Math.abs(seed) % directions.length;
+  const colIndex = Math.abs(Math.floor(seed * 7)) % colorThemes.length;
+  const direction: MatrixDirection = options?.direction || directions[dirIndex];
+  const colorTheme: MatrixColorTheme = options?.colorTheme || colorThemes[colIndex];
+
+  // Palette color definitions
+  let primaryCol = '#00ff66';
+  let leadCol = '#6ee7b7';
+  let tailCol = '#059669';
+  let fadeCol = '#022c15';
+  let glowCol = '#10b981';
+  let radialCenter = '#012613';
+
+  if (colorTheme === 'cyber-cyan') {
+    primaryCol = '#00f0ff';
+    leadCol = '#a5f3fc';
+    tailCol = '#0284c7';
+    fadeCol = '#082f49';
+    glowCol = '#06b6d4';
+    radialCenter = '#021b2d';
+  } else if (colorTheme === 'neon-purple') {
+    primaryCol = '#e879f9';
+    leadCol = '#f5d0fe';
+    tailCol = '#c026d3';
+    fadeCol = '#3b0764';
+    glowCol = '#d946ef';
+    radialCenter = '#200530';
+  } else if (colorTheme === 'amber-gold') {
+    primaryCol = '#facc15';
+    leadCol = '#fef08a';
+    tailCol = '#d97706';
+    fadeCol = '#451a03';
+    glowCol = '#f59e0b';
+    radialCenter = '#261401';
+  } else if (colorTheme === 'red-alert') {
+    primaryCol = '#f43f5e';
+    leadCol = '#fecdd3';
+    tailCol = '#e11d48';
+    fadeCol = '#450a0a';
+    glowCol = '#ef4444';
+    radialCenter = '#2a050a';
+  }
+
+  // Draw cyber black background with subtle colored central ambient glow
+  if (!skipSolidBg) {
+    const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 20, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+    bgGrad.addColorStop(0, colorTheme === 'rainbow' ? '#09081a' : radialCenter);
+    bgGrad.addColorStop(0.55, '#040508');
+    bgGrad.addColorStop(1, '#000000');
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+  }
+
+  // Base glyph sizing synchronized with user font size
+  const userFontSize = options?.fontSize || 80;
+  const bitSize = Math.max(13, Math.min(42, Math.round(userFontSize * 0.28)));
+  const stepX = Math.round(bitSize * 1.35);
+  const stepY = Math.round(bitSize * 1.3);
+
+  // Character sets (bits 0/1, hex, cyber symbols, and active phrase chars for decoding)
+  const baseSymbols = ['0', '1', '1', '0', '0', '1', 'λ', '0x', '7', 'F', 'Z', '9', 'X', 'Ø', '∑', '§', 'Δ', 'Ω', '0', '1'];
+  
+  // Extract uppercase characters from active text for center morph effect
+  const samplePhrase = (options?.activeSegmentText || options?.rawText || 'MATRIX CODE').toUpperCase().replace(/[^A-ZА-Я0-9]/g, '');
+  const morphChars = samplePhrase.length > 0 ? samplePhrase.split('') : ['M', 'A', 'T', 'R', 'I', 'X'];
+
+  ctx.save();
+  ctx.font = `700 ${bitSize}px "Courier New", "Lucida Console", "Rubik Mono One", monospace`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Render streams based on selected direction
+  if (direction === 'top-down' || direction === 'bottom-up') {
+    const colCount = Math.floor(w / stepX) + 1;
+    const totalHeight = h + bitSize * 24;
+
+    for (let c = 0; c < colCount; c++) {
+      const colX = c * stepX + stepX * 0.5;
+      const speed = 140 + ((c * 37 + seed * 13) % 180);
+      const streamLen = 14 + ((c * 19 + seed * 7) % 18);
+      const colOffset = (c * 173 + seed * 97) % totalHeight;
+
+      let headY = 0;
+      if (direction === 'top-down') {
+        headY = ((t * speed + colOffset) % totalHeight) - bitSize * 10;
+      } else {
+        headY = h + bitSize * 10 - ((t * speed + colOffset) % totalHeight);
+      }
+
+      // Stream color calculation (for rainbow or random-shift)
+      let colPrimary = primaryCol;
+      let colLead = leadCol;
+      let colGlow = glowCol;
+
+      if (colorTheme === 'rainbow') {
+        const hue = (c * 14 + t * 40) % 360;
+        colPrimary = `hsl(${hue}, 100%, 60%)`;
+        colLead = `hsl(${hue}, 100%, 85%)`;
+        colGlow = `hsl(${hue}, 100%, 50%)`;
+      } else if (colorTheme === 'random-shift') {
+        const hue = ((c * 53 + seed * 23) % 360 + Math.sin(t * 1.5 + c) * 35 + 360) % 360;
+        colPrimary = `hsl(${hue}, 95%, 62%)`;
+        colLead = `hsl(${hue}, 100%, 85%)`;
+        colGlow = `hsl(${hue}, 90%, 55%)`;
+      }
+
+      for (let k = 0; k < streamLen; k++) {
+        let charY = 0;
+        if (direction === 'top-down') {
+          charY = headY - k * stepY;
+        } else {
+          charY = headY + k * stepY;
+        }
+
+        if (charY < -bitSize * 2 || charY > h + bitSize * 2) continue;
+
+        // Check if glyph is inside central text decoding zone
+        const isCenterZone =
+          colX > w * 0.18 &&
+          colX < w * 0.82 &&
+          charY > h * 0.35 &&
+          charY < h * 0.65;
+
+        // Dynamic glyph cycling
+        const charSeed = Math.floor(t * 8 + c * 31 + k * 17);
+        let char = '';
+        if (isCenterZone && ((charSeed + k) % 3 === 0)) {
+          // Morph into letters from the text!
+          char = morphChars[(charSeed + c + k) % morphChars.length];
+        } else {
+          char = baseSymbols[(charSeed + k) % baseSymbols.length];
+        }
+
+        const isHead = k === 0;
+        const isNearHead = k <= 2;
+        const fadeRatio = 1 - k / streamLen;
+        const alpha = isHead ? 1 : Math.max(0.08, Math.pow(fadeRatio, 1.4) * 0.92);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        if (isHead) {
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = colGlow;
+          ctx.shadowBlur = Math.min(22, bitSize * 0.85);
+        } else if (isNearHead) {
+          ctx.fillStyle = colLead;
+          ctx.shadowColor = colGlow;
+          ctx.shadowBlur = 12;
+        } else {
+          ctx.fillStyle = colPrimary;
+          if (k % 4 === 0) {
+            ctx.shadowColor = colGlow;
+            ctx.shadowBlur = 6;
+          }
+        }
+
+        // Slight font size boost for center letters
+        if (isCenterZone && isNearHead) {
+          ctx.font = `900 ${Math.round(bitSize * 1.15)}px "Courier New", monospace`;
+        }
+
+        ctx.fillText(char, colX, charY);
+        ctx.restore();
+      }
+    }
+  } else if (direction === 'left-right' || direction === 'right-left') {
+    const rowCount = Math.floor(h / stepY) + 1;
+    const totalWidth = w + bitSize * 24;
+
+    for (let r = 0; r < rowCount; r++) {
+      const rowY = r * stepY + stepY * 0.5;
+      const speed = 160 + ((r * 41 + seed * 19) % 200);
+      const streamLen = 14 + ((r * 23 + seed * 11) % 18);
+      const rowOffset = (r * 181 + seed * 101) % totalWidth;
+
+      let headX = 0;
+      if (direction === 'left-right') {
+        headX = ((t * speed + rowOffset) % totalWidth) - bitSize * 10;
+      } else {
+        headX = w + bitSize * 10 - ((t * speed + rowOffset) % totalWidth);
+      }
+
+      let colPrimary = primaryCol;
+      let colLead = leadCol;
+      let colGlow = glowCol;
+
+      if (colorTheme === 'rainbow') {
+        const hue = (r * 16 + t * 45) % 360;
+        colPrimary = `hsl(${hue}, 100%, 60%)`;
+        colLead = `hsl(${hue}, 100%, 85%)`;
+        colGlow = `hsl(${hue}, 100%, 50%)`;
+      } else if (colorTheme === 'random-shift') {
+        const hue = ((r * 61 + seed * 31) % 360 + Math.sin(t * 1.5 + r) * 35 + 360) % 360;
+        colPrimary = `hsl(${hue}, 95%, 62%)`;
+        colLead = `hsl(${hue}, 100%, 85%)`;
+        colGlow = `hsl(${hue}, 90%, 55%)`;
+      }
+
+      for (let k = 0; k < streamLen; k++) {
+        let charX = 0;
+        if (direction === 'left-right') {
+          charX = headX - k * stepX;
+        } else {
+          charX = headX + k * stepX;
+        }
+
+        if (charX < -bitSize * 2 || charX > w + bitSize * 2) continue;
+
+        const isCenterZone =
+          charX > w * 0.18 &&
+          charX < w * 0.82 &&
+          rowY > h * 0.35 &&
+          rowY < h * 0.65;
+
+        const charSeed = Math.floor(t * 8 + r * 37 + k * 19);
+        let char = '';
+        if (isCenterZone && ((charSeed + k) % 3 === 0)) {
+          char = morphChars[(charSeed + r + k) % morphChars.length];
+        } else {
+          char = baseSymbols[(charSeed + k) % baseSymbols.length];
+        }
+
+        const isHead = k === 0;
+        const isNearHead = k <= 2;
+        const fadeRatio = 1 - k / streamLen;
+        const alpha = isHead ? 1 : Math.max(0.08, Math.pow(fadeRatio, 1.4) * 0.92);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+
+        if (isHead) {
+          ctx.fillStyle = '#ffffff';
+          ctx.shadowColor = colGlow;
+          ctx.shadowBlur = Math.min(22, bitSize * 0.85);
+        } else if (isNearHead) {
+          ctx.fillStyle = colLead;
+          ctx.shadowColor = colGlow;
+          ctx.shadowBlur = 12;
+        } else {
+          ctx.fillStyle = colPrimary;
+        }
+
+        ctx.fillText(char, charX, rowY);
+        ctx.restore();
+      }
+    }
+  } else if (direction === 'edges-to-center') {
+    // Dual converging streams from top and bottom toward center
+    const colCount = Math.floor(w / stepX) + 1;
+    const halfH = h * 0.5;
+
+    for (let c = 0; c < colCount; c++) {
+      const colX = c * stepX + stepX * 0.5;
+      const speed = 120 + ((c * 31 + seed * 17) % 150);
+      const streamLen = 12 + ((c * 17) % 14);
+      const colOffset = (c * 157 + seed * 73) % halfH;
+
+      const topHeadY = (t * speed + colOffset) % (halfH + bitSize * 6);
+      const btmHeadY = h - ((t * speed + colOffset) % (halfH + bitSize * 6));
+
+      let colPrimary = primaryCol;
+      let colLead = leadCol;
+      let colGlow = glowCol;
+
+      if (colorTheme === 'rainbow') {
+        const hue = (c * 15 + t * 50) % 360;
+        colPrimary = `hsl(${hue}, 100%, 60%)`;
+        colLead = `hsl(${hue}, 100%, 85%)`;
+        colGlow = `hsl(${hue}, 100%, 50%)`;
+      }
+
+      // Render top branch moving down to center
+      for (let k = 0; k < streamLen; k++) {
+        const charY = topHeadY - k * stepY;
+        if (charY < -bitSize || charY > halfH + bitSize) continue;
+
+        const isCenterNear = charY > halfH - stepY * 3;
+        const charSeed = Math.floor(t * 8 + c * 29 + k * 13);
+        const char = isCenterNear ? morphChars[(charSeed + c) % morphChars.length] : baseSymbols[(charSeed + k) % baseSymbols.length];
+        const isHead = k === 0;
+        const alpha = isHead ? 1 : Math.max(0.1, (1 - k / streamLen) * 0.9);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = isHead ? '#ffffff' : k <= 2 ? colLead : colPrimary;
+        if (isHead) {
+          ctx.shadowColor = colGlow;
+          ctx.shadowBlur = 18;
+        }
+        ctx.fillText(char, colX, charY);
+        ctx.restore();
+      }
+
+      // Render bottom branch moving up to center
+      for (let k = 0; k < streamLen; k++) {
+        const charY = btmHeadY + k * stepY;
+        if (charY > h + bitSize || charY < halfH - bitSize) continue;
+
+        const isCenterNear = charY < halfH + stepY * 3;
+        const charSeed = Math.floor(t * 8 + c * 43 + k * 19);
+        const char = isCenterNear ? morphChars[(charSeed + c) % morphChars.length] : baseSymbols[(charSeed + k) % baseSymbols.length];
+        const isHead = k === 0;
+        const alpha = isHead ? 1 : Math.max(0.1, (1 - k / streamLen) * 0.9);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = isHead ? '#ffffff' : k <= 2 ? colLead : colPrimary;
+        if (isHead) {
+          ctx.shadowColor = colGlow;
+          ctx.shadowBlur = 18;
+        }
+        ctx.fillText(char, colX, charY);
+        ctx.restore();
+      }
+    }
+  } else if (direction === 'center-to-edges') {
+    // Streams bursting/flowing outwards from center to top and bottom borders
+    const colCount = Math.floor(w / stepX) + 1;
+    const halfH = h * 0.5;
+
+    for (let c = 0; c < colCount; c++) {
+      const colX = c * stepX + stepX * 0.5;
+      const speed = 135 + ((c * 33 + seed * 23) % 160);
+      const streamLen = 13 + ((c * 19) % 15);
+      const colOffset = (c * 163 + seed * 79) % halfH;
+
+      const topHeadY = halfH - ((t * speed + colOffset) % (halfH + bitSize * 8));
+      const btmHeadY = halfH + ((t * speed + colOffset) % (halfH + bitSize * 8));
+
+      let colPrimary = primaryCol;
+      let colLead = leadCol;
+      let colGlow = glowCol;
+
+      if (colorTheme === 'rainbow') {
+        const hue = (c * 15 + t * 50) % 360;
+        colPrimary = `hsl(${hue}, 100%, 60%)`;
+        colLead = `hsl(${hue}, 100%, 85%)`;
+        colGlow = `hsl(${hue}, 100%, 50%)`;
+      }
+
+      // Outward top stream
+      for (let k = 0; k < streamLen; k++) {
+        const charY = topHeadY + k * stepY;
+        if (charY < -bitSize || charY > halfH + bitSize) continue;
+
+        const isCenterOrigin = charY > halfH - stepY * 2;
+        const charSeed = Math.floor(t * 8 + c * 31 + k * 17);
+        const char = isCenterOrigin ? morphChars[(charSeed + c) % morphChars.length] : baseSymbols[(charSeed + k) % baseSymbols.length];
+        const isHead = k === 0;
+        const alpha = isHead ? 1 : Math.max(0.1, (1 - k / streamLen) * 0.9);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = isHead ? '#ffffff' : k <= 2 ? colLead : colPrimary;
+        if (isHead) {
+          ctx.shadowColor = colGlow;
+          ctx.shadowBlur = 18;
+        }
+        ctx.fillText(char, colX, charY);
+        ctx.restore();
+      }
+
+      // Outward bottom stream
+      for (let k = 0; k < streamLen; k++) {
+        const charY = btmHeadY - k * stepY;
+        if (charY > h + bitSize || charY < halfH - bitSize) continue;
+
+        const isCenterOrigin = charY < halfH + stepY * 2;
+        const charSeed = Math.floor(t * 8 + c * 47 + k * 23);
+        const char = isCenterOrigin ? morphChars[(charSeed + c) % morphChars.length] : baseSymbols[(charSeed + k) % baseSymbols.length];
+        const isHead = k === 0;
+        const alpha = isHead ? 1 : Math.max(0.1, (1 - k / streamLen) * 0.9);
+
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = isHead ? '#ffffff' : k <= 2 ? colLead : colPrimary;
+        if (isHead) {
+          ctx.shadowColor = colGlow;
+          ctx.shadowBlur = 18;
+        }
+        ctx.fillText(char, colX, charY);
+        ctx.restore();
+      }
+    }
+  }
+
+  // Draw central matrix decode ring / brackets if text is present
+  if (options?.rawText || options?.activeSegmentText) {
+    const pulse = Math.sin(t * 4) * 0.15 + 0.85;
+    ctx.save();
+    ctx.strokeStyle = leadCol;
+    ctx.lineWidth = 1.2;
+    ctx.globalAlpha = 0.18 * pulse;
+    ctx.strokeRect(w * 0.08, h * 0.32, w * 0.84, h * 0.36);
+
+    // Decorative corner cyber brackets
+    const bSize = 18;
+    ctx.lineWidth = 2.5;
+    ctx.globalAlpha = 0.45 * pulse;
+    ctx.strokeStyle = primaryCol;
+
+    // Top-left
+    ctx.beginPath();
+    ctx.moveTo(w * 0.08, h * 0.32 + bSize);
+    ctx.lineTo(w * 0.08, h * 0.32);
+    ctx.lineTo(w * 0.08 + bSize, h * 0.32);
+    ctx.stroke();
+
+    // Top-right
+    ctx.beginPath();
+    ctx.moveTo(w * 0.92 - bSize, h * 0.32);
+    ctx.lineTo(w * 0.92, h * 0.32);
+    ctx.lineTo(w * 0.92, h * 0.32 + bSize);
+    ctx.stroke();
+
+    // Bottom-left
+    ctx.beginPath();
+    ctx.moveTo(w * 0.08, h * 0.68 - bSize);
+    ctx.lineTo(w * 0.08, h * 0.68);
+    ctx.lineTo(w * 0.08 + bSize, h * 0.68);
+    ctx.stroke();
+
+    // Bottom-right
+    ctx.beginPath();
+    ctx.moveTo(w * 0.92 - bSize, h * 0.68);
+    ctx.lineTo(w * 0.92, h * 0.68);
+    ctx.lineTo(w * 0.92, h * 0.68 - bSize);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  ctx.restore();
+}
+
+/* ================= 11. FIREWORKS PROCEDURAL GENERATOR ================= */
+function hexToRgba(hex: string, alpha: number): string {
+  let c = hex.replace('#', '');
+  if (c.length === 3) {
+    c = c.split('').map((ch) => ch + ch).join('');
+  }
+  const num = parseInt(c, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  return `rgba(${r}, ${g}, ${b}, ${Math.max(0, Math.min(1, alpha)).toFixed(3)})`;
+}
+
+function drawFireworks(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  t: number,
+  rng: () => number,
+  seed: number,
+  skipSolidBg: boolean = false,
+  options?: ProceduralMoodRenderOptions
+) {
+  const colorThemes: FireworksColorTheme[] = [
+    'multicolor',
+    'gold-glitter',
+    'neon-cyber',
+    'crimson-ruby',
+    'cyan-violet',
+    'emerald-lime',
+  ];
+  const chosenTheme = options?.fireworksColorTheme || colorThemes[Math.abs(seed) % colorThemes.length];
+
+  // Palette generator
+  const getThemePalette = (burstSeed: number): string[] => {
+    switch (chosenTheme) {
+      case 'gold-glitter':
+        return ['#fef08a', '#facc15', '#f59e0b', '#d97706', '#ffffff', '#ffedd5'];
+      case 'neon-cyber':
+        return ['#ff007f', '#00f0ff', '#a855f7', '#00ff87', '#38bdf8', '#f43f5e'];
+      case 'crimson-ruby':
+        return ['#ef4444', '#f43f5e', '#fb7185', '#f59e0b', '#dc2626', '#ffe4e6'];
+      case 'cyan-violet':
+        return ['#06b6d4', '#38bdf8', '#c084fc', '#a855f7', '#e0e7ff', '#ffffff'];
+      case 'emerald-lime':
+        return ['#10b981', '#84cc16', '#22c55e', '#facc15', '#059669', '#ecfdf5'];
+      case 'multicolor':
+      default: {
+        const sets = [
+          ['#f43f5e', '#fbbf24', '#38bdf8', '#a855f7', '#ffffff'],
+          ['#06b6d4', '#facc15', '#ec4899', '#4ade80', '#ffffff'],
+          ['#ff007f', '#00f0ff', '#f59e0b', '#8b5cf6', '#fffbeb'],
+          ['#38bdf8', '#ec4899', '#facc15', '#10b981', '#ffffff'],
+        ];
+        return sets[Math.abs(burstSeed) % sets.length];
+      }
+    }
+  };
+
+  // 1. Dark starry night sky background with soft colored aurora horizon glow
+  if (!skipSolidBg) {
+    const skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+    skyGrad.addColorStop(0, '#020308');
+    skyGrad.addColorStop(0.5, '#070a14');
+    skyGrad.addColorStop(1, '#0e0b1c');
+    ctx.fillStyle = skyGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Twinkling background stars
+    const starCount = 55;
+    for (let s = 0; s < starCount; s++) {
+      const sx = (s * 179 + seed * 23) % w;
+      const sy = (s * 241 + seed * 47) % (h * 0.78);
+      const sTwinkle = Math.sin(t * 3.5 + s * 1.7) * 0.45 + 0.55;
+      ctx.fillStyle = s % 4 === 0 ? '#fef08a' : '#ffffff';
+      ctx.globalAlpha = sTwinkle * 0.65;
+      const starSize = s % 5 === 0 ? 2.2 : 1.2;
+      ctx.fillRect(sx, sy, starSize, starSize);
+    }
+  }
+
+  // 2. Full catalog of 38 diverse burst archetypes (including combinations and new varieties)
+  const burstArchetypes = [
+    // Classic aerial shells
+    'peony',
+    'chrysanthemum',
+    'palm',
+    'willow',
+    'strobe',
+    'brocade',
+    'ring',
+    'crossette',
+    'dahlia',
+    'waterfall',
+    'double',
+    'spiral',
+    'rocket',
+    'spider',
+    'meteor',
+    // 23 New varieties & combinations requested by user
+    'kamuro',
+    'heart',
+    'saturn-ring',
+    'star-mandala',
+    'ghost-shell',
+    'salute-flash',
+    'horsetail',
+    'pearl-fountain',
+    'whistle-serpent',
+    'supernova',
+    'crackling-dragon',
+    'time-rain',
+    'sunflower',
+    'galaxy-whirl',
+    'confetti-twirl',
+    'laser-corona',
+    'nebula-cloud',
+    'fire-dragon',
+    'aurora-curtain',
+    'diamond-dust',
+    'double-peony',
+    'combo-kamuro-strobe',
+    'combo-palm-crossette',
+    'combo-ring-heart',
+  ];
+
+  // 3. Scale Mode: 'mixed' (tiny to giant), 'small', 'medium', 'giant'
+  const scaleMode = options?.fireworksScaleMode || 'mixed';
+
+  // 4. Quantity: 1 to 30 simultaneous fireworks scheduler
+  const totalSlots = Math.max(1, Math.min(30, options?.fireworksCount ?? 8));
+  const cycleDuration = Math.max(2.5, 3.8 - totalSlots * 0.035);
+
+  for (let slot = 0; slot < totalSlots; slot++) {
+    const slotSeed = seed * 13 + slot * 97;
+    // Stagger launches across cycleDuration
+    const slotStagger = slot * (cycleDuration / totalSlots);
+    const jitter = ((slotSeed % 100) / 100) * (cycleDuration / totalSlots) * 0.8;
+    const timeOffset = (slotStagger + jitter) % cycleDuration;
+    const slotTime = (t + timeOffset) % cycleDuration;
+    const cycleIndex = Math.floor((t + timeOffset) / cycleDuration);
+    const burstSeed = slotSeed + cycleIndex * 1013;
+
+    // Pick archetype: when totalSlots > 1, cycle diverse complementary types across slots
+    const burstType = burstArchetypes[Math.abs(burstSeed + slot * 7) % burstArchetypes.length];
+    const palette = getThemePalette(burstSeed);
+
+    // Compute Scale: from micro bursts (0.35x) to giant mega-shells (2.5x)
+    let slotScale = 1.0;
+    if (scaleMode === 'giant') {
+      slotScale = 1.7 + (Math.abs(burstSeed * 19) % 80) * 0.01; // 1.7 to 2.5
+    } else if (scaleMode === 'small') {
+      slotScale = 0.35 + (Math.abs(burstSeed * 17) % 30) * 0.01; // 0.35 to 0.65
+    } else if (scaleMode === 'medium') {
+      slotScale = 0.85 + (Math.abs(burstSeed * 23) % 40) * 0.01; // 0.85 to 1.25
+    } else {
+      // 'mixed' mode: dynamic mix of tiny, medium, and giant fireworks
+      const roll = (Math.abs(burstSeed * 37) % 100) / 100;
+      if (roll < 0.26) {
+        // Giant mega-shell filling the sky
+        slotScale = 1.8 + (Math.abs(burstSeed * 13) % 70) * 0.01;
+      } else if (roll > 0.66) {
+        // Delicate micro-burst / sparkler cluster
+        slotScale = 0.35 + (Math.abs(burstSeed * 29) % 30) * 0.01;
+      } else {
+        // Classic medium shell
+        slotScale = 0.9 + (Math.abs(burstSeed * 31) % 45) * 0.01;
+      }
+    }
+
+    // Coordinates & launch trajectories
+    const margin = 0.12;
+    const startX = w * (margin + (Math.abs(burstSeed * 17 + slot * 31) % 76) * 0.01);
+    const targetX = startX + Math.sin(burstSeed * 0.7) * (w * 0.14);
+    const burstY = h * (0.14 + (Math.abs(burstSeed * 31 + slot * 19) % 44) * 0.01);
+    const launchDuration = Math.min(0.85, cycleDuration * 0.32);
+
+    // Phase A: Ascending Rocket with sparks & smoke
+    if (slotTime < launchDuration) {
+      const launchProg = slotTime / launchDuration;
+      const easeLaunch = easeOutCubic(launchProg);
+      const currentX = startX + (targetX - startX) * easeLaunch;
+      const currentY = h - (h - burstY) * easeLaunch;
+
+      ctx.save();
+      // Bright rocket warhead
+      ctx.fillStyle = '#ffffff';
+      ctx.shadowColor = palette[0];
+      ctx.shadowBlur = 18 * slotScale;
+      ctx.beginPath();
+      ctx.arc(currentX, currentY, Math.max(2, 3.5 * slotScale), 0, Math.PI * 2);
+      ctx.fill();
+
+      // Sparkling smoke rocket tail
+      const tailSparks = Math.round(14 * Math.min(1.5, Math.max(0.7, slotScale)));
+      for (let ts = 0; ts < tailSparks; ts++) {
+        const tailProg = ts / tailSparks;
+        const tx = currentX - (targetX - startX) * 0.035 * ts + Math.sin(t * 30 + ts) * 2;
+        const ty = currentY + ts * (8 * slotScale) + Math.sin(ts) * 2;
+        const tAlpha = (1 - tailProg) * 0.85;
+        ctx.fillStyle = ts % 2 === 0 ? palette[ts % palette.length] : '#facc15';
+        ctx.globalAlpha = tAlpha;
+        ctx.beginPath();
+        ctx.arc(tx, ty, Math.max(1, 2.8 * (1 - tailProg) * slotScale), 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+    // Phase B: Firework Explosion Burst
+    else {
+      const burstTime = slotTime - launchDuration;
+      const burstDuration = cycleDuration - launchDuration;
+      const burstProg = Math.min(1, burstTime / burstDuration);
+      const easeExp = easeOutCubic(burstProg);
+      const fadeOut = Math.max(0, Math.pow(1 - burstProg, 1.25));
+
+      // Atmospheric flash when burst just occurred
+      if (burstProg < 0.22) {
+        const flashAlpha = (1 - burstProg / 0.22) * (0.22 * Math.min(1.5, slotScale));
+        const flashRadius = Math.max(w, h) * (0.55 * slotScale);
+        const flashGrad = ctx.createRadialGradient(targetX, burstY, 10, targetX, burstY, flashRadius);
+        flashGrad.addColorStop(0, palette[0]);
+        flashGrad.addColorStop(0.6, hexToRgba(palette[1] || palette[0], 0.2));
+        flashGrad.addColorStop(1, 'transparent');
+        ctx.save();
+        ctx.globalAlpha = flashAlpha;
+        ctx.fillStyle = flashGrad;
+        ctx.fillRect(0, 0, w, h);
+        ctx.restore();
+      }
+
+      ctx.save();
+      ctx.translate(targetX, burstY);
+
+      // Archetype-specific particle counts
+      let starCount = 50;
+      if (burstType === 'palm') starCount = 20;
+      else if (burstType === 'waterfall' || burstType === 'horsetail') starCount = 65;
+      else if (burstType === 'kamuro' || burstType === 'brocade') starCount = 78;
+      else if (burstType === 'willow') starCount = 72;
+      else if (burstType === 'heart') starCount = 54;
+      else if (burstType === 'saturn-ring') starCount = 68;
+      else if (burstType === 'star-mandala') starCount = 60;
+      else if (burstType === 'diamond-dust') starCount = 85;
+      else if (burstType === 'supernova') starCount = 80;
+      else if (burstType === 'salute-flash') starCount = 42;
+      else if (burstType === 'combo-kamuro-strobe') starCount = 80;
+      else if (burstType === 'combo-palm-crossette') starCount = 58;
+      else if (burstType === 'combo-ring-heart') starCount = 74;
+
+      // Scale star count slightly based on scale mode
+      starCount = Math.round(starCount * Math.min(1.4, Math.max(0.65, slotScale)));
+
+      // Render explosion archetypes
+      for (let i = 0; i < starCount; i++) {
+        const starSeed = burstSeed + i * 37;
+        const baseAngle = (i * Math.PI * 2) / starCount;
+        let starAngle = baseAngle;
+        let starSpeed = (160 + (starSeed % 140)) * slotScale;
+        let starGravity = 85 * burstProg * burstProg;
+        let starColor = palette[i % palette.length];
+        let px = 0;
+        let py = 0;
+
+        // Specialized trajectory and geometry mathematics per archetype
+        if (burstType === 'heart' || (burstType === 'combo-ring-heart' && i < 40)) {
+          // Romantic Heart parametric contour
+          const tA = (i * Math.PI * 2) / (burstType === 'combo-ring-heart' ? 40 : starCount);
+          const hx = 16 * Math.pow(Math.sin(tA), 3);
+          const hy = -(13 * Math.cos(tA) - 5 * Math.cos(2 * tA) - 2 * Math.cos(3 * tA) - Math.cos(4 * tA));
+          const hDist = easeExp * 8.5 * slotScale;
+          px = hx * hDist;
+          py = hy * hDist + starGravity * 0.7;
+          starColor = i % 2 === 0 ? '#f43f5e' : '#fbcfe8';
+        } else if (burstType === 'saturn-ring') {
+          // Planetary sphere core + 3D tilted planetary ring
+          if (i < starCount * 0.4) {
+            // Core sphere
+            const dist = easeExp * (starSpeed * 0.6);
+            px = Math.cos(starAngle) * dist;
+            py = Math.sin(starAngle) * dist + starGravity;
+            starColor = '#fef08a';
+          } else {
+            // Tilted planar ring
+            const ringAngle = ((i - starCount * 0.4) * Math.PI * 2) / (starCount * 0.6);
+            const ringDist = easeExp * 230 * slotScale;
+            const tilt = 0.35; // perspective flattening
+            const rotTilt = -0.4; // 25 degree tilt in sky
+            const rx = Math.cos(ringAngle) * ringDist;
+            const ry = Math.sin(ringAngle) * ringDist * tilt;
+            px = rx * Math.cos(rotTilt) - ry * Math.sin(rotTilt);
+            py = rx * Math.sin(rotTilt) + ry * Math.cos(rotTilt) + starGravity * 0.5;
+            starColor = palette[1];
+          }
+        } else if (burstType === 'star-mandala') {
+          // Sacred 12-arm geometric mandala with tiered harmonic ripples
+          const arm = i % 12;
+          const tier = Math.floor(i / 12) + 1;
+          const mAngle = (arm * Math.PI * 2) / 12;
+          const mDist = easeExp * (100 + tier * 55) * slotScale;
+          px = Math.cos(mAngle) * mDist;
+          py = Math.sin(mAngle) * mDist + starGravity * 0.4;
+          starColor = tier % 2 === 0 ? palette[0] : '#ffffff';
+        } else if (burstType === 'ghost-shell') {
+          // Color-shifting mid explosion: begins electric cyan then shifts to ruby crimson/gold
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+          if (burstProg < 0.4) {
+            starColor = '#00f0ff';
+          } else {
+            starColor = i % 2 === 0 ? '#facc15' : '#f43f5e';
+          }
+        } else if (burstType === 'kamuro' || (burstType === 'combo-kamuro-strobe' && i < 50)) {
+          // Japanese dense weeping golden crown falling all the way down
+          starGravity = 280 * burstProg * burstProg;
+          starSpeed = (190 + (i % 5) * 35) * slotScale;
+          starColor = i % 3 === 0 ? '#ffffff' : '#fef08a';
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+        } else if (burstType === 'horsetail') {
+          // Arching weeping horsetail cascade
+          starGravity = 240 * burstProg * burstProg;
+          starSpeed = (110 + (i % 7) * 30) * slotScale;
+          const archAngle = -Math.PI * 0.5 + (Math.sin(i) * 0.9);
+          const dist = easeExp * starSpeed;
+          px = Math.cos(archAngle) * dist + (i % 2 === 0 ? 1 : -1) * (dist * 0.4);
+          py = Math.sin(archAngle) * dist + starGravity;
+          starColor = '#facc15';
+        } else if (burstType === 'pearl-fountain') {
+          // Rising pearl geyser arc
+          starGravity = 220 * burstProg * burstProg;
+          const fountainAngle = -Math.PI * 0.5 + (Math.sin(i * 1.5) * 0.7);
+          const dist = easeExp * (200 + (starSeed % 120)) * slotScale;
+          px = Math.cos(fountainAngle) * dist;
+          py = Math.sin(fountainAngle) * dist + starGravity;
+          starColor = '#ffffff';
+        } else if (burstType === 'whistle-serpent') {
+          // Corkscrewing serpentine spiral
+          const swirl = Math.sin(burstProg * 16 + i) * 0.7;
+          starAngle += swirl;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+          starColor = palette[i % palette.length];
+        } else if (burstType === 'supernova') {
+          // Giant multi-layered cosmic explosion with radiating spikes and corona
+          const isSpike = i % 8 === 0;
+          starSpeed = (isSpike ? 340 : 190 + (starSeed % 80)) * slotScale;
+          starGravity = 50 * burstProg * burstProg;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+          starColor = isSpike ? '#ffffff' : palette[i % palette.length];
+        } else if (burstType === 'crackling-dragon') {
+          // Branching zigzag lightning sparks with crackles
+          const zigzag = Math.sin(i * 5 + burstProg * 20) * 18 * slotScale;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist + zigzag;
+          py = Math.sin(starAngle) * dist + starGravity;
+          starColor = burstProg > 0.45 && i % 2 === 0 ? '#fef08a' : palette[i % palette.length];
+        } else if (burstType === 'time-rain') {
+          // Delayed ignition: silent expansion followed by bright popping rain
+          const dist = easeExp * (140 * slotScale);
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity * 1.4;
+          if (burstProg > 0.5) {
+            const crackleJitter = (Math.sin(burstProg * 40 + i) * 8);
+            px += crackleJitter;
+            py += crackleJitter;
+            starColor = '#ffffff';
+          }
+        } else if (burstType === 'sunflower') {
+          // Golden center disc + crimson outer ray petals
+          const isCore = i < starCount * 0.4;
+          const dist = easeExp * (isCore ? 90 : 210) * slotScale;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity * 0.8;
+          starColor = isCore ? '#facc15' : '#ef4444';
+        } else if (burstType === 'galaxy-whirl') {
+          // Counter-rotating twin spiral arms
+          const armRot = (i % 2 === 0 ? 1 : -1) * burstProg * 5;
+          const dist = easeExp * (starSpeed * 1.1);
+          px = Math.cos(starAngle + armRot) * dist;
+          py = Math.sin(starAngle + armRot) * dist + starGravity * 0.6;
+        } else if (burstType === 'confetti-twirl') {
+          // Fluttering tumbling multicolored flakes drifting down
+          starGravity = 120 * burstProg * burstProg;
+          const rock = Math.sin(t * 8 + i) * 14 * slotScale;
+          const dist = easeExp * (110 * slotScale);
+          px = Math.cos(starAngle) * dist + rock;
+          py = Math.sin(starAngle) * dist + starGravity;
+        } else if (burstType === 'laser-corona') {
+          // Straight razor-sharp high velocity photon beams
+          starSpeed = 380 * slotScale;
+          starGravity = 15 * burstProg;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+          starColor = '#00f0ff';
+        } else if (burstType === 'diamond-dust') {
+          // Microcrystalline suspended twinkling dust
+          starGravity = 30 * burstProg * burstProg;
+          starSpeed = (90 + (starSeed % 110)) * slotScale;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+          starColor = '#ffffff';
+        } else if (burstType === 'double-peony') {
+          // Dual concentric spheres with contrasting hues
+          const isInner = i < starCount * 0.4;
+          const dist = easeExp * (isInner ? 120 : 230) * slotScale;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+          starColor = isInner ? '#ef4444' : '#38bdf8';
+        } else if (burstType === 'combo-palm-crossette') {
+          // Palm trunk + popping crossette secondary stars
+          starGravity = 140 * burstProg * burstProg;
+          starSpeed = (200 + (i % 3) * 45) * slotScale;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+          starColor = '#facc15';
+        } else if (burstType === 'palm') {
+          // Thick drooping palm fronds
+          starGravity = 135 * burstProg * burstProg;
+          starSpeed = (220 + (i % 3) * 40) * slotScale;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+        } else if (burstType === 'willow' || burstType === 'waterfall') {
+          // Long descending glitter trails
+          starGravity = 210 * burstProg * burstProg;
+          starSpeed = (120 + (i % 5) * 35) * slotScale;
+          starColor = '#fef08a';
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+        } else if (burstType === 'ring' || (burstType === 'combo-ring-heart' && i >= 40)) {
+          // Crisp flat circular ring
+          starSpeed = 210 * slotScale;
+          starGravity = 45 * burstProg * burstProg;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+          starColor = '#38bdf8';
+        } else if (burstType === 'spiral') {
+          starAngle += burstProg * 4.5;
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+        } else {
+          // Standard Peony, Chrysanthemum, Dahlia, etc.
+          const dist = easeExp * starSpeed;
+          px = Math.cos(starAngle) * dist;
+          py = Math.sin(starAngle) * dist + starGravity;
+        }
+
+        // Strobe flickering effect
+        let starAlpha = fadeOut;
+        if (burstType === 'strobe' || (burstType === 'combo-kamuro-strobe' && i >= 50)) {
+          const strobe = Math.sin(t * 50 + i * 2) > 0.15 ? 1 : 0.1;
+          starAlpha *= strobe;
+        }
+
+        ctx.save();
+        ctx.fillStyle = i % 4 === 0 ? '#ffffff' : starColor;
+        ctx.shadowColor = starColor;
+        ctx.shadowBlur = (burstType === 'brocade' || burstType === 'kamuro' ? 18 : 10) * slotScale;
+        ctx.globalAlpha = Math.max(0, Math.min(1, starAlpha));
+
+        const baseStarSize = burstType === 'dahlia' ? 4.8 : burstType === 'diamond-dust' ? 2.0 : 3.2;
+        const starSize = Math.max(1.2, baseStarSize * slotScale * (1 - burstProg * 0.45));
+
+        // Draw star particle
+        if (burstType === 'confetti-twirl') {
+          // Confetti tumbling quad
+          ctx.translate(px, py);
+          ctx.rotate(t * 4 + i);
+          ctx.fillRect(-starSize, -starSize, starSize * 2, starSize * 1.4);
+        } else {
+          ctx.beginPath();
+          ctx.arc(px, py, starSize, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Draw glittering trails for trail-heavy archetypes
+        const hasTrails =
+          burstType === 'chrysanthemum' ||
+          burstType === 'brocade' ||
+          burstType === 'kamuro' ||
+          burstType === 'willow' ||
+          burstType === 'horsetail' ||
+          burstType === 'meteor' ||
+          burstType === 'combo-kamuro-strobe';
+
+        if (hasTrails) {
+          ctx.strokeStyle = starColor;
+          ctx.lineWidth = Math.max(1, starSize * 0.8);
+          ctx.globalAlpha = Math.max(0, Math.min(1, starAlpha * 0.7));
+          ctx.beginPath();
+          ctx.moveTo(px * 0.86, py * 0.86);
+          ctx.lineTo(px, py);
+          ctx.stroke();
+        }
+
+        // Secondary popping crossette / crackle sparks
+        const isCrossette = burstType === 'crossette' || burstType === 'combo-palm-crossette';
+        if (isCrossette && burstProg > 0.45) {
+          const subProg = (burstProg - 0.45) / 0.55;
+          for (let sp = 0; sp < 3; sp++) {
+            const spAngle = sp * ((Math.PI * 2) / 3) + i;
+            const spDist = subProg * (38 * slotScale);
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = Math.max(0, (1 - subProg) * 0.85);
+            ctx.fillRect(px + Math.cos(spAngle) * spDist, py + Math.sin(spAngle) * spDist, 2, 2);
+          }
+        }
+
+        ctx.restore();
+      }
+
+      ctx.restore();
+    }
+  }
+}
+
+/* ================= 12. WORLD FLAGS PROCEDURAL GENERATOR ================= */
+export interface WorldFlagItem {
+  code: string;
+  name: string;
+  flag: string;
+}
+
+export const WORLD_FLAG_EMOJIS: WorldFlagItem[] = [
+  { code: 'ru', name: 'Россия', flag: '🇷🇺' },
+  { code: 'by', name: 'Беларусь', flag: '🇧🇾' },
+  { code: 'kz', name: 'Казахстан', flag: '🇰🇿' },
+  { code: 'uz', name: 'Узбекистан', flag: '🇺🇿' },
+  { code: 'am', name: 'Армения', flag: '🇦🇲' },
+  { code: 'az', name: 'Азербайджан', flag: '🇦🇿' },
+  { code: 'ge', name: 'Грузия', flag: '🇬🇪' },
+  { code: 'kg', name: 'Кыргызстан', flag: '🇰🇬' },
+  { code: 'tj', name: 'Таджикистан', flag: '🇹🇯' },
+  { code: 'md', name: 'Молдова', flag: '🇲🇩' },
+  { code: 'ua', name: 'Украина', flag: '🇺🇦' },
+  { code: 'rs', name: 'Сербия', flag: '🇷🇸' },
+  { code: 'us', name: 'США', flag: '🇺🇸' },
+  { code: 'cn', name: 'Китай', flag: '🇨🇳' },
+  { code: 'de', name: 'Германия', flag: '🇩🇪' },
+  { code: 'fr', name: 'Франция', flag: '🇫🇷' },
+  { code: 'gb', name: 'Великобритания', flag: '🇬🇧' },
+  { code: 'it', name: 'Италия', flag: '🇮🇹' },
+  { code: 'es', name: 'Испания', flag: '🇪🇸' },
+  { code: 'jp', name: 'Япония', flag: '🇯🇵' },
+  { code: 'kr', name: 'Южная Корея', flag: '🇰🇷' },
+  { code: 'br', name: 'Бразилия', flag: '🇧🇷' },
+  { code: 'ar', name: 'Аргентина', flag: '🇦🇷' },
+  { code: 'ca', name: 'Канада', flag: '🇨🇦' },
+  { code: 'au', name: 'Австралия', flag: '🇦🇺' },
+  { code: 'in', name: 'Индия', flag: '🇮🇳' },
+  { code: 'tr', name: 'Турция', flag: '🇹🇷' },
+  { code: 'sa', name: 'Саудовская Аравия', flag: '🇸🇦' },
+  { code: 'ae', name: 'ОАЭ', flag: '🇦🇪' },
+  { code: 'eg', name: 'Египет', flag: '🇪🇬' },
+  { code: 'gr', name: 'Греция', flag: '🇬🇷' },
+  { code: 'mx', name: 'Мексика', flag: '🇲🇽' },
+  { code: 'ch', name: 'Швейцария', flag: '🇨🇭' },
+  { code: 'se', name: 'Швеция', flag: '🇸🇪' },
+  { code: 'no', name: 'Норвегия', flag: '🇳🇴' },
+  { code: 'fi', name: 'Финляндия', flag: '🇫🇮' },
+  { code: 'nl', name: 'Нидерланды', flag: '🇳🇱' },
+  { code: 'pl', name: 'Польша', flag: '🇵🇱' },
+  { code: 'pt', name: 'Португалия', flag: '🇵🇹' },
+  { code: 'za', name: 'ЮАР', flag: '🇿🇦' },
+  { code: 'id', name: 'Индонезия', flag: '🇮🇩' },
+  { code: 'th', name: 'Таиланд', flag: '🇹🇭' },
+  { code: 'vn', name: 'Вьетнам', flag: '🇻🇳' },
+  { code: 'il', name: 'Израиль', flag: '🇮🇱' },
+  { code: 'ie', name: 'Ирландия', flag: '🇮🇪' },
+  { code: 'is', name: 'Исландия', flag: '🇮🇸' },
+  { code: 'at', name: 'Австрия', flag: '🇦🇹' },
+  { code: 'be', name: 'Бельгия', flag: '🇧🇪' },
+  { code: 'cz', name: 'Чехия', flag: '🇨🇿' },
+  { code: 'hu', name: 'Венгрия', flag: '🇭🇺' },
+  { code: 'dk', name: 'Дания', flag: '🇩🇰' },
+  { code: 'nz', name: 'Новая Зеландия', flag: '🇳🇿' },
+  { code: 'mc', name: 'Монако', flag: '🇲🇨' },
+  { code: 'cu', name: 'Куба', flag: '🇨🇺' },
+  { code: 'un', name: 'ООН', flag: '🇺🇳' },
+  { code: 'eu', name: 'Евросоюз', flag: '🇪🇺' },
+  { code: 'pirate', name: 'Пиратский', flag: '🏴‍☠️' },
+  { code: 'checkered', name: 'Финиш', flag: '🏁' },
+  { code: 'rainbow', name: 'Радужный', flag: '🏳️‍🌈' },
+  { code: 'redflag', name: 'Вымпел', flag: '🚩' },
+];
+
+function drawFlags(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  t: number,
+  rng: () => number,
+  seed: number,
+  skipSolidBg: boolean = false,
+  options?: ProceduralMoodRenderOptions
+) {
+  // 1. Resolve Composition Mode ('single' | 'duo' | 'multi')
+  const mode: FlagsCompositionMode =
+    options?.flagsMode ||
+    (seed % 3 === 0 ? 'single' : seed % 3 === 1 ? 'duo' : 'multi');
+
+  // Count: from 1 to 30 simultaneous flags!
+  const totalFlags = Math.max(1, Math.min(30, options?.flagsCount ?? (mode === 'single' ? 12 : 16)));
+
+  // Resolve Primary and Secondary Countries
+  const primaryFlag = options?.flagsPrimaryCountry || '🇷🇺';
+  const secondaryFlag = options?.flagsSecondaryCountry || '🇧🇾';
+
+  // Scale mode: 'mixed' | 'small' | 'medium' | 'giant' | 'mega-screen'
+  const scaleMode = options?.flagsScaleMode || 'mixed';
+
+  // Motion style: 'drift' | 'vortex' | 'burst' | 'rain' | 'zoom-3d' | 'wave-banner'
+  const motionStyles: FlagsMotionStyle[] = ['drift', 'vortex', 'burst', 'rain', 'zoom-3d', 'wave-banner'];
+  const motion: FlagsMotionStyle = options?.flagsMotion || motionStyles[Math.abs(seed) % motionStyles.length];
+
+  // Effect: 'glow' | 'dissolve' | 'flicker' | 'cloth-wave' | 'all-fx'
+  const effect: FlagsEffect = options?.flagsEffect || 'all-fx';
+
+  // Background style: 'dark-space' | 'stadium' | 'neon-glow' | 'cyber-grid' | 'flag-blur'
+  const bgStyles: FlagsBgStyle[] = ['dark-space', 'stadium', 'neon-glow', 'cyber-grid', 'flag-blur'];
+  const bgStyle: FlagsBgStyle = options?.flagsBgStyle || bgStyles[Math.abs(seed * 7) % bgStyles.length];
+
+  // Draw background if not skipped
+  if (!skipSolidBg) {
+    if (bgStyle === 'stadium') {
+      // Stadium lights & upward searchlights
+      const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
+      bgGrad.addColorStop(0, '#020617');
+      bgGrad.addColorStop(0.6, '#0f172a');
+      bgGrad.addColorStop(1, '#1e293b');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Upward searchlight beams
+      for (let s = 0; s < 3; s++) {
+        const spotX = w * (0.2 + s * 0.3) + Math.sin(t * 0.8 + s * 2) * (w * 0.12);
+        const sGrad = ctx.createRadialGradient(spotX, h, 20, spotX, h * 0.3, Math.max(w, h) * 0.6);
+        sGrad.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+        sGrad.addColorStop(0.5, 'rgba(56, 189, 248, 0.08)');
+        sGrad.addColorStop(1, 'transparent');
+        ctx.fillStyle = sGrad;
+        ctx.fillRect(0, 0, w, h);
+      }
+    } else if (bgStyle === 'neon-glow') {
+      // Cyber neon radial glow
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 20, w * 0.5, h * 0.5, Math.max(w, h) * 0.75);
+      bgGrad.addColorStop(0, '#1e1b4b');
+      bgGrad.addColorStop(0.55, '#0f0a20');
+      bgGrad.addColorStop(1, '#020108');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+    } else if (bgStyle === 'cyber-grid') {
+      // Dark cyber perspective grid
+      ctx.fillStyle = '#05050c';
+      ctx.fillRect(0, 0, w, h);
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.15)';
+      ctx.lineWidth = 1;
+      const gridH = h * 0.6;
+      for (let gy = gridH; gy < h; gy += 25) {
+        ctx.beginPath();
+        ctx.moveTo(0, gy);
+        ctx.lineTo(w, gy);
+        ctx.stroke();
+      }
+      for (let gx = 0; gx < w; gx += 45) {
+        ctx.beginPath();
+        ctx.moveTo(gx, gridH);
+        ctx.lineTo(gx + (gx - w / 2) * 1.5, h);
+        ctx.stroke();
+      }
+    } else if (bgStyle === 'flag-blur') {
+      // Ambient blurred giant background flag
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 10, w * 0.5, h * 0.5, Math.max(w, h) * 0.8);
+      bgGrad.addColorStop(0, '#090d16');
+      bgGrad.addColorStop(0.65, '#04060a');
+      bgGrad.addColorStop(1, '#000000');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Huge blurred national anthem watermark in center
+      ctx.save();
+      ctx.globalAlpha = 0.12;
+      const watermarkSize = Math.max(w, h) * 0.75;
+      ctx.font = `${Math.floor(watermarkSize)}px "Twemoji Country Flags", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 40;
+      ctx.fillText(primaryFlag, w * 0.5, h * 0.5);
+      ctx.restore();
+    } else {
+      // 'dark-space': deep cosmic void with twinkling stars
+      const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.45, 10, w * 0.5, h * 0.5, Math.max(w, h) * 0.8);
+      bgGrad.addColorStop(0, '#0f172a');
+      bgGrad.addColorStop(0.6, '#080d1a');
+      bgGrad.addColorStop(1, '#020408');
+      ctx.fillStyle = bgGrad;
+      ctx.fillRect(0, 0, w, h);
+
+      // Twinkling stars
+      for (let s = 0; s < 45; s++) {
+        const sx = (s * 183 + seed * 19) % w;
+        const sy = (s * 251 + seed * 37) % h;
+        const starAlpha = Math.sin(t * 3 + s) * 0.4 + 0.6;
+        ctx.fillStyle = s % 3 === 0 ? '#38bdf8' : '#ffffff';
+        ctx.globalAlpha = starAlpha * 0.55;
+        ctx.fillRect(sx, sy, 1.5, 1.5);
+      }
+    }
+  }
+
+  // 2. Build flags array for the current scene
+  const activeFlags: string[] = [];
+  if (mode === 'single') {
+    for (let i = 0; i < totalFlags; i++) {
+      activeFlags.push(primaryFlag);
+    }
+  } else if (mode === 'duo') {
+    for (let i = 0; i < totalFlags; i++) {
+      activeFlags.push(i % 2 === 0 ? primaryFlag : secondaryFlag);
+    }
+  } else {
+    // Multi mix: pick distinct or rich world flags
+    for (let i = 0; i < totalFlags; i++) {
+      const idx = Math.abs(seed * 7 + i * 13) % WORLD_FLAG_EMOJIS.length;
+      activeFlags.push(WORLD_FLAG_EMOJIS[idx].flag);
+    }
+  }
+
+  // 3. Render Flags
+  for (let i = 0; i < totalFlags; i++) {
+    const flag = activeFlags[i];
+    const flagSeed = seed * 43 + i * 89;
+
+    // Scale calculation
+    let baseSize = 120;
+    let isMegaHero = false;
+
+    if (scaleMode === 'mega-screen') {
+      // Massive flags, larger than screen or dominating screen
+      baseSize = Math.max(w, h) * (0.65 + ((flagSeed % 40) / 100)); // 650px - 1100px!
+      isMegaHero = true;
+    } else if (scaleMode === 'giant') {
+      baseSize = 240 + (flagSeed % 180); // 240px to 420px
+    } else if (scaleMode === 'small') {
+      baseSize = 38 + (flagSeed % 42); // 38px to 80px
+    } else if (scaleMode === 'medium') {
+      baseSize = 95 + (flagSeed % 75); // 95px to 170px
+    } else {
+      // 'mixed': dynamic hierarchy
+      if (i === 0 && totalFlags > 2) {
+        // Hero giant background flag (larger than screen)
+        baseSize = Math.max(w, h) * 0.85;
+        isMegaHero = true;
+      } else if (i < 4) {
+        // Large flags
+        baseSize = 180 + (flagSeed % 120);
+      } else if (i > totalFlags - 6) {
+        // Micro flying flags
+        baseSize = 42 + (flagSeed % 35);
+      } else {
+        // Medium flags
+        baseSize = 85 + (flagSeed % 70);
+      }
+    }
+
+    // Size pulse
+    const sizePulse = 0.94 + 0.12 * Math.sin(t * 1.8 + i);
+    const fontSize = baseSize * sizePulse;
+
+    // Motion position computation
+    let x = 0;
+    let y = 0;
+    let rot = 0;
+    let extraScale = 1;
+
+    const initX = ((i * (w / totalFlags) + (flagSeed % 160)) % (w * 0.88)) + w * 0.06;
+    const initY = ((i * (h / totalFlags) + (flagSeed % 180)) % (h * 0.85)) + h * 0.08;
+
+    if (motion === 'vortex') {
+      // Cyclone swirl around center
+      const swirlProg = t * 0.8 + (i * Math.PI * 2) / totalFlags;
+      const swirlDist = isMegaHero ? w * 0.15 : (w * 0.38) * (0.35 + 0.65 * Math.sin(t * 0.5 + i));
+      x = w / 2 + Math.cos(swirlProg) * swirlDist;
+      y = h / 2 + Math.sin(swirlProg) * (swirlDist * 0.65);
+      rot = swirlProg * 0.3;
+    } else if (motion === 'burst') {
+      // Radial burst expanding from center
+      const burstProg = (t * 0.45 + (i / totalFlags)) % 1;
+      const easeB = easeOutCubic(burstProg);
+      const bAngle = (i * Math.PI * 2) / totalFlags + t * 0.1;
+      const bDist = easeB * (Math.max(w, h) * (isMegaHero ? 0.25 : 0.62));
+      x = w / 2 + Math.cos(bAngle) * bDist;
+      y = h / 2 + Math.sin(bAngle) * bDist;
+      rot = Math.sin(t * 2 + i) * 0.2;
+    } else if (motion === 'rain') {
+      // Falling from sky downwards
+      const fallSpeed = isMegaHero ? 25 : 80 + (i % 6) * 35;
+      y = ((initY + t * fallSpeed + h * 2) % (h + fontSize * 1.5)) - fontSize * 0.5;
+      x = initX + Math.sin(t * 2.2 + i) * 35;
+      rot = Math.sin(t * 1.6 + i) * 0.35;
+    } else if (motion === 'zoom-3d') {
+      // Emergence from deep 3D space toward viewer
+      const zoomCycle = (t * 0.5 + (i / totalFlags)) % 1;
+      extraScale = 0.2 + Math.pow(zoomCycle, 2.2) * 2.2;
+      x = w / 2 + (initX - w / 2) * (zoomCycle * 1.4);
+      y = h / 2 + (initY - h / 2) * (zoomCycle * 1.4);
+      rot = (zoomCycle - 0.5) * 0.4;
+    } else if (motion === 'wave-banner') {
+      // Horizontal ceremonial stadium drift with strong wave
+      x = initX + Math.sin(t * 1.2 + i) * 25;
+      y = initY + Math.cos(t * 0.9 + i) * 20;
+      rot = Math.sin(t * 2.4 + i) * 0.15;
+    } else {
+      // 'drift': natural floating drift across screen
+      const speedY = isMegaHero ? -12 : -35 - (i % 4) * 20;
+      const swayAmp = isMegaHero ? 20 : 35 + (flagSeed % 25);
+      const swayFreq = 0.9 + (flagSeed % 10) * 0.1;
+      y = ((initY + t * speedY + h * 2) % (h + fontSize * 1.8)) - fontSize * 0.4;
+      x = initX + Math.sin(t * swayFreq + i * 1.8) * swayAmp;
+      rot = Math.sin(t * 0.9 + i) * 0.22;
+    }
+
+    // Cloth Wave / Wind Ripple Effect (undulating shearing displacement)
+    const hasClothWave = effect === 'cloth-wave' || effect === 'all-fx';
+    let clothSkewX = 0;
+    let clothWaveY = 0;
+    if (hasClothWave) {
+      clothSkewX = Math.sin(t * 4.5 + i * 1.5) * 0.12;
+      clothWaveY = Math.cos(t * 3.8 + i * 1.2) * (fontSize * 0.06);
+    }
+
+    // Opacity calculation
+    let alpha = isMegaHero ? 0.18 : 0.88;
+    if (effect === 'dissolve' || effect === 'all-fx') {
+      const dissolveWave = 0.55 + 0.45 * Math.sin(t * 2.2 + i * 1.4);
+      alpha *= dissolveWave;
+    }
+
+    ctx.save();
+    ctx.translate(x, y + clothWaveY);
+    ctx.rotate(rot);
+    if (clothSkewX !== 0) {
+      ctx.transform(1, 0, clothSkewX, 1, 0, 0); // Wind shear
+    }
+    if (extraScale !== 1) {
+      ctx.scale(extraScale, extraScale);
+    }
+
+    // Glow Effect
+    if (effect === 'glow' || effect === 'all-fx') {
+      ctx.shadowColor = 'rgba(255, 255, 255, 0.65)';
+      ctx.shadowBlur = isMegaHero ? 45 : 18;
+    }
+
+    ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+    // Render Flag emoji using high-fidelity font stack
+    ctx.font = `${Math.floor(fontSize)}px "Twemoji Country Flags", "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(flag, 0, 0);
+
+    // Flicker Sparkles at the flag corners
+    if (effect === 'flicker' || effect === 'all-fx') {
+      const sparkleShimmer = Math.sin(t * 35 + i * 7) > 0.35;
+      if (sparkleShimmer && !isMegaHero) {
+        ctx.fillStyle = '#ffffff';
+        ctx.shadowColor = '#fef08a';
+        ctx.shadowBlur = 10;
+        const sparkOffset = fontSize * 0.38;
+        ctx.fillRect(-sparkOffset, -sparkOffset * 0.7, 3, 3);
+        ctx.fillRect(sparkOffset, sparkOffset * 0.7, 3, 3);
+      }
+    }
 
     ctx.restore();
   }

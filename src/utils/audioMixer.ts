@@ -61,6 +61,38 @@ class AudioMixer {
     return this.isMuted;
   }
 
+  private safeConnect(source: AudioNode | null, destination: AudioNode | AudioParam | null): void {
+    if (!source || !destination) return;
+    try {
+      if (
+        (destination instanceof AudioNode || destination instanceof AudioParam) &&
+        ('context' in destination ? source.context === destination.context : true)
+      ) {
+        source.connect(destination as any);
+      }
+    } catch (err) {
+      console.warn('Safe AudioNode connect error suppressed:', err);
+    }
+  }
+
+  private safeDisconnect(source: AudioNode | null, destination?: AudioNode | AudioParam | null): void {
+    if (!source) return;
+    try {
+      if (destination) {
+        if (
+          (destination instanceof AudioNode || destination instanceof AudioParam) &&
+          ('context' in destination ? source.context === destination.context : true)
+        ) {
+          source.disconnect(destination as any);
+        }
+      } else {
+        source.disconnect();
+      }
+    } catch (err) {
+      // Disconnect error suppressed safely
+    }
+  }
+
   private getContext(): AudioContext {
     if (!this.audioCtx) {
       const AudioCtxClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
@@ -255,11 +287,9 @@ class AudioMixer {
 
       if (!this.synthGainNode) {
         this.synthGainNode = ctx.createGain();
-        this.synthGainNode.connect(ctx.destination);
+        this.safeConnect(this.synthGainNode, ctx.destination);
         if (this.recordDestination) {
-          try {
-            this.synthGainNode.connect(this.recordDestination);
-          } catch {}
+          this.safeConnect(this.synthGainNode, this.recordDestination);
         }
       }
       this.synthGainNode.gain.setValueAtTime(safeSynthVol, ctx.currentTime);
@@ -297,15 +327,15 @@ class AudioMixer {
           if (this.synthSourceNode) {
             try {
               this.synthSourceNode.stop();
-              this.synthSourceNode.disconnect();
             } catch {}
+            this.safeDisconnect(this.synthSourceNode);
             this.synthSourceNode = null;
           }
 
           this.synthSourceNode = ctx.createBufferSource();
           this.synthSourceNode.buffer = synthBuffer;
           this.synthSourceNode.loop = audioState.loop ?? true;
-          this.synthSourceNode.connect(this.synthGainNode!);
+          this.safeConnect(this.synthSourceNode, this.synthGainNode);
 
           const nonNegativeOffset = Number.isFinite(offsetSeconds) ? Math.max(0, offsetSeconds) : 0;
           const safeOffset = synthBuffer.duration > 0 ? nonNegativeOffset % synthBuffer.duration : 0;
@@ -326,8 +356,8 @@ class AudioMixer {
       if (this.synthSourceNode) {
         try {
           this.synthSourceNode.stop();
-          this.synthSourceNode.disconnect();
         } catch {}
+        this.safeDisconnect(this.synthSourceNode);
         this.synthSourceNode = null;
       }
       this.playingPresetId = null;
@@ -342,11 +372,9 @@ class AudioMixer {
 
       if (!this.fileGainNode) {
         this.fileGainNode = ctx.createGain();
-        this.fileGainNode.connect(ctx.destination);
+        this.safeConnect(this.fileGainNode, ctx.destination);
         if (this.recordDestination) {
-          try {
-            this.fileGainNode.connect(this.recordDestination);
-          } catch {}
+          this.safeConnect(this.fileGainNode, this.recordDestination);
         }
       }
       this.fileGainNode.gain.setValueAtTime(safeFileVol, ctx.currentTime);
@@ -379,15 +407,15 @@ class AudioMixer {
           if (this.fileSourceNode) {
             try {
               this.fileSourceNode.stop();
-              this.fileSourceNode.disconnect();
             } catch {}
+            this.safeDisconnect(this.fileSourceNode);
             this.fileSourceNode = null;
           }
 
           this.fileSourceNode = ctx.createBufferSource();
           this.fileSourceNode.buffer = fileBuffer;
           this.fileSourceNode.loop = audioState.loop ?? true;
-          this.fileSourceNode.connect(this.fileGainNode!);
+          this.safeConnect(this.fileSourceNode, this.fileGainNode);
 
           const dur = fileBuffer.duration || audioState.audioDuration || totalDuration;
           const nonNegativeOffset = Number.isFinite(offsetSeconds) ? Math.max(0, offsetSeconds) : 0;
@@ -442,15 +470,15 @@ class AudioMixer {
       if (this.synthSourceNode) {
         try {
           this.synthSourceNode.stop();
-          this.synthSourceNode.disconnect();
         } catch {}
+        this.safeDisconnect(this.synthSourceNode);
         this.synthSourceNode = null;
       }
       if (this.fileSourceNode) {
         try {
           this.fileSourceNode.stop();
-          this.fileSourceNode.disconnect();
         } catch {}
+        this.safeDisconnect(this.fileSourceNode);
         this.fileSourceNode = null;
       }
       this.playingPresetId = null;
@@ -465,19 +493,19 @@ class AudioMixer {
   public setRecordingDestination(dest: MediaStreamAudioDestinationNode | null) {
     if (this.recordDestination) {
       if (this.synthGainNode) {
-        try { this.synthGainNode.disconnect(this.recordDestination); } catch {}
+        this.safeDisconnect(this.synthGainNode, this.recordDestination);
       }
       if (this.fileGainNode) {
-        try { this.fileGainNode.disconnect(this.recordDestination); } catch {}
+        this.safeDisconnect(this.fileGainNode, this.recordDestination);
       }
     }
     this.recordDestination = dest;
     if (this.recordDestination) {
       if (this.synthGainNode) {
-        try { this.synthGainNode.connect(this.recordDestination); } catch {}
+        this.safeConnect(this.synthGainNode, this.recordDestination);
       }
       if (this.fileGainNode) {
-        try { this.fileGainNode.connect(this.recordDestination); } catch {}
+        this.safeConnect(this.fileGainNode, this.recordDestination);
       }
     }
   }
@@ -511,32 +539,24 @@ class AudioMixer {
     if (this.synthSourceNode) {
       try {
         this.synthSourceNode.stop();
-        this.synthSourceNode.disconnect();
-      } catch {
-        // already stopped
-      }
+      } catch {}
+      this.safeDisconnect(this.synthSourceNode);
       this.synthSourceNode = null;
     }
     if (this.synthGainNode) {
-      try {
-        this.synthGainNode.disconnect();
-      } catch {}
+      this.safeDisconnect(this.synthGainNode);
       this.synthGainNode = null;
     }
 
     if (this.fileSourceNode) {
       try {
         this.fileSourceNode.stop();
-        this.fileSourceNode.disconnect();
-      } catch {
-        // already stopped
-      }
+      } catch {}
+      this.safeDisconnect(this.fileSourceNode);
       this.fileSourceNode = null;
     }
     if (this.fileGainNode) {
-      try {
-        this.fileGainNode.disconnect();
-      } catch {}
+      this.safeDisconnect(this.fileGainNode);
       this.fileGainNode = null;
     }
 

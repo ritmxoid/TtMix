@@ -1,5 +1,5 @@
 import React from 'react';
-import { Sparkle, FileText, MessageSquareQuote } from 'lucide-react';
+import { Sparkle, FileText, MessageSquareQuote, AlignLeft } from 'lucide-react';
 import { TextMode, VideoProjectState } from '../types';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -33,6 +33,12 @@ export const TextModeSection: React.FC<TextModeSectionProps> = ({
       icon: <MessageSquareQuote className="w-5 h-5 text-violet-400" />,
     },
     {
+      id: 'paragraph',
+      title: t('modeParagraph', 'По абзацам'),
+      desc: t('modeParagraphDesc', 'Разбивка по абзацам (переносам строк). Если абзацев нет — показывается целиком'),
+      icon: <AlignLeft className="w-5 h-5 text-cyan-400" />,
+    },
+    {
       id: 'full',
       title: t('modeFull', 'Весь текст целиком'),
       desc: t('modeFullDesc', 'Полный текст выводится на экран сразу с выбранной анимацией'),
@@ -51,7 +57,7 @@ export const TextModeSection: React.FC<TextModeSectionProps> = ({
         </h2>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {MODES.map((mode) => {
           const isSelected = state.textMode === mode.id;
           return (
