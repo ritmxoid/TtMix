@@ -58,6 +58,21 @@ export interface BackgroundPreset {
   description: string;
 }
 
+export interface SegmentOverride {
+  positionX?: number; // 0..100%
+  positionY?: number; // 0..100%
+  fontSizeScale?: number; // e.g. 0.5 to 2.5
+  fontFamily?: string;
+  textColor?: string;
+  textAlign?: 'left' | 'center' | 'right';
+  animationStyle?: AnimationStyle;
+  rotation?: number; // degrees e.g. -45 to 45
+  textBgColor?: string;
+  textBgEnabled?: boolean;
+  strokeColor?: string;
+  strokeEnabled?: boolean;
+}
+
 export interface TextSegment {
   text: string;
   words: string[];
@@ -207,6 +222,7 @@ export interface VideoProjectState {
   flagsEffect?: FlagsEffect; // 'glow' | 'dissolve' | 'flicker' | 'cloth-wave' | 'all-fx' | 'morph-transform'
   flagsBgStyle?: FlagsBgStyle; // 'dark-space' | 'stadium' | 'neon-glow' | 'cyber-grid' | 'flag-blur' | 'vertical-cloth' | 'flags-morph'
   flagsGrain?: boolean; // Grain & fabric weave texture overlay
+  flagsOpacity?: number; // 0.15 to 1.0 transparency / opacity level for flag graphics
   // Clouds theme options (legacy compatibility)
   cloudsStyle?: CloudsSkyStyle;
   cloudsSpeed?: number;
@@ -254,6 +270,9 @@ export interface VideoProjectState {
   pauseBetweenSeconds: number; // 0.2 to 3.0
   syncWithVideo?: boolean; // When true and video background is present, text animates smoothly across video length
   textLoopMode?: 'stretch' | 'loop'; // Whether to stretch text pacing across video or loop text every cycle
+
+  // Segment Specific Custom Overrides (Positioning & Styles per word/sentence)
+  segmentOverrides?: Record<number, SegmentOverride>;
 
   // Canvas & Output
   aspectRatio: AspectRatio;

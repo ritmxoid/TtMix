@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { Upload, Film, RotateCcw, HelpCircle, Sparkles, Wand2 } from 'lucide-react';
 import { useLanguage, SUPPORTED_LANGUAGES, LanguageCode } from '../context/LanguageContext';
+import { APP_VERSION } from '../version';
 
 interface HeaderProps {
   onFileUpload?: (file: File) => void;
@@ -80,7 +81,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </h1>
                 <div className="text-[10px] sm:text-[11px] font-medium text-purple-300/90 truncate leading-none mt-0.5">
-                  {t('appSubtitle', 'Аниматор Текста')} v1.11
+                  {t('appSubtitle', 'Аниматор Текста')} v{APP_VERSION}
                 </div>
               </div>
             </button>
@@ -98,7 +99,7 @@ export const Header: React.FC<HeaderProps> = ({
                   </span>
                 </h1>
                 <div className="text-[10px] sm:text-[11px] font-medium text-purple-300/90 truncate leading-none mt-0.5">
-                  {t('appSubtitle', 'Аниматор Текста')} v1.11
+                  {t('appSubtitle', 'Аниматор Текста')} v{APP_VERSION}
                 </div>
               </div>
             </>

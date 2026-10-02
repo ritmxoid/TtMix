@@ -16,7 +16,7 @@ import { SavedPreset, getPresetDisplayName, getPresetDisplayCategory } from '../
 import { useLanguage } from '../context/LanguageContext';
 import { renderCanvasFrame } from '../utils/canvasRenderer';
 import { VideoProjectState } from '../types';
-import { BACKGROUND_PRESETS } from '../data/presets';
+import { BACKGROUND_PRESETS, DEFAULT_PROJECT_STATE } from '../data/presets';
 
 interface PresetsCatalogModalProps {
   isOpen: boolean;
@@ -81,64 +81,20 @@ const CatalogPresetCard: React.FC<CatalogPresetCardProps> = ({
   const isUser = !preset.isBuiltIn;
   const presetState = preset.state || {};
 
-  // Build full project state for canvas renderer
+  // Build full project state for canvas renderer with 100% fidelity
   const fullState: VideoProjectState = {
-    bgType: presetState.bgType || 'preset',
-    bgMediaUrl: presetState.bgMediaUrl || null,
-    bgMediaType: presetState.bgMediaType || null,
-    bgPresetId: presetState.bgPresetId || 'cyberpunk',
-    bgCustomColor: presetState.bgCustomColor,
-    proceduralMood: presetState.proceduralMood,
-    proceduralSeed: presetState.proceduralSeed || 42,
-    bgOverlayOpacity: presetState.bgOverlayOpacity ?? 0.2,
-    audio: presetState.audio || {
-      enabled: false,
-      sourceType: 'none',
-      presetId: 'synthwave-retro',
-      volume: 0.8,
-      loop: true,
-      audioDuration: 30,
-      audioUrl: null,
-      audioFileName: null,
+    ...DEFAULT_PROJECT_STATE,
+    ...presetState,
+    effects: {
+      ...DEFAULT_PROJECT_STATE.effects,
+      ...(presetState.effects || {}),
+    },
+    audio: {
+      ...DEFAULT_PROJECT_STATE.audio,
+      ...(presetState.audio || {}),
     },
     rawText: presetState.rawText || getPresetDisplayName(preset, language) || 'TtMix',
     authorText: presetState.authorText || preset.author || '',
-    textMode: presetState.textMode || 'sentence',
-    fontFamily: presetState.fontFamily || preset.previewFontFamily || "'Montserrat', sans-serif",
-    fontSize: presetState.fontSize || 80,
-    textColor: presetState.textColor || preset.previewTextColor || '#ffffff',
-    textColorMode: presetState.textColorMode,
-    textGradientColors: presetState.textGradientColors,
-    textGradientAngle: presetState.textGradientAngle,
-    neonColor: presetState.neonColor || '#a855f7',
-    strokeEnabled: presetState.strokeEnabled ?? false,
-    strokeColor: presetState.strokeColor || '#000000',
-    strokeWidth: presetState.strokeWidth || 4,
-    isUppercase: presetState.isUppercase ?? false,
-    textAlign: presetState.textAlign || 'center',
-    textPosition: presetState.textPosition || 'center',
-    textPositionY: presetState.textPositionY ?? 50,
-    textPositionX: presetState.textPositionX ?? 50,
-    textBgEnabled: presetState.textBgEnabled,
-    textBgColor: presetState.textBgColor,
-    textBgOpacity: presetState.textBgOpacity,
-    textBgPadding: presetState.textBgPadding,
-    textBgRadius: presetState.textBgRadius,
-    textMaxWidthPercent: presetState.textMaxWidthPercent,
-    mediaOverlayTheme: presetState.mediaOverlayTheme,
-    mediaColorTint: presetState.mediaColorTint,
-    animationStyle: presetState.animationStyle || 'typewriter',
-    speedMultiplier: presetState.speedMultiplier || 1,
-    pauseBetweenSeconds: presetState.pauseBetweenSeconds || 0.5,
-    effects: presetState.effects || {
-      glow: true,
-      sparkle: false,
-      fire: false,
-      neon: false,
-      shadow: true,
-      particles: false,
-    },
-    aspectRatio: presetState.aspectRatio || '9:16',
   };
 
   // Live animation loop

@@ -20,6 +20,7 @@ import { LuckyMode } from './components/LuckyMode';
 import { SAMPLE_TEXTS, getDefaultSampleText, LOCALIZED_DEFAULT_TEXTS } from './data/presets';
 import { VideoProjectState } from './types';
 import { BUILD_TIMESTAMP } from './buildTimestamp';
+import { APP_VERSION } from './version';
 import { ExportProgress, exportVideo } from './utils/videoRecorder';
 import { splitTextIntoSegments } from './utils/textSplitter';
 import { audioMixer } from './utils/audioMixer';
@@ -1079,7 +1080,7 @@ export default function App() {
             </p>
             <div className="pt-1.5 flex flex-col items-center justify-center gap-1">
               <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-medium tracking-wider bg-purple-500/15 text-purple-300 border border-purple-500/25 shadow-sm">
-                Version 1.11
+                Version {APP_VERSION}
               </span>
               <span className="text-[11px] text-zinc-400 font-medium tracking-wide">
                 ...by RitmXoid

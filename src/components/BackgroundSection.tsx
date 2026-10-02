@@ -1026,6 +1026,25 @@ export const BackgroundSection: React.FC<BackgroundSectionProps> = ({
             </div>
           </div>
 
+          {/* Flags Opacity Slider */}
+          <div className="space-y-1 pt-1 border-t border-white/10">
+            <div className="flex items-center justify-between text-[11px] font-medium text-zinc-300">
+              <span>Прозрачность флагов:</span>
+              <span className="text-blue-400 font-mono text-[10.5px]">
+                {Math.round((state.flagsOpacity ?? (state.flagsBgStyle === 'vertical-cloth' ? 0.30 : 0.85)) * 100)}%
+              </span>
+            </div>
+            <input
+              type="range"
+              min="0.15"
+              max="1.0"
+              step="0.05"
+              value={state.flagsOpacity ?? (state.flagsBgStyle === 'vertical-cloth' ? 0.30 : 0.85)}
+              onChange={(e) => onChange({ flagsOpacity: parseFloat(e.target.value) })}
+              className="w-full accent-blue-500 bg-zinc-800/80 h-1.5 rounded-lg cursor-pointer"
+            />
+          </div>
+
           {/* Grain texture toggle */}
           <div className="flex items-center justify-between pt-1 border-t border-white/10">
             <span className="text-[11px] font-medium text-zinc-300 flex items-center gap-1.5">

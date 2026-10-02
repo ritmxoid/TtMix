@@ -207,11 +207,32 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       return;
     }
 
+    const hasVideo = bgMediaElement instanceof HTMLVideoElement && bgMediaElement.duration > 0;
+    const isSync = Boolean(state.syncWithVideo) && hasVideo;
+    const targetDur = isSync ? (bgMediaElement as HTMLVideoElement).duration : undefined;
+
+    const { segments: currentSegments } = splitTextIntoSegments(
+      state.rawText,
+      state.textMode,
+      state.speedMultiplier,
+      state.pauseBetweenSeconds,
+      targetDur,
+      state.animationStyle
+    );
+    let activeSegIdx = currentSegments.findIndex(
+      (seg) => currentTimeRef.current >= seg.startTime && currentTimeRef.current <= seg.endTime + 0.15
+    );
+    if (activeSegIdx === -1 && currentSegments.length > 0) {
+      activeSegIdx = currentTimeRef.current >= currentSegments[currentSegments.length - 1].startTime ? currentSegments.length - 1 : 0;
+    }
+
+    const curSegOverride = activeSegIdx >= 0 && state.textMode !== 'full' ? state.segmentOverrides?.[activeSegIdx] : undefined;
+
     dragStartXRef.current = e.clientX;
     dragStartYRef.current = e.clientY;
     pointerDownInfoRef.current = { x: e.clientX, y: e.clientY, time: Date.now() };
-    initialTextPosXRef.current = state.textPositionX ?? 50;
-    initialTextPosYRef.current = state.textPositionY ?? 50;
+    initialTextPosXRef.current = curSegOverride?.positionX ?? state.textPositionX ?? 50;
+    initialTextPosYRef.current = curSegOverride?.positionY ?? state.textPositionY ?? 50;
     hasMovedGestureRef.current = false;
 
     if (fontSizeLongPressTimerRef.current) {
@@ -259,13 +280,45 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         if (rect && rect.width > 0 && rect.height > 0) {
           const deltaPercentX = (dx / rect.width) * 100;
           const deltaPercentY = (dy / rect.height) * 100;
-          const newX = Math.min(100, Math.max(0, initialTextPosXRef.current + deltaPercentX));
-          const newY = Math.min(100, Math.max(0, initialTextPosYRef.current + deltaPercentY));
-          if (
-            Math.abs(newX - (state.textPositionX ?? 50)) > 0.05 ||
-            Math.abs(newY - (state.textPositionY ?? 50)) > 0.05
-          ) {
-            onChange({ textPositionX: Number(newX.toFixed(1)), textPositionY: Number(newY.toFixed(1)) });
+          const newX = Number(Math.min(100, Math.max(0, initialTextPosXRef.current + deltaPercentX)).toFixed(1));
+          const newY = Number(Math.min(100, Math.max(0, initialTextPosYRef.current + deltaPercentY)).toFixed(1));
+
+          const hasVideo = bgMediaElement instanceof HTMLVideoElement && bgMediaElement.duration > 0;
+          const isSync = Boolean(state.syncWithVideo) && hasVideo;
+          const targetDur = isSync ? (bgMediaElement as HTMLVideoElement).duration : undefined;
+
+          const { segments: currentSegments } = splitTextIntoSegments(
+            state.rawText,
+            state.textMode,
+            state.speedMultiplier,
+            state.pauseBetweenSeconds,
+            targetDur,
+            state.animationStyle
+          );
+          let activeSegIdx = currentSegments.findIndex(
+            (seg) => currentTimeRef.current >= seg.startTime && currentTimeRef.current <= seg.endTime + 0.15
+          );
+          if (activeSegIdx === -1 && currentSegments.length > 0) {
+            activeSegIdx = currentTimeRef.current >= currentSegments[currentSegments.length - 1].startTime ? currentSegments.length - 1 : 0;
+          }
+
+          if (activeSegIdx >= 0 && state.textMode !== 'full') {
+            const currentOverrides = state.segmentOverrides || {};
+            const curSegOverride = currentOverrides[activeSegIdx] || {};
+            onChange({
+              segmentOverrides: {
+                ...currentOverrides,
+                [activeSegIdx]: {
+                  ...curSegOverride,
+                  positionX: newX,
+                  positionY: newY,
+                },
+              },
+              textPositionX: newX,
+              textPositionY: newY,
+            });
+          } else {
+            onChange({ textPositionX: newX, textPositionY: newY });
           }
         }
       }
@@ -1501,13 +1554,36 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       </div>
 
       {/* Floating Font Size & Color Adjustment Popup */}
-      {showFontSizePopup && (
-        <TextEditPopup
-          state={state}
-          onChange={onChange}
-          onClose={() => setShowFontSizePopup(false)}
-        />
-      )}
+      {showFontSizePopup && (() => {
+        const hasVideo = bgMediaElement instanceof HTMLVideoElement && bgMediaElement.duration > 0;
+        const isSync = Boolean(state.syncWithVideo) && hasVideo;
+        const targetDur = isSync ? (bgMediaElement as HTMLVideoElement).duration : undefined;
+
+        const { segments: activeSegs } = splitTextIntoSegments(
+          state.rawText,
+          state.textMode,
+          state.speedMultiplier,
+          state.pauseBetweenSeconds,
+          targetDur,
+          state.animationStyle
+        );
+        let activeSegIdx = activeSegs.findIndex(
+          (s) => currentTimeRef.current >= s.startTime && currentTimeRef.current <= s.endTime + 0.15
+        );
+        if (activeSegIdx === -1 && activeSegs.length > 0) {
+          activeSegIdx = currentTimeRef.current >= activeSegs[activeSegs.length - 1].startTime ? activeSegs.length - 1 : 0;
+        }
+        const activeSegText = activeSegs[activeSegIdx]?.text || '';
+        return (
+          <TextEditPopup
+            state={state}
+            onChange={onChange}
+            onClose={() => setShowFontSizePopup(false)}
+            activeSegmentIndex={activeSegIdx}
+            activeSegmentText={activeSegText}
+          />
+        );
+      })()}
 
       {/* Bottom Floating Control Bar */}
       {isLuckyMode ? (

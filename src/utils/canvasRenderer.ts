@@ -554,6 +554,7 @@ export function renderCanvasFrame({
     drawTextSegment({
       ctx,
       segment: activeSegment,
+      segmentIndex: activeSegmentIndex,
       state,
       currentTime,
       canvasWidth: width,
@@ -675,6 +676,7 @@ function drawPresetOrOverlayBackground(
       flagsEffect: state.flagsEffect,
       flagsBgStyle: state.flagsBgStyle,
       flagsGrain: state.flagsGrain,
+      flagsOpacity: state.flagsOpacity,
       cloudsStyle: state.cloudsStyle,
       cloudsSpeed: state.cloudsSpeed,
       cloudsFeather: state.cloudsFeather,
@@ -1867,6 +1869,7 @@ function calculateTextLayout(
 function drawTextSegment({
   ctx,
   segment,
+  segmentIndex,
   state,
   currentTime,
   canvasWidth,
@@ -1876,6 +1879,7 @@ function drawTextSegment({
 }: {
   ctx: CanvasRenderingContext2D;
   segment: { text: string; words: string[]; startTime: number; endTime: number; duration: number };
+  segmentIndex?: number;
   state: VideoProjectState;
   currentTime: number;
   canvasWidth: number;
@@ -1883,6 +1887,17 @@ function drawTextSegment({
   isLastSegment?: boolean;
   isDraggingText?: boolean;
 }) {
+  // Check if this segment has custom overrides (position, font, size, color, rotation, animation)
+  const segmentOverride = typeof segmentIndex === 'number' ? state.segmentOverrides?.[segmentIndex] : undefined;
+
+  const effectiveFontSize = Math.max(16, Math.round(state.fontSize * (segmentOverride?.fontSizeScale ?? 1.0)));
+  const effectiveFontFamily = segmentOverride?.fontFamily || state.fontFamily;
+  const effectiveTextColor = segmentOverride?.textColor || state.textColor;
+  const effectiveAnimStyle = segmentOverride?.animationStyle || state.animationStyle;
+  const effectiveTextBgEnabled = segmentOverride?.textBgEnabled ?? state.textBgEnabled;
+  const effectiveTextBgColor = segmentOverride?.textBgColor || state.textBgColor || '#0070f3';
+  const effectiveTextAlign = segmentOverride?.textAlign || state.textAlign || 'center';
+
   // Safe margins strictly 25px on all 4 borders
   const safeMarginX = 25;
   const safeMarginY = 25;
@@ -1897,8 +1912,8 @@ function drawTextSegment({
     segment.text,
     maxWidth,
     maxHeight,
-    state.fontSize,
-    state.fontFamily,
+    effectiveFontSize,
+    effectiveFontFamily,
     state.isUppercase
   );
 
@@ -1908,17 +1923,15 @@ function drawTextSegment({
 
   // Speed-based animation duration calculations:
   let animDuration: number;
-  if (state.animationStyle === 'typewriter') {
+  if (effectiveAnimStyle === 'typewriter') {
     const s = Math.max(0.1, Math.min(3.0, effectiveSpeed));
     const t = (s - 0.1) / 2.9;
     const charsPerSec = (1 / 3.0) + t * (43.48 - (1 / 3.0));
     const totalChars = Math.max(1, segment.text.trim().length);
     animDuration = Math.max(0.15, totalChars / charsPerSec);
-  } else if (state.animationStyle === 'words') {
+  } else if (effectiveAnimStyle === 'words') {
     const totalWords = Math.max(1, segment.words.length);
     animDuration = Math.max(0.15, totalWords * wordDuration);
-  } else if (state.animationStyle === 'glitch') {
-    animDuration = Math.min(1.5, Math.max(0.15, 0.65 / speedFactor));
   } else {
     animDuration = Math.min(1.5, Math.max(0.15, 0.65 / speedFactor));
   }
@@ -1955,12 +1968,15 @@ function drawTextSegment({
   const maxBlockLeft = Math.max(safeMarginX, canvasWidth - safeMarginX - blockWidth);
 
   let blockLeft = safeMarginX;
-  if (typeof state.textPositionX === 'number' && Number.isFinite(state.textPositionX)) {
+  if (typeof segmentOverride?.positionX === 'number' && Number.isFinite(segmentOverride.positionX)) {
+    const normX = Math.max(0, Math.min(100, segmentOverride.positionX)) / 100;
+    blockLeft = minBlockLeft + (maxBlockLeft - minBlockLeft) * normX;
+  } else if (typeof state.textPositionX === 'number' && Number.isFinite(state.textPositionX)) {
     const normX = Math.max(0, Math.min(100, state.textPositionX)) / 100;
     blockLeft = minBlockLeft + (maxBlockLeft - minBlockLeft) * normX;
-  } else if (state.textAlign === 'center') {
+  } else if (effectiveTextAlign === 'center') {
     blockLeft = minBlockLeft + (maxBlockLeft - minBlockLeft) * 0.5;
-  } else if (state.textAlign === 'right') {
+  } else if (effectiveTextAlign === 'right') {
     blockLeft = maxBlockLeft;
   } else {
     blockLeft = minBlockLeft;
@@ -1974,7 +1990,10 @@ function drawTextSegment({
   const maxBlockTop = Math.max(safeMarginY, canvasHeight - safeMarginY - totalCombinedHeight);
 
   let blockTop = safeMarginY;
-  if (typeof state.textPositionY === 'number' && Number.isFinite(state.textPositionY)) {
+  if (typeof segmentOverride?.positionY === 'number' && Number.isFinite(segmentOverride.positionY)) {
+    const normY = Math.max(0, Math.min(100, segmentOverride.positionY)) / 100;
+    blockTop = minBlockTop + (maxBlockTop - minBlockTop) * normY;
+  } else if (typeof state.textPositionY === 'number' && Number.isFinite(state.textPositionY)) {
     const normY = Math.max(0, Math.min(100, state.textPositionY)) / 100;
     blockTop = minBlockTop + (maxBlockTop - minBlockTop) * normY;
   } else if (state.textPosition === 'top') {
@@ -2006,7 +2025,11 @@ function drawTextSegment({
   let blockShiftY = 0;
   let blockRotate = 0;
 
-  switch (state.animationStyle) {
+  if (segmentOverride?.rotation) {
+    blockRotate += (segmentOverride.rotation * Math.PI) / 180;
+  }
+
+  switch (effectiveAnimStyle) {
     case 'fade':
       alpha = easeOutCubic(progress);
       break;
@@ -2119,11 +2142,11 @@ function drawTextSegment({
   ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
   // Render Background Plate / Plashka if enabled
-  if (state.textBgEnabled) {
+  if (effectiveTextBgEnabled) {
     const bgOpacity = state.textBgOpacity ?? 0.85;
     const bgPadding = state.textBgPadding ?? 20;
     const bgRadius = state.textBgRadius ?? 18;
-    const bgColor = state.textBgColor || '#0070f3';
+    const bgColor = effectiveTextBgColor;
 
     ctx.save();
     ctx.globalAlpha = Math.max(0, Math.min(1, alpha * bgOpacity));
@@ -2192,8 +2215,8 @@ function drawTextSegment({
     ctx.restore();
   }
 
-  ctx.font = `bold ${layout.fontSize}px ${state.fontFamily}`;
-  ctx.textAlign = state.textAlign;
+  ctx.font = `bold ${layout.fontSize}px ${effectiveFontFamily}`;
+  ctx.textAlign = effectiveTextAlign;
   ctx.textBaseline = 'alphabetic';
 
   // Apply user text opacity multiplier
@@ -2272,9 +2295,9 @@ function drawTextSegment({
   linesToDraw.forEach((line, index) => {
     const lineY = startY + index * layout.lineHeight + offsetY + blockShiftY;
     let lineX = blockCenter + blockShiftX;
-    if (state.textAlign === 'left') {
+    if (effectiveTextAlign === 'left') {
       lineX = blockLeft + blockShiftX;
-    } else if (state.textAlign === 'right') {
+    } else if (effectiveTextAlign === 'right') {
       lineX = blockRight + blockShiftX;
     } else {
       lineX = blockCenter + blockShiftX;
@@ -2309,11 +2332,11 @@ function drawTextSegment({
     const lineWidth = textMetrics.width;
 
     let lineStartX = drawLineX;
-    if (state.textAlign === 'center') lineStartX = drawLineX - lineWidth / 2;
-    else if (state.textAlign === 'right') lineStartX = drawLineX - lineWidth;
+    if (effectiveTextAlign === 'center') lineStartX = drawLineX - lineWidth / 2;
+    else if (effectiveTextAlign === 'right') lineStartX = drawLineX - lineWidth;
 
     // Line fill resolution (Gradient or Solid)
-    let lineFillStyle: string | CanvasGradient = state.textColor;
+    let lineFillStyle: string | CanvasGradient = effectiveTextColor;
     if (state.textColorMode === 'gradient') {
       const c1 = state.textGradientColors?.[0] || state.textColor || '#f43f5e';
       const c2 = state.textGradientColors?.[1] || state.neonColor || '#38bdf8';
@@ -2569,8 +2592,8 @@ function drawTextSegment({
         // Charge traveling across text width
         const chargePhase = ((currentTime * 2.2 + index * 0.35) % 1);
         let chargeStart = drawLineX;
-        if (state.textAlign === 'center') chargeStart = drawLineX - lineWidth / 2;
-        else if (state.textAlign === 'right') chargeStart = drawLineX - lineWidth;
+        if (effectiveTextAlign === 'center') chargeStart = drawLineX - lineWidth / 2;
+        else if (effectiveTextAlign === 'right') chargeStart = drawLineX - lineWidth;
 
         const chargeX = chargeStart + lineWidth * chargePhase;
         const chargeY = drawLineY - layout.fontSize * 0.35;
@@ -2631,8 +2654,8 @@ function drawTextSegment({
 
       const totalLineWidth = ctx.measureText(line).width;
       let startCharX = drawLineX;
-      if (state.textAlign === 'center') startCharX = drawLineX - totalLineWidth / 2;
-      else if (state.textAlign === 'right') startCharX = drawLineX - totalLineWidth;
+      if (effectiveTextAlign === 'center') startCharX = drawLineX - totalLineWidth / 2;
+      else if (effectiveTextAlign === 'right') startCharX = drawLineX - totalLineWidth;
 
       let runningWidth = 0;
       for (let c = 0; c < lineLen; c++) {
@@ -2701,9 +2724,9 @@ function drawTextSegment({
       blockShiftY;
 
     let authorX = blockCenter + blockShiftX;
-    if (state.textAlign === 'left') {
+    if (effectiveTextAlign === 'left') {
       authorX = blockLeft + blockShiftX;
-    } else if (state.textAlign === 'right') {
+    } else if (effectiveTextAlign === 'right') {
       authorX = blockRight + blockShiftX;
     } else {
       authorX = blockCenter + blockShiftX;
@@ -2723,13 +2746,13 @@ function drawTextSegment({
 
     ctx.save();
     ctx.font = `italic 600 ${authorFontSize}px 'Playfair Display', 'Caveat', 'Montserrat', Georgia, serif`;
-    ctx.textAlign = state.textAlign;
+    ctx.textAlign = effectiveTextAlign;
     ctx.textBaseline = 'alphabetic';
 
     const authorWidth = ctx.measureText(authorStr).width;
     let authorStartX = authorX;
-    if (state.textAlign === 'center') authorStartX = authorX - authorWidth / 2;
-    else if (state.textAlign === 'right') authorStartX = authorX - authorWidth;
+    if (effectiveTextAlign === 'center') authorStartX = authorX - authorWidth / 2;
+    else if (effectiveTextAlign === 'right') authorStartX = authorX - authorWidth;
 
     // Gradient fill resolution for author
     let authorFillStyle: string | CanvasGradient = state.textColor;

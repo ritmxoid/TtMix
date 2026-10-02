@@ -46,6 +46,7 @@ export interface ProceduralMoodRenderOptions {
   flagsEffect?: FlagsEffect;
   flagsBgStyle?: FlagsBgStyle;
   flagsGrain?: boolean;
+  flagsOpacity?: number;
   // Clouds options (legacy compatibility)
   cloudsStyle?: CloudsSkyStyle;
   cloudsSpeed?: number;
@@ -3580,7 +3581,9 @@ function drawFlags(
   // Draw background if not skipped
   if (!skipSolidBg) {
     if (bgStyle === 'vertical-cloth') {
-      // Atmospheric vertical hanging flag banner with realistic waving cloth folds & film grain
+      // Atmospheric hanging flag banner with realistic waving cloth folds & film grain
+      // Automatically adopts vertical banner orientation for vertical canvas (9:16) and horizontal for landscape/1:1
+      const isVerticalCanvas = h > w;
       const bgGrad = ctx.createLinearGradient(0, 0, 0, h);
       bgGrad.addColorStop(0, '#060912');
       bgGrad.addColorStop(0.5, '#0b1120');
@@ -3588,18 +3591,21 @@ function drawFlags(
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, w, h);
 
-      // Hanging vertical flag banner in center covering full screen height/width
+      // Hanging flag banner in center covering screen with realistic silk cloth sway
       ctx.save();
-      const bannerSize = Math.max(w, h) * 0.95;
-      const waveRot = Math.PI / 2 + Math.sin(t * 0.9) * 0.035; // Vertically turned with gentle wave sway
+      const bannerSize = Math.max(w, h) * (isVerticalCanvas ? 0.95 : 1.15);
+      const baseRot = isVerticalCanvas ? Math.PI / 2 : 0;
+      const waveRot = baseRot + Math.sin(t * 0.9) * 0.035; // Vertical for portrait, horizontal for landscape/1:1 + gentle wave sway
       const waveX = w * 0.5 + Math.sin(t * 1.1) * (w * 0.02);
       const waveY = h * 0.5 + Math.cos(t * 0.8) * (h * 0.015);
 
       ctx.translate(waveX, waveY);
       ctx.rotate(waveRot);
-      ctx.globalAlpha = 0.28; // Subtle backdrop transparency so foreground text remains perfectly legible
+      // User or random opacity multiplier for banner
+      const bannerAlphaSetting = typeof options?.flagsOpacity === 'number' ? options.flagsOpacity : 0.30;
+      ctx.globalAlpha = Math.max(0.08, Math.min(1.0, bannerAlphaSetting));
 
-      // Draw high-performance hardware scaled vertical flag
+      // Draw high-performance hardware scaled flag
       const RASTER_VERT_BASE = 140;
       const vertScale = bannerSize / RASTER_VERT_BASE;
       ctx.font = `${RASTER_VERT_BASE}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
@@ -3608,18 +3614,6 @@ function drawFlags(
       ctx.scale(vertScale, vertScale);
       ctx.fillText(primaryFlag, 0, 0);
       ctx.restore();
-
-      // Specular moving cloth wave folds (luxury silk / satin cloth ripples)
-      for (let fold = 0; fold < 6; fold++) {
-        const foldPos = w * (0.12 + fold * 0.16) + Math.sin(t * 1.5 + fold * 1.4) * (w * 0.035);
-        const foldGrad = ctx.createLinearGradient(foldPos - 30, 0, foldPos + 30, 0);
-        foldGrad.addColorStop(0, 'rgba(0, 0, 0, 0.35)');
-        foldGrad.addColorStop(0.45, 'rgba(255, 255, 255, 0.08)');
-        foldGrad.addColorStop(0.55, 'rgba(255, 255, 255, 0.08)');
-        foldGrad.addColorStop(1, 'rgba(0, 0, 0, 0.35)');
-        ctx.fillStyle = foldGrad;
-        ctx.fillRect(foldPos - 30, 0, 60, h);
-      }
 
       // Dark edge vignette to guarantee maximum text contrast
       const vignette = ctx.createRadialGradient(
@@ -3668,12 +3662,14 @@ function drawFlags(
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
 
+      const morphAlphaMultiplier = typeof options?.flagsOpacity === 'number' ? (options.flagsOpacity / 0.5) : 1.0;
+
       if (!isTransitioning) {
         // Steady state: display current flag watermark with gentle pulse
         ctx.save();
         ctx.translate(w * 0.5, h * 0.5);
         ctx.scale(emblemScale, emblemScale);
-        ctx.globalAlpha = 0.22 + 0.04 * Math.sin(t * 1.5);
+        ctx.globalAlpha = Math.min(1.0, (0.22 + 0.04 * Math.sin(t * 1.5)) * morphAlphaMultiplier);
         ctx.fillText(curFlag, 0, 0);
         ctx.restore();
       } else if (transitionType === 0) {
@@ -3681,14 +3677,14 @@ function drawFlags(
         ctx.save();
         ctx.translate(w * 0.5, h * 0.5);
         ctx.scale(emblemScale, emblemScale);
-        ctx.globalAlpha = (1 - easeP) * 0.24;
+        ctx.globalAlpha = Math.min(1.0, (1 - easeP) * 0.24 * morphAlphaMultiplier);
         ctx.fillText(curFlag, 0, 0);
         ctx.restore();
 
         ctx.save();
         ctx.translate(w * 0.5, h * 0.5);
         ctx.scale(emblemScale, emblemScale);
-        ctx.globalAlpha = easeP * 0.24;
+        ctx.globalAlpha = Math.min(1.0, easeP * 0.24 * morphAlphaMultiplier);
         ctx.fillText(nextFlag, 0, 0);
         ctx.restore();
       } else if (transitionType === 1) {
@@ -3697,14 +3693,14 @@ function drawFlags(
         ctx.save();
         ctx.translate(w * 0.5 - slideOffset, h * 0.5);
         ctx.scale(emblemScale, emblemScale);
-        ctx.globalAlpha = (1 - easeP) * 0.22;
+        ctx.globalAlpha = Math.min(1.0, (1 - easeP) * 0.22 * morphAlphaMultiplier);
         ctx.fillText(curFlag, 0, 0);
         ctx.restore();
 
         ctx.save();
         ctx.translate(w * 0.5 + (w * 0.85 - slideOffset), h * 0.5);
         ctx.scale(emblemScale, emblemScale);
-        ctx.globalAlpha = easeP * 0.22;
+        ctx.globalAlpha = Math.min(1.0, easeP * 0.22 * morphAlphaMultiplier);
         ctx.fillText(nextFlag, 0, 0);
         ctx.restore();
       } else {
@@ -3713,7 +3709,7 @@ function drawFlags(
         ctx.translate(w * 0.5, h * 0.5);
         const outScale = emblemScale * (1 + easeP * 0.45);
         ctx.scale(outScale, outScale);
-        ctx.globalAlpha = (1 - easeP) * 0.22;
+        ctx.globalAlpha = Math.min(1.0, (1 - easeP) * 0.22 * morphAlphaMultiplier);
         ctx.fillText(curFlag, 0, 0);
         ctx.restore();
 
@@ -3721,7 +3717,7 @@ function drawFlags(
         ctx.translate(w * 0.5, h * 0.5);
         const inScale = emblemScale * (0.6 + easeP * 0.4);
         ctx.scale(inScale, inScale);
-        ctx.globalAlpha = easeP * 0.22;
+        ctx.globalAlpha = Math.min(1.0, easeP * 0.22 * morphAlphaMultiplier);
         ctx.fillText(nextFlag, 0, 0);
         ctx.restore();
       }
@@ -3981,7 +3977,8 @@ function drawFlags(
     }
 
     // Opacity calculation
-    let finalAlpha = isMegaHero ? 0.18 : 0.88;
+    const flagOpacitySetting = typeof options?.flagsOpacity === 'number' ? options.flagsOpacity : 1.0;
+    let finalAlpha = (isMegaHero ? 0.18 : 0.88) * flagOpacitySetting;
     if (effect === 'dissolve' || effect === 'all-fx' || effect === 'morph-transform') {
       const dissolveWave = 0.55 + 0.45 * Math.sin(t * 2.2 + i * 1.4);
       finalAlpha *= dissolveWave;

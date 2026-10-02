@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Check, Palette, AlignLeft, AlignCenter, AlignRight, Square, Type } from 'lucide-react';
-import { VideoProjectState } from '../types';
+import { Check, CheckCheck, Palette, AlignLeft, AlignCenter, AlignRight, Square, Type, RotateCcw } from 'lucide-react';
+import { SegmentOverride, VideoProjectState } from '../types';
 import { ColorPickerModal } from './ColorPickerModal';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -30,24 +30,105 @@ interface TextEditPopupProps {
   state: VideoProjectState;
   onChange: (patch: Partial<VideoProjectState>) => void;
   onClose: () => void;
+  activeSegmentIndex?: number;
+  activeSegmentText?: string;
 }
 
-export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, onClose }) => {
+export const TextEditPopup: React.FC<TextEditPopupProps> = ({
+  state,
+  onChange,
+  onClose,
+  activeSegmentIndex,
+  activeSegmentText,
+}) => {
   const { t } = useLanguage();
+
+  const isSegmentMode =
+    state.textMode !== 'full' &&
+    typeof activeSegmentIndex === 'number' &&
+    activeSegmentIndex >= 0;
+
+  const segOverride: SegmentOverride | undefined = isSegmentMode
+    ? state.segmentOverrides?.[activeSegmentIndex]
+    : undefined;
+
+  const currentTextBgEnabled = isSegmentMode
+    ? (segOverride?.textBgEnabled ?? state.textBgEnabled)
+    : state.textBgEnabled;
+
   const [activeTab, setActiveTab] = useState<'text' | 'bg'>(
-    state.textBgEnabled ? 'bg' : 'text'
+    currentTextBgEnabled ? 'bg' : 'text'
   );
   const [isPickerOpen, setIsPickerOpen] = useState(false);
 
-  const currentTab = state.textBgEnabled ? activeTab : 'text';
+  const currentTab = currentTextBgEnabled ? activeTab : 'text';
+
+  // Effective values for sliders & colors
+  const baseFontSize = state.fontSize || 42;
+  const currentFontSizeScale = segOverride?.fontSizeScale ?? 1.0;
+  const currentFontSize = isSegmentMode
+    ? Math.round(baseFontSize * currentFontSizeScale)
+    : baseFontSize;
+
+  const currentTextColor = isSegmentMode
+    ? (segOverride?.textColor || state.textColor || '#ffffff')
+    : (state.textColor || '#ffffff');
+
+  const currentTextBgColor = isSegmentMode
+    ? (segOverride?.textBgColor || state.textBgColor || '#000000')
+    : (state.textBgColor || '#000000');
+
+  const currentTextAlign = isSegmentMode
+    ? (segOverride?.textAlign || state.textAlign || 'center')
+    : (state.textAlign || 'center');
+
+  const updateSegOverride = (patch: Partial<SegmentOverride>) => {
+    if (typeof activeSegmentIndex !== 'number') return;
+    const currentOverrides = state.segmentOverrides || {};
+    const existing = currentOverrides[activeSegmentIndex] || {};
+    onChange({
+      segmentOverrides: {
+        ...currentOverrides,
+        [activeSegmentIndex]: {
+          ...existing,
+          ...patch,
+        },
+      },
+    });
+  };
+
+  const handleTextAlignChange = (align: 'left' | 'center' | 'right') => {
+    if (isSegmentMode) {
+      updateSegOverride({ textAlign: align });
+    } else {
+      onChange({ textAlign: align });
+    }
+  };
+
+  const handleFontSizeChange = (newSize: number) => {
+    if (isSegmentMode) {
+      const scale = Number((newSize / baseFontSize).toFixed(2));
+      updateSegOverride({ fontSizeScale: scale });
+    } else {
+      onChange({ fontSize: newSize });
+    }
+  };
 
   const handleToggleBg = () => {
-    if (!state.textBgEnabled) {
-      onChange({ textBgEnabled: true });
+    if (!currentTextBgEnabled) {
+      if (isSegmentMode) {
+        updateSegOverride({ textBgEnabled: true });
+      } else {
+        onChange({ textBgEnabled: true });
+      }
       setActiveTab('bg');
     } else {
       if (activeTab === 'bg') {
-        onChange({ textBgEnabled: false });
+        if (isSegmentMode) {
+          updateSegOverride({ textBgEnabled: false });
+        } else {
+          onChange({ textBgEnabled: false });
+        }
         setActiveTab('text');
       } else {
         setActiveTab('bg');
@@ -56,14 +137,70 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
   };
 
   const currentColors = currentTab === 'bg' ? POPULAR_BG_COLORS : POPULAR_TEXT_COLORS;
-  const activeColor = currentTab === 'bg' ? (state.textBgColor || '#000000') : (state.textColor || '#ffffff');
+  const activeColor = currentTab === 'bg' ? currentTextBgColor : currentTextColor;
 
   const handleSelectColor = (color: string) => {
     if (currentTab === 'bg') {
-      onChange({ textBgColor: color });
+      if (isSegmentMode) {
+        updateSegOverride({ textBgColor: color });
+      } else {
+        onChange({ textBgColor: color });
+      }
     } else {
-      onChange({ textColor: color });
+      if (isSegmentMode) {
+        updateSegOverride({ textColor: color });
+      } else {
+        onChange({ textColor: color });
+      }
     }
+  };
+
+  const handleResetSegment = () => {
+    if (typeof activeSegmentIndex !== 'number') return;
+    const currentOverrides = state.segmentOverrides || {};
+    const existing = currentOverrides[activeSegmentIndex];
+    if (!existing) return;
+
+    const nextOverrides = { ...currentOverrides };
+    const cleaned: SegmentOverride = {};
+    if (typeof existing.positionX === 'number') cleaned.positionX = existing.positionX;
+    if (typeof existing.positionY === 'number') cleaned.positionY = existing.positionY;
+    if (typeof existing.rotation === 'number') cleaned.rotation = existing.rotation;
+
+    if (Object.keys(cleaned).length > 0) {
+      nextOverrides[activeSegmentIndex] = cleaned;
+    } else {
+      delete nextOverrides[activeSegmentIndex];
+    }
+    onChange({ segmentOverrides: nextOverrides });
+  };
+
+  const handleApplyToAll = () => {
+    // 1. Clean segment overrides of styling overrides (fontSizeScale, textColor, textBgColor, textBgEnabled)
+    // while preserving custom spatial coordinates (positionX, positionY, rotation)
+    const nextOverrides: Record<number, SegmentOverride> = {};
+    if (state.segmentOverrides) {
+      Object.entries(state.segmentOverrides).forEach(([key, override]) => {
+        const segIdx = parseInt(key, 10);
+        const typedOverride = override as SegmentOverride | undefined;
+        const cleaned: SegmentOverride = {};
+        if (typeof typedOverride?.positionX === 'number') cleaned.positionX = typedOverride.positionX;
+        if (typeof typedOverride?.positionY === 'number') cleaned.positionY = typedOverride.positionY;
+        if (typeof typedOverride?.rotation === 'number') cleaned.rotation = typedOverride.rotation;
+        if (Object.keys(cleaned).length > 0) {
+          nextOverrides[segIdx] = cleaned;
+        }
+      });
+    }
+
+    onChange({
+      fontSize: currentFontSize,
+      textColor: currentTextColor,
+      textBgColor: currentTextBgColor,
+      textBgEnabled: currentTextBgEnabled,
+      textAlign: currentTextAlign,
+      segmentOverrides: nextOverrides,
+    });
   };
 
   return (
@@ -83,14 +220,14 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
         />
       )}
 
-      {/* Main floating popup docked above the tool buttons over the canvas */}
+      {/* Main floating popup docked directly above the bottom tool buttons */}
       <div
         data-dock="true"
         data-tour="text-properties-panel"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
-        className="fixed bottom-20 sm:bottom-24 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[94vw] p-3.5 sm:p-4 rounded-3xl bg-black/35 backdrop-blur-md border border-white/20 shadow-2xl shadow-black/60 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
+        className="fixed bottom-14 sm:bottom-16 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[94vw] p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl bg-black/45 backdrop-blur-md border border-white/20 shadow-2xl shadow-black/60 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
       >
         {/* TOP SECTION: Swaps between Text Sliders (Size & Opacity) and Background Sliders (Opacity & Width) */}
         {currentTab === 'text' ? (
@@ -106,14 +243,12 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
                 min="18"
                 max="500"
                 step="2"
-                value={state.fontSize || 42}
-                onChange={(e) =>
-                  onChange({ fontSize: parseInt(e.target.value, 10) })
-                }
+                value={currentFontSize}
+                onChange={(e) => handleFontSizeChange(parseInt(e.target.value, 10))}
                 className="w-full accent-purple-500 bg-zinc-800/80 h-1.5 rounded-lg cursor-pointer"
               />
               <span className="text-[10px] font-mono text-purple-200 font-bold shrink-0 w-8 text-right">
-                {state.fontSize || 42}
+                {currentFontSize}
               </span>
             </div>
             {/* Row 2: Text Opacity */}
@@ -222,37 +357,68 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
           </button>
         </div>
 
-        {/* BOTTOM CONTROLS ROW: Uppercase / Tab toggle, Background Toggle, Alignment */}
+        {/* BOTTOM CONTROLS ROW: Tt Uppercase, Reset (RotateCcw), Apply-to-all (CheckCheck), Background Toggle, Alignment */}
         <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-white/10 select-none">
-          {/* Left: If in 'bg' tab, allow switching back to 'text' mode, or show Uppercase checkbox */}
+          {/* 1. T Text tab switch when in bg mode, or Tt Uppercase checkbox in text mode */}
           {currentTab === 'bg' ? (
             <button
               type="button"
               onClick={() => setActiveTab('text')}
-              className="px-2 py-0.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 border border-purple-500/40 bg-purple-950/40 text-purple-300 hover:bg-purple-900/60 transition-all cursor-pointer"
-              title={t('textSettings', 'Настройки текста')}
+              className="px-2.5 py-1 rounded-lg text-xs font-bold text-purple-200 bg-purple-950/60 border border-purple-500/50 hover:bg-purple-900/80 transition-all cursor-pointer font-sans shadow-xs"
+              title={t('textSettings', 'Настройки текста (Т)')}
             >
-              <Type className="w-3 h-3" />
-              <span>{t('textTab', 'Текст')}</span>
+              Т
             </button>
           ) : (
-            <label className="flex items-center gap-1 cursor-pointer text-xs text-zinc-200 hover:text-white transition-colors">
+            <label
+              className="flex items-center gap-1 cursor-pointer text-xs text-zinc-200 hover:text-white transition-colors"
+              title={t('uppercase', 'Заглавные')}
+            >
               <input
                 type="checkbox"
                 checked={Boolean(state.isUppercase)}
                 onChange={(e) => onChange({ isUppercase: e.target.checked })}
                 className="w-3.5 h-3.5 rounded border-zinc-700 bg-zinc-800 text-purple-600 focus:ring-purple-500 cursor-pointer accent-purple-500"
               />
-              <span className="text-[11px] font-semibold">{t('uppercase', 'Заглавные')}</span>
+              <span className="text-xs font-bold text-purple-200 font-mono select-none">Тт</span>
             </label>
           )}
 
-          {/* Middle: Background ("Фон") button */}
+          {/* 2. Reset Segment button (circular arrow icon) */}
+          <button
+            type="button"
+            onClick={handleResetSegment}
+            disabled={!isSegmentMode || !segOverride}
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
+              isSegmentMode && segOverride
+                ? 'border-amber-400/50 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 hover:text-amber-200 active:scale-95 shadow-sm'
+                : 'border-white/10 bg-white/5 text-zinc-500 hover:text-zinc-400 cursor-default opacity-40'
+            }`}
+            title={
+              isSegmentMode && segOverride
+                ? t('resetSegment', 'Сбросить настройки этого фрагмента к общим')
+                : t('resetSegmentDisabled', 'Сброс (нет изменений)')
+            }
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
+
+          {/* 3. Apply to all button (double checkmark icon) */}
+          <button
+            type="button"
+            onClick={handleApplyToAll}
+            className="p-1.5 rounded-lg border border-purple-400/40 bg-purple-500/20 text-purple-300 hover:bg-purple-500/30 hover:text-white transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-sm"
+            title={t('applyToAll', 'Применить текущие настройки ко всему тексту')}
+          >
+            <CheckCheck className="w-3.5 h-3.5" />
+          </button>
+
+          {/* 4. Background ("Фон") button */}
           <button
             type="button"
             onClick={handleToggleBg}
-            className={`px-2 py-0.5 rounded-lg text-[11px] font-semibold flex items-center gap-1 border transition-all cursor-pointer ${
-              state.textBgEnabled
+            className={`px-2 py-1 rounded-lg text-[11px] font-semibold flex items-center gap-1 border transition-all cursor-pointer ${
+              currentTextBgEnabled
                 ? currentTab === 'bg'
                   ? 'bg-blue-600 text-white border-blue-400 shadow-sm ring-1 ring-blue-400/50'
                   : 'bg-blue-950/80 text-blue-300 border-blue-500/50 hover:bg-blue-900/80'
@@ -264,13 +430,13 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
             <span>{t('fontBg', 'Фон')}</span>
           </button>
 
-          {/* Right: Alignment buttons */}
+          {/* 5. Alignment buttons */}
           <div className="flex items-center bg-black/60 p-0.5 rounded-lg border border-white/10 gap-0.5">
             <button
               type="button"
-              onClick={() => onChange({ textAlign: 'left' })}
+              onClick={() => handleTextAlignChange('left')}
               className={`w-5 h-5 rounded flex items-center justify-center transition-all cursor-pointer ${
-                state.textAlign === 'left'
+                currentTextAlign === 'left'
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white hover:bg-white/10'
               }`}
@@ -280,9 +446,9 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
             </button>
             <button
               type="button"
-              onClick={() => onChange({ textAlign: 'center' })}
+              onClick={() => handleTextAlignChange('center')}
               className={`w-5 h-5 rounded flex items-center justify-center transition-all cursor-pointer ${
-                state.textAlign === 'center' || !state.textAlign
+                currentTextAlign === 'center' || !currentTextAlign
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white hover:bg-white/10'
               }`}
@@ -292,9 +458,9 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({ state, onChange, o
             </button>
             <button
               type="button"
-              onClick={() => onChange({ textAlign: 'right' })}
+              onClick={() => handleTextAlignChange('right')}
               className={`w-5 h-5 rounded flex items-center justify-center transition-all cursor-pointer ${
-                state.textAlign === 'right'
+                currentTextAlign === 'right'
                   ? 'bg-purple-600 text-white shadow-sm'
                   : 'text-zinc-400 hover:text-white hover:bg-white/10'
               }`}

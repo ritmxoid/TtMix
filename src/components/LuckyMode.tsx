@@ -492,6 +492,7 @@ export function generate4Variations(
       flagsEffect: randomFlagsEffect,
       flagsBgStyle: randomFlagsBg,
       flagsGrain: Math.random() > 0.5,
+      flagsOpacity: parseFloat((0.20 + Math.random() * 0.80).toFixed(2)),
       cloudsStyle: randomCloudsStyle,
       cloudsSpeed: randomCloudsSpeed,
       cloudsFeather: randomCloudsFeather,
@@ -795,29 +796,27 @@ export const LuckyMode: React.FC<LuckyModeProps> = ({
   const currentActiveText = isExpertDefault ? defaultMatrixText : baseState.rawText;
   const currentActiveAuthor = isExpertDefault ? defaultMatrixAuthor : baseState.authorText;
 
-  // Set default Matrix quote if empty or initial expert placeholder
+  const hasInitializedLuckyRef = useRef<boolean>(false);
+
+  // Set default Matrix quote on initial mount if empty or initial expert placeholder
   useEffect(() => {
-    onUpdateBaseState({
-      textBgEnabled: false,
-      ...(isExpertDefault
-        ? {
-            rawText: defaultMatrixText,
-            authorText: defaultMatrixAuthor,
-          }
-        : {}),
-    });
-    setVariations((prev) =>
-      prev.map((v) => ({
-        ...v,
+    if (hasInitializedLuckyRef.current) return;
+    hasInitializedLuckyRef.current = true;
+    if (isExpertDefault) {
+      onUpdateBaseState({
         textBgEnabled: false,
-        ...(isExpertDefault
-          ? {
-              rawText: defaultMatrixText,
-              authorText: defaultMatrixAuthor,
-            }
-          : {}),
-      }))
-    );
+        rawText: defaultMatrixText,
+        authorText: defaultMatrixAuthor,
+      });
+      setVariations((prev) =>
+        prev.map((v) => ({
+          ...v,
+          textBgEnabled: false,
+          rawText: defaultMatrixText,
+          authorText: defaultMatrixAuthor,
+        }))
+      );
+    }
   }, [defaultMatrixText, defaultMatrixAuthor, isExpertDefault, onUpdateBaseState]);
 
   const [isEyeMode, setIsEyeMode] = useState<boolean>(false);

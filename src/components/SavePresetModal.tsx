@@ -66,7 +66,10 @@ export const SavePresetModal: React.FC<SavePresetModalProps> = ({
       }
     }
 
-    // Explicitly exclude rawText and authorText so user's personal content is never shared
+    // Clone all project characteristics while cleanly excluding rawText and authorText
+    // so the user's active text content remains untouched when a template is applied
+    const { rawText, authorText, ...savedState } = currentState;
+
     return {
       id: `user-preset-${Date.now()}`,
       name: finalName,
@@ -79,47 +82,12 @@ export const SavePresetModal: React.FC<SavePresetModalProps> = ({
       previewFontName: fontName,
       previewTextColor: currentState.textColor,
       state: {
-        bgType: currentState.bgType,
-        bgMediaUrl: currentState.bgMediaUrl,
-        bgMediaType: currentState.bgMediaType,
-        bgPresetId: currentState.bgPresetId,
-        bgCustomColor: currentState.bgCustomColor,
-        proceduralMood: currentState.proceduralMood,
-        proceduralSeed: currentState.proceduralSeed,
-        bgOverlayOpacity: currentState.bgOverlayOpacity,
-        mediaOverlayTheme: currentState.mediaOverlayTheme,
-        mediaColorTint: currentState.mediaColorTint,
-        fontFamily: currentState.fontFamily,
-        fontSize: currentState.fontSize,
-        textColor: currentState.textColor,
-        textColorMode: currentState.textColorMode,
-        textGradientColors: currentState.textGradientColors,
-        textGradientAngle: currentState.textGradientAngle,
-        neonColor: currentState.neonColor,
-        strokeEnabled: currentState.strokeEnabled,
-        strokeColor: currentState.strokeColor,
-        strokeWidth: currentState.strokeWidth,
-        isUppercase: currentState.isUppercase,
-        textAlign: currentState.textAlign,
-        textPosition: currentState.textPosition,
-        textPositionY: currentState.textPositionY,
-        textPositionX: currentState.textPositionX,
-        textMode: currentState.textMode,
-        textBgEnabled: currentState.textBgEnabled,
-        textBgColor: currentState.textBgColor,
-        textBgOpacity: currentState.textBgOpacity,
-        textBgPadding: currentState.textBgPadding,
-        textBgRadius: currentState.textBgRadius,
-        textMaxWidthPercent: currentState.textMaxWidthPercent,
-        animationStyle: currentState.animationStyle,
-        speedMultiplier: currentState.speedMultiplier,
-        pauseBetweenSeconds: currentState.pauseBetweenSeconds,
-        syncWithVideo: currentState.syncWithVideo,
-        textLoopMode: currentState.textLoopMode,
+        ...savedState,
         effects: { ...currentState.effects },
         audio: { ...currentState.audio },
-        aspectRatio: currentState.aspectRatio,
-        // Excluded: rawText and authorText are omitted so the user's active text is preserved
+        segmentOverrides: currentState.segmentOverrides
+          ? JSON.parse(JSON.stringify(currentState.segmentOverrides))
+          : undefined,
       } as VideoProjectState,
     };
   };
