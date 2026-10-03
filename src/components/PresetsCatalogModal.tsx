@@ -11,6 +11,7 @@ import {
   AlertTriangle,
   Maximize2,
   ArrowLeft,
+  Copy,
 } from 'lucide-react';
 import { SavedPreset, getPresetDisplayName, getPresetDisplayCategory } from '../data/presetLibrary';
 import { useLanguage } from '../context/LanguageContext';
@@ -78,6 +79,18 @@ const CatalogPresetCard: React.FC<CatalogPresetCardProps> = ({
     }
   };
 
+  const [hasCopied, setHasCopied] = useState(false);
+
+  const handleCopyPresetJson = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const json = JSON.stringify(preset, null, 2);
+      navigator.clipboard.writeText(json);
+      setHasCopied(true);
+      setTimeout(() => setHasCopied(false), 2000);
+    } catch {}
+  };
+
   const isUser = !preset.isBuiltIn;
   const presetState = preset.state || {};
 
@@ -93,7 +106,12 @@ const CatalogPresetCard: React.FC<CatalogPresetCardProps> = ({
       ...DEFAULT_PROJECT_STATE.audio,
       ...(presetState.audio || {}),
     },
-    rawText: presetState.rawText || getPresetDisplayName(preset, language) || 'TtMix',
+    rawText:
+      presetState.rawText ||
+      (getPresetDisplayName(preset, language) || 'TtMix')
+        .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu, '')
+        .trim() ||
+      'TtMix',
     authorText: presetState.authorText || preset.author || '',
   };
 
@@ -199,34 +217,34 @@ const CatalogPresetCard: React.FC<CatalogPresetCardProps> = ({
           <Download className="w-3.5 h-3.5" />
         </button>
 
-        {/* Fullscreen Player Preview Button */}
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onOpenFullscreen(preset);
-          }}
-          className="w-7 h-7 rounded-lg bg-black/60 hover:bg-purple-600 text-zinc-200 hover:text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md border border-white/10 shadow-md shrink-0"
-          title={t('fullscreenZoom', 'Открыть в фулскрин')}
-        >
-          <Maximize2 className="w-3.5 h-3.5 text-purple-300" />
-        </button>
-
-        {isUser ? (
+        <div className="flex items-center gap-1">
+          {/* Fullscreen Player Preview Button */}
           <button
             type="button"
             onClick={(e) => {
               e.stopPropagation();
-              onDeleteRequest(preset);
+              onOpenFullscreen(preset);
             }}
-            className="w-7 h-7 rounded-lg bg-black/60 hover:bg-rose-600 text-zinc-200 hover:text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md border border-white/10 shadow-md shrink-0"
-            title={t('delete', 'Удалить')}
+            className="w-7 h-7 rounded-lg bg-black/60 hover:bg-purple-600 text-zinc-200 hover:text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md border border-white/10 shadow-md shrink-0"
+            title={t('fullscreenZoom', 'Открыть в фулскрин')}
           >
-            <Trash2 className="w-3.5 h-3.5" />
+            <Maximize2 className="w-3.5 h-3.5 text-purple-300" />
           </button>
-        ) : (
-          <div className="w-7 h-7 shrink-0" />
-        )}
+
+          {isUser && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onDeleteRequest(preset);
+              }}
+              className="w-7 h-7 rounded-lg bg-black/60 hover:bg-rose-600 text-zinc-200 hover:text-white flex items-center justify-center transition-all cursor-pointer backdrop-blur-md border border-white/10 shadow-md shrink-0"
+              title={t('delete', 'Удалить')}
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Middle Main Text & Author Display (Static Mode) or Tap hint */}
@@ -249,47 +267,6 @@ const CatalogPresetCard: React.FC<CatalogPresetCardProps> = ({
           </span>
         </div>
       )}
-
-      {/* Play/Pause Live Animation Trigger Indicator */}
-      <div className="relative z-10 flex items-center justify-between pt-2 gap-1.5">
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            setIsLivePlaying(!isLivePlaying);
-          }}
-          className="p-1.5 rounded-xl bg-black/60 hover:bg-black/80 text-purple-300 backdrop-blur-md border border-white/20 shadow-md transition-all cursor-pointer"
-          title={isLivePlaying ? t('pausePreview', 'Пауза превью') : t('playPreview', 'Посмотреть анимированное превью')}
-        >
-          {isLivePlaying ? (
-            <Pause className="w-3.5 h-3.5" />
-          ) : (
-            <Play className="w-3.5 h-3.5 fill-current" />
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onApplyPreset(preset);
-          }}
-          className={`flex-1 py-1.5 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-md ${
-            isApplied
-              ? 'bg-emerald-500 text-white'
-              : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-600/40'
-          }`}
-        >
-          {isApplied ? (
-            <>
-              <Check className="w-3.5 h-3.5" />
-              <span>{t('applied', 'Применен')}</span>
-            </>
-          ) : (
-            <span>{t('apply', 'Применить')}</span>
-          )}
-        </button>
-      </div>
     </div>
   );
 };
@@ -337,7 +314,12 @@ const PresetZoomModal: React.FC<PresetZoomModalProps> = ({
         audioUrl: null,
         audioFileName: null,
       },
-      rawText: presetState.rawText || getPresetDisplayName(preset, language) || 'TtMix',
+      rawText:
+        presetState.rawText ||
+        (getPresetDisplayName(preset, language) || 'TtMix')
+          .replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]|[\u2600-\u27BF]|\p{Emoji_Presentation}|\p{Extended_Pictographic}/gu, '')
+          .trim() ||
+        'TtMix',
       authorText: presetState.authorText || preset.author || '',
       textMode: presetState.textMode || 'sentence',
       fontFamily: presetState.fontFamily || preset.previewFontFamily || "'Montserrat', sans-serif",

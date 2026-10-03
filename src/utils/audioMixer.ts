@@ -46,6 +46,8 @@ class AudioMixer {
 
   private isPlaying = false;
   private isMuted = false;
+  private isGenerating = false;
+  private generationListeners = new Set<(isGenerating: boolean) => void>();
   private volumeMultiplier = 1.0;
   private currentBaseVolume = 0.7;
   private currentFileVolume = 0.8;
@@ -59,6 +61,29 @@ class AudioMixer {
 
   public getIsMuted(): boolean {
     return this.isMuted;
+  }
+
+  public getIsGenerating(): boolean {
+    return this.isGenerating;
+  }
+
+  public onGeneratingChange(listener: (isGenerating: boolean) => void): () => void {
+    this.generationListeners.add(listener);
+    listener(this.isGenerating);
+    return () => {
+      this.generationListeners.delete(listener);
+    };
+  }
+
+  private setGenerating(generating: boolean): void {
+    if (this.isGenerating !== generating) {
+      this.isGenerating = generating;
+      this.generationListeners.forEach((listener) => {
+        try {
+          listener(generating);
+        } catch {}
+      });
+    }
   }
 
   private safeConnect(source: AudioNode | null, destination: AudioNode | AudioParam | null): void {
@@ -105,8 +130,9 @@ class AudioMixer {
   }
 
   public resume(): void {
-    if (this.audioCtx && this.audioCtx.state === 'suspended') {
-      this.audioCtx.resume().catch(() => {});
+    const ctx = this.getContext();
+    if (ctx && ctx.state === 'suspended') {
+      ctx.resume().catch(() => {});
     }
   }
 
@@ -214,10 +240,12 @@ class AudioMixer {
       ) {
         return this.cachedSynthBuffer;
       }
+      this.setGenerating(true);
       try {
+        const loopDuration = Math.min(24, Math.max(10, totalDuration + 2));
         const buffer = await generateProceduralTrack(
           presetId,
-          Math.max(10, totalDuration + 2),
+          loopDuration,
           currentSeed
         );
         this.cachedSynthBuffer = buffer;
@@ -227,6 +255,8 @@ class AudioMixer {
       } catch (err) {
         console.error('Error generating procedural track:', err);
         return null;
+      } finally {
+        this.setGenerating(false);
       }
     }
 

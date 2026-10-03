@@ -1,8 +1,29 @@
-import React, { useState } from 'react';
-import { Check, CheckCheck, Palette, AlignLeft, AlignCenter, AlignRight, Square, Type, RotateCcw } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Check, CheckCheck, Palette, AlignLeft, AlignCenter, AlignRight, Square, Type, Puzzle } from 'lucide-react';
 import { SegmentOverride, VideoProjectState } from '../types';
 import { ColorPickerModal } from './ColorPickerModal';
 import { useLanguage } from '../context/LanguageContext';
+
+function getArchiveCardPath(w: number, h: number): string {
+  const r = 18; // corner radius
+  const stepY = 14; // depth of the archive cut
+  const slant = 14; // transition width
+  // Archive card: Tab on LEFT (runs across ~68% of card width), cut step down in TOP-RIGHT corner
+  const tabW = Math.max(170, Math.round(w * 0.68));
+  return `
+    M 0,${r}
+    A ${r} ${r} 0 0 1 ${r},0
+    L ${tabW},0
+    C ${tabW + 6},0 ${tabW + 6},${stepY} ${tabW + slant},${stepY}
+    L ${w - r},${stepY}
+    A ${r} ${r} 0 0 1 ${w},${stepY + r}
+    L ${w},${h - r}
+    A ${r} ${r} 0 0 1 ${w - r},${h}
+    L ${r},${h}
+    A ${r} ${r} 0 0 1 0,${h - r}
+    Z
+  `.replace(/\s+/g, ' ').trim();
+}
 
 const POPULAR_TEXT_COLORS = [
   '#FFFFFF',
@@ -43,16 +64,27 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
 }) => {
   const { t } = useLanguage();
 
-  const isSegmentMode =
-    state.textMode !== 'full' &&
-    typeof activeSegmentIndex === 'number' &&
-    activeSegmentIndex >= 0;
+  const effectiveSegmentIndex =
+    typeof activeSegmentIndex === 'number' && activeSegmentIndex >= 0
+      ? activeSegmentIndex
+      : 0;
 
-  const segOverride: SegmentOverride | undefined = isSegmentMode
-    ? state.segmentOverrides?.[activeSegmentIndex]
-    : undefined;
+  // Toggle for single-block editing mode (Puzzle button) vs Global all-text editing mode (disabled by default)
+  const [isBlockModeActive, setIsBlockModeActive] = useState<boolean>(false);
+  const isEffectiveBlockMode = isBlockModeActive;
 
-  const currentTextBgEnabled = isSegmentMode
+  const segOverride: SegmentOverride | undefined =
+    state.segmentOverrides?.[effectiveSegmentIndex];
+
+  const handleToggleBlockMode = () => {
+    const next = !isBlockModeActive;
+    setIsBlockModeActive(next);
+    if (next && state.textMode === 'full') {
+      onChange({ textMode: 'sentence' });
+    }
+  };
+
+  const currentTextBgEnabled = isEffectiveBlockMode
     ? (segOverride?.textBgEnabled ?? state.textBgEnabled)
     : state.textBgEnabled;
 
@@ -66,30 +98,29 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
   // Effective values for sliders & colors
   const baseFontSize = state.fontSize || 42;
   const currentFontSizeScale = segOverride?.fontSizeScale ?? 1.0;
-  const currentFontSize = isSegmentMode
+  const currentFontSize = isEffectiveBlockMode
     ? Math.round(baseFontSize * currentFontSizeScale)
     : baseFontSize;
 
-  const currentTextColor = isSegmentMode
+  const currentTextColor = isEffectiveBlockMode
     ? (segOverride?.textColor || state.textColor || '#ffffff')
     : (state.textColor || '#ffffff');
 
-  const currentTextBgColor = isSegmentMode
+  const currentTextBgColor = isEffectiveBlockMode
     ? (segOverride?.textBgColor || state.textBgColor || '#000000')
     : (state.textBgColor || '#000000');
 
-  const currentTextAlign = isSegmentMode
+  const currentTextAlign = isEffectiveBlockMode
     ? (segOverride?.textAlign || state.textAlign || 'center')
     : (state.textAlign || 'center');
 
   const updateSegOverride = (patch: Partial<SegmentOverride>) => {
-    if (typeof activeSegmentIndex !== 'number') return;
     const currentOverrides = state.segmentOverrides || {};
-    const existing = currentOverrides[activeSegmentIndex] || {};
+    const existing = currentOverrides[effectiveSegmentIndex] || {};
     onChange({
       segmentOverrides: {
         ...currentOverrides,
-        [activeSegmentIndex]: {
+        [effectiveSegmentIndex]: {
           ...existing,
           ...patch,
         },
@@ -98,7 +129,7 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
   };
 
   const handleTextAlignChange = (align: 'left' | 'center' | 'right') => {
-    if (isSegmentMode) {
+    if (isEffectiveBlockMode) {
       updateSegOverride({ textAlign: align });
     } else {
       onChange({ textAlign: align });
@@ -106,7 +137,7 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
   };
 
   const handleFontSizeChange = (newSize: number) => {
-    if (isSegmentMode) {
+    if (isEffectiveBlockMode) {
       const scale = Number((newSize / baseFontSize).toFixed(2));
       updateSegOverride({ fontSizeScale: scale });
     } else {
@@ -116,7 +147,7 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
 
   const handleToggleBg = () => {
     if (!currentTextBgEnabled) {
-      if (isSegmentMode) {
+      if (isEffectiveBlockMode) {
         updateSegOverride({ textBgEnabled: true });
       } else {
         onChange({ textBgEnabled: true });
@@ -124,7 +155,7 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
       setActiveTab('bg');
     } else {
       if (activeTab === 'bg') {
-        if (isSegmentMode) {
+        if (isEffectiveBlockMode) {
           updateSegOverride({ textBgEnabled: false });
         } else {
           onChange({ textBgEnabled: false });
@@ -141,13 +172,13 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
 
   const handleSelectColor = (color: string) => {
     if (currentTab === 'bg') {
-      if (isSegmentMode) {
+      if (isEffectiveBlockMode) {
         updateSegOverride({ textBgColor: color });
       } else {
         onChange({ textBgColor: color });
       }
     } else {
-      if (isSegmentMode) {
+      if (isEffectiveBlockMode) {
         updateSegOverride({ textColor: color });
       } else {
         onChange({ textColor: color });
@@ -203,6 +234,27 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
     });
   };
 
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [panelSize, setPanelSize] = useState<{ w: number; h: number }>({ w: 320, h: 220 });
+
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const updateSize = () => {
+      if (containerRef.current) {
+        const { offsetWidth, offsetHeight } = containerRef.current;
+        if (offsetWidth > 0 && offsetHeight > 0) {
+          setPanelSize({ w: offsetWidth, h: offsetHeight });
+        }
+      }
+    };
+    updateSize();
+    const observer = new ResizeObserver(updateSize);
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
+  }, []);
+
+  const archiveCardPath = getArchiveCardPath(panelSize.w, panelSize.h);
+
   return (
     <>
       {/* Backdrop overlay: tapping anywhere closes popup (only active when color picker modal is not open) */}
@@ -222,13 +274,69 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
 
       {/* Main floating popup docked directly above the bottom tool buttons */}
       <div
+        ref={containerRef}
         data-dock="true"
         data-tour="text-properties-panel"
         onClick={(e) => e.stopPropagation()}
         onPointerDown={(e) => e.stopPropagation()}
         onTouchStart={(e) => e.stopPropagation()}
-        className="fixed bottom-14 sm:bottom-16 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[94vw] p-3 sm:p-3.5 rounded-2xl sm:rounded-3xl bg-black/45 backdrop-blur-md border border-white/20 shadow-2xl shadow-black/60 z-50 flex flex-col gap-2.5 pointer-events-auto select-none"
+        className="fixed bottom-14 sm:bottom-16 left-1/2 -translate-x-1/2 w-72 sm:w-80 max-w-[94vw] p-3 sm:p-3.5 z-50 flex flex-col gap-2 pointer-events-auto select-none transition-all duration-200"
       >
+        {/* SVG Background Contour & Glassmorphic Fill with Archive Card Step Cut */}
+        <div
+          className="absolute inset-0 pointer-events-none -z-10"
+          style={{ filter: 'drop-shadow(0 15px 30px rgba(0,0,0,0.70))' }}
+        >
+          {/* Frosted glass backdrop blur clipped to exact archive card silhouette */}
+          <div
+            className="absolute inset-0 backdrop-blur-md"
+            style={{
+              clipPath: `path('${archiveCardPath}')`,
+              WebkitClipPath: `path('${archiveCardPath}')`,
+            }}
+          />
+          {/* Translucent tinted surface (high transparency) and 1.5px glowing border */}
+          <svg
+            className="absolute inset-0 w-full h-full"
+            viewBox={`0 0 ${panelSize.w} ${panelSize.h}`}
+          >
+            <path
+              d={archiveCardPath}
+              fill="rgba(8, 8, 18, 0.28)"
+              stroke="rgba(255, 255, 255, 0.18)"
+              strokeWidth="1.5"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+
+        {/* Header Indicator on Top-Left Tab */}
+        <div className="relative z-20 flex items-center justify-between text-[11px] px-1 pb-1 border-b border-white/10">
+          <div className="flex items-center gap-1.5 max-w-[92%] truncate">
+            {isEffectiveBlockMode ? (
+              <>
+                <Puzzle className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span className="text-white font-bold drop-shadow">
+                  {t('blockLabel', 'Блок')} #{effectiveSegmentIndex + 1}
+                </span>
+                {activeSegmentText && (
+                  <span className="text-white font-semibold truncate italic text-[10.5px]">
+                    ({activeSegmentText.length > 22 ? activeSegmentText.slice(0, 22).trim() + '...' : activeSegmentText})
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <Type className="w-3.5 h-3.5 text-purple-300 shrink-0" />
+                <span className="text-zinc-200 font-bold">{t('globalTextLabel', 'Весь текст')}</span>
+                <span className="text-[10px] text-zinc-400 font-normal">({t('allBlocks', 'общие стили')})</span>
+              </>
+            )}
+          </div>
+          {/* Empty spacer so the cut area on top right remains clean */}
+          <div className="w-6 shrink-0" />
+        </div>
+
         {/* TOP SECTION: Swaps between Text Sliders (Size & Opacity) and Background Sliders (Opacity & Width) */}
         {currentTab === 'text' ? (
           /* Text Mode: Font Size & Text Opacity Sliders */
@@ -384,23 +492,22 @@ export const TextEditPopup: React.FC<TextEditPopupProps> = ({
             </label>
           )}
 
-          {/* 2. Reset Segment button (circular arrow icon) */}
+          {/* 2. Block Editing Toggle (Puzzle Icon 🧩) */}
           <button
             type="button"
-            onClick={handleResetSegment}
-            disabled={!isSegmentMode || !segOverride}
-            className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center ${
-              isSegmentMode && segOverride
-                ? 'border-amber-400/50 bg-amber-500/20 text-amber-300 hover:bg-amber-500/30 hover:text-amber-200 active:scale-95 shadow-sm'
-                : 'border-white/10 bg-white/5 text-zinc-500 hover:text-zinc-400 cursor-default opacity-40'
+            onClick={handleToggleBlockMode}
+            className={`p-1.5 rounded-lg border transition-all cursor-pointer flex items-center justify-center active:scale-95 shadow-sm ${
+              isEffectiveBlockMode
+                ? 'border-purple-400 bg-purple-600 text-white shadow-purple-900/50 ring-1 ring-purple-300 scale-105'
+                : 'border-white/10 bg-white/5 text-zinc-400 hover:text-white hover:bg-white/10'
             }`}
             title={
-              isSegmentMode && segOverride
-                ? t('resetSegment', 'Сбросить настройки этого фрагмента к общим')
-                : t('resetSegmentDisabled', 'Сброс (нет изменений)')
+              isEffectiveBlockMode
+                ? t('blockModeActive', 'Режим отдельного блока (ВКЛ) — стили меняются только для этого фрагмента')
+                : t('blockModeInactive', 'Общий режим (ВЫКЛ) — нажмите, чтобы включить редактирование отдельного блока')
             }
           >
-            <RotateCcw className="w-3.5 h-3.5" />
+            <Puzzle className="w-3.5 h-3.5" />
           </button>
 
           {/* 3. Apply to all button (double checkmark icon) */}

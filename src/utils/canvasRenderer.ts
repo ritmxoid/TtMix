@@ -43,23 +43,29 @@ export const RAINBOW_LETTER_PALETTE = [
   '#f472b6', // Flamingo Pink
 ];
 
-export const CHAOTIC_PALETTES = [
-  // Cyber Neon
-  ['#00f2fe', '#4facfe', '#ff007f', '#7928ca', '#00ff87', '#60efff', '#f72585', '#7209b7', '#4cc9f0'],
-  // Sunset Blaze
-  ['#ff4b1f', '#ff9068', '#f7b733', '#fc4a1a', '#f7797d', '#fbd786', '#ff2a5f', '#f5af19', '#e14fad'],
-  // Tropical Acid
-  ['#f9d423', '#ff4e50', '#00e5ff', '#76ff03', '#ff0055', '#d500f9', '#00b0ff', '#ffeb3b', '#00e676'],
-  // Aurora Borealis
-  ['#00f5d4', '#7b2cbf', '#9d4edd', '#c77dff', '#ff9e00', '#00bbf9', '#fee440', '#52b788', '#38bdf8'],
-  // Fire & Ice
-  ['#ff3b30', '#ff9500', '#34c759', '#007aff', '#5856d6', '#af52de', '#5ac8fa', '#ff2d55', '#ffd60a'],
+export const VIBRANT_CHAOS_PALETTE = [
+  '#f43f5e', // Neon Rose
+  '#06b6d4', // Bright Cyan
+  '#eab308', // Sun Gold
+  '#a855f7', // Electric Violet
+  '#22c55e', // Neon Green
+  '#f97316', // Bright Orange
+  '#ec4899', // Hot Pink
+  '#3b82f6', // Bright Blue
+  '#10b981', // Emerald
+  '#d946ef', // Fuchsia
+  '#00f2fe', // Aqua
+  '#ff3b30', // Crimson
+  '#ffd60a', // Bright Lemon
+  '#8b5cf6', // Purple
+  '#ff007f', // Deep Rose
+  '#00ff87', // Spring Lime
 ];
 
 export function getChaoticColor(index: number, seed: number = 42): string {
-  const palette = CHAOTIC_PALETTES[Math.abs((seed + Math.floor(index / 7)) % CHAOTIC_PALETTES.length)];
-  const pickIdx = Math.abs((index * 7 + seed * 3 + (index % 3) * 5) % palette.length);
-  return palette[pickIdx];
+  const safeSeed = Math.abs(seed);
+  const pickIdx = Math.abs((index * 7 + (safeSeed % 11) * 3 + index * index * 3 + (index % 2) * 5) % VIBRANT_CHAOS_PALETTE.length);
+  return VIBRANT_CHAOS_PALETTE[pickIdx];
 }
 
 export function createAngleGradient(
@@ -647,6 +653,7 @@ function drawPresetOrOverlayBackground(
 ) {
   const preset =
     BACKGROUND_PRESETS.find((p) => p.id === presetId) ||
+    BACKGROUND_PRESETS.find((p) => p.id === 'ai-procedural-cosmic') ||
     BACKGROUND_PRESETS[0];
 
   if (preset.id.startsWith('ai-procedural-') || Boolean(state.proceduralMood && preset.id.includes('procedural'))) {
@@ -2415,7 +2422,13 @@ function drawTextSegment({
     }
 
     // Render characters: either detailed per-character transform loop OR single line pass
-    if (isPerCharAnimation || state.textColorMode === 'letter-rainbow' || state.textColorMode === 'word-rainbow') {
+    if (
+      isPerCharAnimation ||
+      state.textColorMode === 'letter-rainbow' ||
+      state.textColorMode === 'word-rainbow' ||
+      state.textColorMode === 'letter-random' ||
+      state.textColorMode === 'word-random'
+    ) {
       ctx.save();
       let runningCharX = 0;
 
@@ -2582,6 +2595,7 @@ function drawTextSegment({
     }
 
     globalCharOffset += line.length;
+    globalWordIndex++;
 
     // Electric charge running across the letters ("как будто по нему пробегает электрический заряд")
     if (state.animationStyle === 'glitch' && (progress < 1 || glitchIntensity > 0.3)) {

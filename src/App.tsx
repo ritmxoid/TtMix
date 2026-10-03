@@ -215,7 +215,21 @@ export default function App() {
   useEffect(() => {
     const timer = setTimeout(() => {
       saveProjectState(projectState, { fileName });
-    }, 200);
+      try {
+        fetch('/api/sync-active-project', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            ...projectState,
+            bgMediaUrl: projectState.bgMediaUrl?.startsWith('blob:') ? null : projectState.bgMediaUrl,
+            audio: {
+              ...projectState.audio,
+              audioUrl: projectState.audio?.audioUrl?.startsWith('blob:') ? null : projectState.audio?.audioUrl,
+            },
+          }),
+        }).catch(() => {});
+      } catch {}
+    }, 400);
     return () => clearTimeout(timer);
   }, [projectState, fileName]);
 

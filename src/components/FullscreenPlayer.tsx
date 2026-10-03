@@ -30,6 +30,7 @@ import {
   AlignCenter,
   AlignRight,
   HelpCircle,
+  Pencil,
 } from 'lucide-react';
 import { VideoProjectState } from '../types';
 import { getDimensionsForAspect, renderCanvasFrame } from '../utils/canvasRenderer';
@@ -39,6 +40,7 @@ import { safeFixWebm } from '../utils/safeWebmFix';
 import { trackRecordWebm } from '../utils/analytics';
 import { ColorPickerModal } from './ColorPickerModal';
 import { TextEditPopup } from './TextEditPopup';
+import { DirectTextInputModal } from './DirectTextInputModal';
 import { MultiTrackVolumePopover } from './MultiTrackVolumePopover';
 import { VideoScrubberPopover } from './VideoScrubberPopover';
 import { useLanguage } from '../context/LanguageContext';
@@ -114,7 +116,26 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
 
   // Gesture state: Drag text 2D (adjust textPositionX and textPositionY) & Long-press for Font Size popup
   const [isDraggingText, setIsDraggingText] = useState(false);
+  const [isDirectTextInputOpen, setIsDirectTextInputOpen] = useState(false);
+  const [isGeneratingMusic, setIsGeneratingMusic] = useState(false);
   const [showFontSizePopup, setShowFontSizePopup] = useState(false);
+  const [playPauseIndicator, setPlayPauseIndicator] = useState<'play' | 'pause' | null>(null);
+  const playPauseIndicatorTimerRef = useRef<number | null>(null);
+
+  const triggerPlayPauseFeedback = (action: 'play' | 'pause') => {
+    if (playPauseIndicatorTimerRef.current) {
+      clearTimeout(playPauseIndicatorTimerRef.current);
+    }
+    setPlayPauseIndicator(action);
+    playPauseIndicatorTimerRef.current = window.setTimeout(() => {
+      setPlayPauseIndicator(null);
+    }, 850);
+  };
+
+  // Subscribe to audio generator activity
+  useEffect(() => {
+    return audioMixer.onGeneratingChange(setIsGeneratingMusic);
+  }, []);
   const [showVolumePopover, setShowVolumePopover] = useState(false);
   const [showScrubberPopover, setShowScrubberPopover] = useState(false);
   const restartLongPressTimerRef = useRef<number | null>(null);
@@ -243,6 +264,9 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       if (!hasMovedGestureRef.current) {
         updatePopupOffset({ x: 0, y: 0 });
         setShowFontSizePopup(true);
+        if (isPlayingRef.current) {
+          togglePlay(false);
+        }
         if (typeof navigator !== 'undefined' && navigator.vibrate) {
           try {
             navigator.vibrate(45);
@@ -348,28 +372,8 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       const duration = pointerDownInfoRef.current.time > 0 ? Date.now() - pointerDownInfoRef.current.time : 0;
       pointerDownInfoRef.current.time = 0;
       if (duration < 400 && duration > 20) {
-        const viewportEl = viewportRef.current;
-        let isTextTap = false;
-        if (viewportEl) {
-          const rect = viewportEl.getBoundingClientRect();
-          if (rect.height > 0 && rect.width > 0) {
-            const relativeYPercent = ((e.clientY - rect.top) / rect.height) * 100;
-            const relativeXPercent = ((e.clientX - rect.left) / rect.width) * 100;
-            const textY = state.textPositionY ?? 50;
-            const textX = state.textPositionX ?? 50;
-            // Tap directly on or very close to the text element (both X and Y)
-            if (Math.abs(relativeYPercent - textY) <= 15 && Math.abs(relativeXPercent - textX) <= 35) {
-              updatePopupOffset({ x: 0, y: 0 });
-              setShowFontSizePopup(true);
-              isTextTap = true;
-            }
-          }
-        }
-
-        // Tap on screen toggles controls visibility everywhere
-        if (!isTextTap) {
-          setHideControls((prev) => !prev);
-        }
+        // Quick tap on text or screen toggles Play / Pause with clear animated center feedback
+        togglePlay(true);
       }
     }
   };
@@ -1257,10 +1261,13 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     isPlayingRef.current = true;
   };
 
-  const togglePlay = () => {
+  const togglePlay = (showFeedback = false) => {
     const nextPlay = !isPlaying;
     setIsPlaying(nextPlay);
     isPlayingRef.current = nextPlay;
+    if (showFeedback) {
+      triggerPlayPauseFeedback(nextPlay ? 'play' : 'pause');
+    }
     if (nextPlay) {
       lastTimeRef.current = performance.now();
       if (bgMediaElement instanceof HTMLVideoElement) {
@@ -1304,11 +1311,13 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
     if (isOpen) {
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = 'hidden';
+      // Sync muted state so browser autoplay suspension can be cleanly unblocked when clicking
+      audioMixer.setMuted(isMuted);
       return () => {
         document.body.style.overflow = originalOverflow;
       };
     }
-  }, [isOpen]);
+  }, [isOpen, isMuted]);
 
   if (!isOpen) return null;
 
@@ -1341,7 +1350,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         </div>
       )}
       {/* Top Right Help / Tour Button (Expert mode only) */}
-      {!isLuckyMode && onOpenTour && (
+      {!isLuckyMode && !onApplyPreset && onOpenTour && (
         <button
           type="button"
           onClick={(e) => {
@@ -1398,22 +1407,24 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
       )}
 
       {/* Floating Eye Overlay Button without circular border, aligned in same row as orientation panel */}
-      <button
-        type="button"
-        onClick={(e) => {
-          e.stopPropagation();
-          setHideControls((prev) => !prev);
-        }}
-        data-tour="clean-screen"
-        className="absolute top-2 sm:top-3 right-3 sm:right-4 z-50 p-1 text-purple-300 hover:text-white transition-all cursor-pointer hover:scale-110 active:scale-95 pointer-events-auto filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"
-        title={hideControls ? t('showMenu', 'Показать меню') : t('cleanScreen', 'Чистый экран')}
-      >
-        {hideControls ? (
-          <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-purple-300 hover:text-white" />
-        ) : (
-          <EyeOff className="w-5 h-5 sm:w-6 sm:h-6 text-purple-300 hover:text-white" />
-        )}
-      </button>
+      {!onApplyPreset && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            setHideControls((prev) => !prev);
+          }}
+          data-tour="clean-screen"
+          className="absolute top-2 sm:top-3 right-3 sm:right-4 z-50 p-1 text-purple-300 hover:text-white transition-all cursor-pointer hover:scale-110 active:scale-95 pointer-events-auto filter drop-shadow-[0_2px_8px_rgba(0,0,0,0.85)]"
+          title={hideControls ? t('showMenu', 'Показать меню') : t('cleanScreen', 'Чистый экран')}
+        >
+          {hideControls ? (
+            <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-purple-300 hover:text-white" />
+          ) : (
+            <EyeOff className="w-5 h-5 sm:w-6 sm:h-6 text-purple-300 hover:text-white" />
+          )}
+        </button>
+      )}
 
       {/* Top Floating Centered Aspect Ratio Switcher */}
       <div
@@ -1494,14 +1505,14 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         onPointerCancel={handleStagePointerUp}
         onClick={(e) => e.stopPropagation()}
         className={`w-full h-full flex items-center justify-center overflow-hidden select-none touch-none relative ${
-          isLuckyMode
+          isLuckyMode || Boolean(onApplyPreset)
             ? 'p-0 pt-0 pb-0'
             : 'p-1 sm:p-4 pt-12 pb-16 sm:pt-14 sm:pb-20'
         }`}
       >
         <div
           className={`relative flex items-center justify-center ${
-            isLuckyMode ? 'w-full h-full' : 'max-h-full max-w-full'
+            isLuckyMode || Boolean(onApplyPreset) ? 'w-full h-full' : 'max-h-full max-w-full'
           }`}
           style={{
             aspectRatio: `${dimensions.width} / ${dimensions.height}`,
@@ -1512,11 +1523,24 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             width={dimensions.width}
             height={dimensions.height}
             className={`w-full h-full object-contain cursor-pointer transition-transform ${
-              isLuckyMode
+              isLuckyMode || Boolean(onApplyPreset)
                 ? 'rounded-none max-w-full max-h-full'
                 : 'max-h-full max-w-full shadow-2xl rounded-none sm:rounded-lg'
             }`}
           />
+
+          {/* Quick Tap Play / Pause Center Animated Indicator */}
+          {playPauseIndicator && (
+            <div className="absolute inset-0 z-40 pointer-events-none flex items-center justify-center animate-in fade-in zoom-in-75 duration-150">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-black/70 backdrop-blur-xl border border-white/30 flex items-center justify-center shadow-2xl shadow-purple-950/90 text-white">
+                {playPauseIndicator === 'pause' ? (
+                  <Pause className="w-8 h-8 sm:w-9 sm:h-9 text-amber-300 fill-amber-300 drop-shadow" />
+                ) : (
+                  <Play className="w-8 h-8 sm:w-9 sm:h-9 text-emerald-400 fill-emerald-400 ml-1 drop-shadow" />
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Tour Step 11: Animated Finger Pointer dragging text from top-left to bottom-right */}
           {tourStepIdx === 11 && (
@@ -1559,9 +1583,10 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         const isSync = Boolean(state.syncWithVideo) && hasVideo;
         const targetDur = isSync ? (bgMediaElement as HTMLVideoElement).duration : undefined;
 
+        const effectiveRawText = state.rawText?.trim() || 'Твой единственный предел — это твой разум.';
         const { segments: activeSegs } = splitTextIntoSegments(
-          state.rawText,
-          state.textMode,
+          effectiveRawText,
+          state.textMode === 'full' ? 'sentence' : state.textMode,
           state.speedMultiplier,
           state.pauseBetweenSeconds,
           targetDur,
@@ -1573,6 +1598,7 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
         if (activeSegIdx === -1 && activeSegs.length > 0) {
           activeSegIdx = currentTimeRef.current >= activeSegs[activeSegs.length - 1].startTime ? activeSegs.length - 1 : 0;
         }
+        if (activeSegIdx === -1) activeSegIdx = 0;
         const activeSegText = activeSegs[activeSegIdx]?.text || '';
         return (
           <TextEditPopup
@@ -1584,6 +1610,15 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
           />
         );
       })()}
+
+      {/* Direct Keyboard Input Modal */}
+      <DirectTextInputModal
+        isOpen={isDirectTextInputOpen}
+        onClose={() => setIsDirectTextInputOpen(false)}
+        rawText={state.rawText}
+        authorText={state.authorText}
+        onSave={(newText, newAuthor) => onChange({ rawText: newText, authorText: newAuthor })}
+      />
 
       {/* Bottom Floating Control Bar */}
       {isLuckyMode ? (
@@ -1602,7 +1637,11 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
               data-tour="fullscreen-btn-text"
               onClick={(e) => {
                 e.stopPropagation();
-                if (onOpenTextInput) onOpenTextInput();
+                if (onOpenTextInput) {
+                  onOpenTextInput();
+                } else {
+                  setIsDirectTextInputOpen(true);
+                }
               }}
               className="w-11 h-11 sm:w-12 sm:h-12 rounded-full bg-black/40 hover:bg-purple-600/30 backdrop-blur-xl border border-purple-400/30 text-purple-200 font-black text-lg sm:text-xl flex items-center justify-center shadow-2xl transition-all cursor-pointer active:scale-95 shrink-0"
               title={t('text', 'ТЕКСТ')}
@@ -1729,18 +1768,16 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                     setShowVolumePopover(false);
                     return;
                   }
-                  // If sound was disabled and no custom audio, enable it and start playing
-                  if (!state.audio.enabled && !Boolean(state.audio.audioUrl)) {
-                    onChange({ audio: { ...state.audio, enabled: true, volume: (state.audio.volume ?? 0) > 0 ? state.audio.volume : 0.7, musicVolume: (state.audio.musicVolume ?? 0) > 0 ? state.audio.musicVolume : 0.7 } });
-                    setSoundNotice(t('soundUnmutedToast', 'Звук включен 🔔'));
-                    setTimeout(() => setSoundNotice(null), 3000);
-                    return;
-                  }
-                  // Cycle to the next procedural music preset from MUSIC_PRESETS
+                  audioMixer.resume();
                   const presetIds = MUSIC_PRESETS.map((p) => p.id);
                   const curIdx = presetIds.indexOf(state.audio.presetId);
-                  const nextPresetId = presetIds[(curIdx + 1) % presetIds.length];
-                  const nextSeed = Math.floor(Math.random() * 999999) + 1;
+                  // If currently disabled, play current or default. If enabled, cycle to next!
+                  const nextPresetId = state.audio.enabled
+                    ? presetIds[(curIdx + 1) % presetIds.length]
+                    : (state.audio.presetId || 'lofi-chill');
+                  const nextSeed = state.audio.enabled
+                    ? Math.floor(Math.random() * 999999) + 1
+                    : (state.audio.seed || 1337);
                   const presetInfo = MUSIC_PRESETS.find((p) => p.id === nextPresetId);
 
                   // Stop previous audio immediately before starting the new track
@@ -1780,11 +1817,31 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                     ? 'bg-black/40 border-zinc-700/60 text-zinc-500'
                     : (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file')
                     ? 'bg-black/40 hover:bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
+                    : isGeneratingMusic
+                    ? 'bg-purple-950/50 border-purple-400/80 text-purple-200'
                     : 'bg-black/40 hover:bg-purple-900/40 border-purple-500/50 text-purple-300'
                 }`}
-                title={state.audio.enabled || Boolean(state.audio.audioUrl) ? t('remixMelodyBtn', 'Сменить мелодию (долгий клик: регулятор громкости)') : t('soundMutedToast', 'Звук отключен (долгий клик: регулятор громкости)')}
+                title={isGeneratingMusic ? t('generatingMusic', 'Генерация мелодии...') : state.audio.enabled || Boolean(state.audio.audioUrl) ? t('remixMelodyBtn', 'Сменить мелодию (долгий клик: регулятор громкости)') : t('soundMutedToast', 'Звук отключен (долгий клик: регулятор громкости)')}
               >
-                {(Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
+                {/* Rotating glowing comet trail while generating music */}
+                {isGeneratingMusic && (
+                  <div className="absolute -inset-[3px] rounded-full pointer-events-none z-10 overflow-hidden flex items-center justify-center">
+                    <div
+                      className="absolute inset-0 rounded-full animate-spin"
+                      style={{
+                        background: 'conic-gradient(from 0deg, transparent 0%, transparent 45%, rgba(168,85,247,0.25) 65%, #c084fc 82%, #f472b6 93%, #ffffff 100%)',
+                        WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #fff 0)',
+                        mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #fff 0)',
+                        filter: 'drop-shadow(0 0 8px rgba(192, 132, 252, 1)) drop-shadow(0 0 3px #ffffff)',
+                        animationDuration: '0.85s',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {isGeneratingMusic ? (
+                  <Music className="w-5 h-5 text-purple-200 opacity-60" />
+                ) : (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
                   <div className="flex items-center justify-center relative">
                     <Music className="w-5 h-5 text-cyan-300" />
                     <User className="w-2.5 h-2.5 text-cyan-200 absolute -bottom-1 -right-1 fill-cyan-400" />
@@ -1810,6 +1867,242 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
             >
               <ArrowLeft className="w-5 h-5 text-zinc-200" />
             </button>
+          </div>
+        </div>
+      ) : onApplyPreset ? (
+        <div
+          data-dock="true"
+          onPointerDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
+          className={`absolute bottom-4 sm:bottom-6 inset-x-0 flex flex-col items-center justify-center gap-3 z-30 transition-all duration-300 px-3 sm:px-6 pb-[env(safe-area-inset-bottom,0px)] ${
+            hideControls ? 'opacity-0 translate-y-full pointer-events-none' : 'opacity-100 translate-y-0 pointer-events-auto'
+          }`}
+        >
+          <div className="pointer-events-auto flex items-center gap-2 sm:gap-2.5 bg-black/60 backdrop-blur-2xl border border-white/15 p-1.5 rounded-full shadow-2xl">
+            {/* 1. TEXT (Т) - Opens standard text input dialog */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onOpenTextInput) {
+                  onOpenTextInput();
+                } else {
+                  setIsDirectTextInputOpen(true);
+                }
+              }}
+              className="w-9.5 h-9.5 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-purple-600/30 backdrop-blur-xl border border-purple-400/30 text-purple-200 font-black text-base sm:text-lg flex items-center justify-center shadow-lg transition-all cursor-pointer active:scale-95 shrink-0"
+              title={t('text', 'ТЕКСТ')}
+            >
+              Т
+            </button>
+
+            {/* 2. Edit / Apply Preset with Pencil Icon */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onApplyPreset();
+              }}
+              className={`w-9.5 h-9.5 sm:w-11 sm:h-11 rounded-full backdrop-blur-xl border flex items-center justify-center shadow-lg transition-all cursor-pointer active:scale-95 shrink-0 ${
+                isAppliedPreset
+                  ? 'bg-emerald-500/80 hover:bg-emerald-400 text-white border-emerald-400/40 shadow-emerald-950/40'
+                  : 'bg-black/40 hover:bg-purple-600/30 border-purple-400/40 text-purple-200'
+              }`}
+              title={isAppliedPreset ? t('applied', 'Применен') : t('editPreset', 'Редактировать')}
+            >
+              {isAppliedPreset ? (
+                <Check className="w-5 h-5 text-white" />
+              ) : (
+                <Pencil className="w-5 h-5 text-purple-300" />
+              )}
+            </button>
+
+            {/* 3. CENTER: RECORD / DOWNLOAD */}
+            {recordedVideoUrl && !isRecordingScreen && !isProcessingVideo ? (
+              <button
+                type="button"
+                onClick={handleSaveRecordedVideo}
+                className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-teal-500 hover:bg-teal-400 text-white flex items-center justify-center shadow-xl transition-all cursor-pointer active:scale-95 animate-bounce shrink-0 border-2 border-white/30"
+                title={t('downloadWebm', 'Скачать видео WebM')}
+              >
+                <Download className="w-5.5 h-5.5 text-white stroke-[2.5]" />
+              </button>
+            ) : isProcessingVideo ? (
+              <button
+                type="button"
+                disabled
+                className="w-11 h-11 sm:w-13 sm:h-13 rounded-full bg-black/40 border border-zinc-700/60 flex items-center justify-center cursor-not-allowed opacity-80 shrink-0"
+              >
+                <Sparkles className="w-5.5 h-5.5 text-purple-400 animate-spin" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLiveScreenRecord();
+                }}
+                className={`w-11 h-11 sm:w-13 sm:h-13 rounded-full flex items-center justify-center transition-all cursor-pointer active:scale-95 shrink-0 border-2 shadow-xl ${
+                  isRecordingScreen
+                    ? 'bg-rose-600/80 text-white animate-pulse border-rose-300 shadow-rose-600/60'
+                    : 'bg-black/40 hover:bg-rose-600/40 text-white border-rose-500/50 shadow-rose-950/60'
+                }`}
+                title={isRecordingScreen ? t('stopRecording', 'Остановить запись') : t('captureScreen', 'Захват видео')}
+              >
+                {isRecordingScreen ? (
+                  <Square className="w-5 h-5 fill-white text-white" />
+                ) : (
+                  <Video className="w-6 h-6 text-rose-400" />
+                )}
+              </button>
+            )}
+
+            {/* 4. Music / Volume Switcher */}
+            <div className="relative">
+              {showVolumePopover && (
+                <MultiTrackVolumePopover
+                  state={state}
+                  onChange={onChange}
+                  onClose={() => setShowVolumePopover(false)}
+                  isMuted={isMuted}
+                  bgMediaElement={bgMediaElement}
+                />
+              )}
+              <button
+                type="button"
+                onPointerDown={(e) => {
+                  e.stopPropagation();
+                  isNoteLongPressRef.current = false;
+                  if (noteLongPressTimerRef.current) clearTimeout(noteLongPressTimerRef.current);
+                  noteLongPressTimerRef.current = window.setTimeout(() => {
+                    isNoteLongPressRef.current = true;
+                    setShowVolumePopover(true);
+                    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+                      try { navigator.vibrate(50); } catch {}
+                    }
+                  }, 350);
+                }}
+                onPointerUp={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                }}
+                onPointerCancel={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                }}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (noteLongPressTimerRef.current) {
+                    clearTimeout(noteLongPressTimerRef.current);
+                    noteLongPressTimerRef.current = null;
+                  }
+                  if (isNoteLongPressRef.current) {
+                    setTimeout(() => { isNoteLongPressRef.current = false; }, 200);
+                    return;
+                  }
+                  if (showVolumePopover) {
+                    setShowVolumePopover(false);
+                    return;
+                  }
+                  audioMixer.resume();
+                  if (isMuted) {
+                    setIsMuted(false);
+                    audioMixer.setMuted(false);
+                  }
+                  const presetIds = MUSIC_PRESETS.map((p) => p.id);
+                  const curIdx = presetIds.indexOf(state.audio.presetId);
+                  // If currently disabled, play current or default. If enabled, cycle to next!
+                  const nextPresetId = state.audio.enabled
+                    ? presetIds[(curIdx + 1) % presetIds.length]
+                    : (state.audio.presetId || 'lofi-chill');
+                  const nextSeed = state.audio.enabled
+                    ? Math.floor(Math.random() * 999999) + 1
+                    : (state.audio.seed || 1337);
+                  const presetInfo = MUSIC_PRESETS.find((p) => p.id === nextPresetId);
+                  audioMixer.stop();
+                  const nextAudioConfig = {
+                    ...state.audio,
+                    enabled: true,
+                    sourceType: state.audio.audioUrl ? (state.audio.sourceType || 'file') : ('generator' as const),
+                    presetId: nextPresetId,
+                    seed: nextSeed,
+                    volume: (state.audio.volume ?? 0.7) > 0 ? state.audio.volume : 0.7,
+                    musicVolume: (state.audio.musicVolume ?? state.audio.volume ?? 0.7) > 0 ? (state.audio.musicVolume ?? state.audio.volume ?? 0.7) : 0.7,
+                    fileVolume: state.audio.fileVolume ?? 0.8,
+                    fileAudioEnabled: state.audio.fileAudioEnabled ?? true,
+                  };
+                  onChange({ audio: nextAudioConfig });
+                  if (isPlaying) {
+                    audioMixer.play(nextAudioConfig, effectiveDuration, Math.max(0, currentTimeRef.current || 0), state.bgMediaUrl || undefined);
+                  }
+                  setSoundNotice(`🎵 ${presetInfo ? `${presetInfo.emoji} ${presetInfo.name}` : 'Новая мелодия'}`);
+                  setTimeout(() => setSoundNotice(null), 3000);
+                }}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  isNoteLongPressRef.current = true;
+                  setShowVolumePopover(true);
+                }}
+                className={`w-9.5 h-9.5 sm:w-11 sm:h-11 rounded-full backdrop-blur-xl border flex items-center justify-center shadow-lg transition-all cursor-pointer active:scale-95 shrink-0 relative ${
+                  !state.audio.enabled && !Boolean(state.audio.audioUrl)
+                    ? 'bg-black/40 border-zinc-700/60 text-zinc-500'
+                    : (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file')
+                    ? 'bg-black/40 hover:bg-cyan-900/40 border-cyan-500/50 text-cyan-300'
+                    : isGeneratingMusic
+                    ? 'bg-purple-950/50 border-purple-400/80 text-purple-200'
+                    : 'bg-black/40 hover:bg-purple-900/40 border-purple-500/50 text-purple-300'
+                }`}
+                title={isGeneratingMusic ? t('generatingMusic', 'Генерация мелодии...') : state.audio.enabled || Boolean(state.audio.audioUrl) ? t('remixMelodyBtn', 'Сменить мелодию') : t('soundMutedToast', 'Звук отключен')}
+              >
+                {/* Rotating glowing comet trail while generating music */}
+                {isGeneratingMusic && (
+                  <div className="absolute -inset-[3px] rounded-full pointer-events-none z-10 overflow-hidden flex items-center justify-center">
+                    <div
+                      className="absolute inset-0 rounded-full animate-spin"
+                      style={{
+                        background: 'conic-gradient(from 0deg, transparent 0%, transparent 45%, rgba(168,85,247,0.25) 65%, #c084fc 82%, #f472b6 93%, #ffffff 100%)',
+                        WebkitMask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #fff 0)',
+                        mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #fff 0)',
+                        filter: 'drop-shadow(0 0 8px rgba(192, 132, 252, 1)) drop-shadow(0 0 3px #ffffff)',
+                        animationDuration: '0.85s',
+                      }}
+                    />
+                  </div>
+                )}
+
+                {isGeneratingMusic ? (
+                  <Music className="w-5 h-5 text-purple-200 opacity-60" />
+                ) : (Boolean(state.audio.audioUrl) || state.audio.sourceType === 'file') ? (
+                  <Music className="w-5 h-5 text-cyan-300" />
+                ) : state.audio.enabled ? (
+                  <Music className="w-5 h-5 text-purple-300 animate-pulse" />
+                ) : (
+                  <VolumeX className="w-5 h-5 text-zinc-500" />
+                )}
+              </button>
+            </div>
+
+            {/* 5. Back to Catalog */}
+            {onBackToCatalog && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onBackToCatalog();
+                }}
+                className="w-9.5 h-9.5 sm:w-11 sm:h-11 rounded-full bg-black/40 hover:bg-white/20 backdrop-blur-xl border border-white/20 text-white flex items-center justify-center shadow-lg transition-all cursor-pointer active:scale-95 shrink-0"
+                title={t('backToCatalog', 'Назад в каталог')}
+              >
+                <ArrowLeft className="w-5 h-5 text-zinc-200" />
+              </button>
+            )}
           </div>
         </div>
       ) : (
@@ -2107,53 +2400,6 @@ export const FullscreenPlayer: React.FC<FullscreenPlayerProps> = ({
                 <Video className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-rose-400" />
               )}
             </button>
-          )}
-
-          {/* Apply Preset & Back to Catalog Buttons in Dock (Catalog Preview Mode) */}
-          {onApplyPreset && (
-            <>
-              <div className="w-px h-3.5 sm:h-4 bg-white/20 shrink-0 my-auto" />
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onApplyPreset();
-                }}
-                className={`px-2.5 py-1 sm:px-3.5 sm:py-1.5 rounded-lg sm:rounded-xl text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer select-none shrink-0 shadow-lg active:scale-95 ${
-                  isAppliedPreset
-                    ? 'bg-emerald-500 text-white shadow-emerald-900/50'
-                    : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-900/60 border border-purple-300/40'
-                }`}
-                title={isAppliedPreset ? t('applied', 'Применен') : t('apply', 'Применить')}
-              >
-                {isAppliedPreset ? (
-                  <>
-                    <Check className="w-3.5 h-3.5" />
-                    <span>{t('applied', 'Применен')}</span>
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-3.5 h-3.5 text-purple-200 animate-pulse" />
-                    <span>{t('apply', 'Применить')}</span>
-                  </>
-                )}
-              </button>
-
-              {onBackToCatalog && (
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onBackToCatalog();
-                  }}
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg sm:rounded-xl bg-zinc-800/90 hover:bg-zinc-700 text-zinc-200 hover:text-white border border-white/20 flex items-center justify-center transition-all cursor-pointer select-none shrink-0 shadow-lg active:scale-95 group"
-                  title={t('backToCatalog', 'Назад в каталог')}
-                  aria-label={t('backToCatalog', 'Назад в каталог')}
-                >
-                  <ArrowLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-purple-300 group-hover:-translate-x-0.5 transition-transform" />
-                </button>
-              )}
-            </>
           )}
 
           {/* Separator */}

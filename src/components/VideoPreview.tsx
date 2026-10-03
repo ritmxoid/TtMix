@@ -883,9 +883,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
       audioMixer.stop();
       return;
     }
-    // Only stop audio for fullscreen if NOT during interactive tour
-    if (isFullscreenActive && !isTourActive) {
-      audioMixer.stop();
+    // If Fullscreen, Modal, or Catalog Preview is open, FullscreenPlayer manages audioMixer directly!
+    if ((isFullscreenActive || isFullscreenModalOpen || !!catalogFullscreenPreset) && !isTourActive) {
       return;
     }
 
@@ -919,7 +918,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     }
 
     return () => {
-      if (!isTourActive) {
+      if (!isTourActive && !isFullscreenActive && !isFullscreenModalOpen && !catalogFullscreenPreset) {
         audioMixer.stop();
       }
     };
@@ -927,6 +926,8 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
     isPlaying,
     isMuted,
     isFullscreenActive,
+    isFullscreenModalOpen,
+    catalogFullscreenPreset,
     isExporting,
     isTourActive,
     state.audio.enabled,
@@ -2052,9 +2053,10 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
               const isSync = Boolean(state.syncWithVideo) && hasVideo;
               const targetDur = isSync ? (bgMediaElement as HTMLVideoElement).duration : undefined;
 
+              const effectiveRawText = state.rawText?.trim() || 'Твой единственный предел — это твой разум.';
               const { segments: activeSegs } = splitTextIntoSegments(
-                state.rawText,
-                state.textMode,
+                effectiveRawText,
+                state.textMode === 'full' ? 'sentence' : state.textMode,
                 state.speedMultiplier,
                 state.pauseBetweenSeconds,
                 targetDur,
@@ -2066,6 +2068,7 @@ export const VideoPreview: React.FC<VideoPreviewProps> = ({
               if (activeSegIdx === -1 && activeSegs.length > 0) {
                 activeSegIdx = currentTimeRef.current >= activeSegs[activeSegs.length - 1].startTime ? activeSegs.length - 1 : 0;
               }
+              if (activeSegIdx === -1) activeSegIdx = 0;
               const activeSegText = activeSegs[activeSegIdx]?.text || '';
               return (
                 <TextEditPopup
